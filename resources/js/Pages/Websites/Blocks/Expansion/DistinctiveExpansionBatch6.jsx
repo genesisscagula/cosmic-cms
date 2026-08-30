@@ -93,7 +93,7 @@ function DistinctiveBatch6({ block, variant }) {
     return <section className={sparkTw(block, "auto_33", `group/repeatable-section cosmic-b6 b6-${variant}`)} style={themeVars(resolved)}>
         <div className={sparkTw(block, "auto_34", "b6-shell")}>{body}</div>
         <style>{`
-            .cosmic-b6{position:relative;overflow:hidden;background:var(--b6-bg);color:var(--b6-text);padding:7rem 1.75rem}
+            .cosmic-b6{position:relative;overflow:hidden;container-type:inline-size;container-name:cosmic-b6;background:var(--b6-bg);color:var(--b6-text);padding:7rem 1.75rem}
             .cosmic-b6 *{box-sizing:border-box}.cosmic-b6 .b6-shell{width:100%;max-width:88rem;margin:0 auto}
             .cosmic-b6 .b6-head{max-width:52rem}.cosmic-b6 .b6-eyebrow,.cosmic-b6 .b6-label{display:block;color:var(--b6-muted);font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
             .cosmic-b6 .b6-heading{display:block;margin-top:1rem;font-size:clamp(2.45rem,5vw,4.8rem);font-weight:700;line-height:.97;letter-spacing:-.05em}
@@ -122,6 +122,32 @@ function DistinctiveBatch6({ block, variant }) {
             .b6-ticket{position:relative;display:grid;grid-template-columns:1.3fr .7fr;overflow:hidden;border:1px solid var(--b6-border);border-radius:2rem;background:var(--b6-surface)}.b6-ticket:before,.b6-ticket:after{content:"";position:absolute;left:70%;z-index:2;width:2.5rem;height:2.5rem;transform:translate(-50%,-50%);border:1px solid var(--b6-border);border-radius:50%;background:var(--b6-bg)}.b6-ticket:before{top:0}.b6-ticket:after{top:100%}.b6-ticket>div{padding:clamp(2rem,5vw,4.5rem)}.b6-ticket .b6-ticket-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.8rem;border-left:1px dashed var(--b6-border)}.b6-ticket-tags{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:2rem}.b6-ticket-tag{border:1px solid var(--b6-border);border-radius:999px;padding:.5rem .8rem;color:var(--b6-muted)}
 
             .b6-board{margin-top:4rem;overflow:hidden;border:1px solid var(--b6-border);border-radius:1.75rem}.b6-board .b6-item{display:grid;grid-template-columns:8rem .7fr 1.3fr 10rem;gap:1.5rem;align-items:center;border-width:0 0 1px;background:transparent;padding:1.35rem 1.5rem}.b6-board .b6-item:last-child{border-bottom:0}.b6-board .b6-title,.b6-board .b6-copy,.b6-board .b6-meta{margin:0;padding:0;border:0}.b6-board .b6-meta{text-align:right;color:var(--b6-accent)}
+
+            /* Batch 1 family repair: respond to the Spark canvas width, not the browser viewport.
+               This keeps About/Content and Process compositions intact inside the Section Editor,
+               where the Luna sidebar reduces the real preview width even on a wide desktop. */
+            @container cosmic-b6 (max-width: 1100px){
+                .b6-chapters{grid-template-columns:1fr;gap:2.75rem}
+                .b6-chapters .b6-head{position:static;max-width:46rem}
+                .b6-chapters .b6-heading{font-size:clamp(2.5rem,7cqw,4.35rem);max-width:12ch}
+                .b6-chapters .b6-item{grid-template-columns:5rem minmax(10rem,.9fr) minmax(0,1.1fr);gap:1.25rem}
+                .b6-constellation{grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem 1rem}
+                .b6-constellation:before{display:none}
+                .b6-constellation .b6-item{padding:0 1rem 1.25rem}
+                /* Batch 2 CTA repair: the ticket must react to the actual Section Editor canvas. */
+                .b6-ticket{grid-template-columns:1fr}
+                .b6-ticket:before,.b6-ticket:after{display:none}
+                .b6-ticket .b6-ticket-action{border-top:1px dashed var(--b6-border);border-left:0}
+                .b6-ticket>div{padding:clamp(2rem,5cqw,3.5rem)}
+                .b6-ticket .b6-heading{max-width:13ch;font-size:clamp(2.5rem,7cqw,4.35rem)}
+            }
+            @container cosmic-b6 (max-width: 720px){
+                .cosmic-b6 .b6-heading{font-size:clamp(2.25rem,10cqw,3.5rem)}
+                .b6-chapters .b6-item{grid-template-columns:4rem minmax(0,1fr)}
+                .b6-chapters .b6-copy{grid-column:2}
+                .b6-constellation{grid-template-columns:1fr;gap:1.5rem}
+                .b6-constellation .b6-item{padding:0 0 1.25rem}
+            }
 
             @media(max-width:900px){.cosmic-b6{padding:5rem 1.25rem}.b6-chapters{grid-template-columns:1fr}.b6-chapters .b6-head{position:static}.b6-orbit{grid-template-columns:repeat(2,1fr)}.b6-orbit:before{display:none}.b6-orbit-core{grid-column:1/-1;grid-row:auto;border-radius:1.75rem}.b6-orbit .b6-item{grid-column:auto!important;grid-row:auto!important}.b6-constellation,.b6-staircase{grid-template-columns:repeat(2,1fr)}.b6-staircase .b6-item{margin-top:0!important}.b6-ticket{grid-template-columns:1fr}.b6-ticket:before,.b6-ticket:after{display:none}.b6-ticket .b6-ticket-action{border-top:1px dashed var(--b6-border);border-left:0}.b6-ledger .b6-item,.b6-board .b6-item{grid-template-columns:6rem 1fr 1.4fr}.b6-ledger .b6-meta,.b6-board .b6-meta{grid-column:2/-1;text-align:left}}
             @media(max-width:640px){.cosmic-b6{padding:4rem 1rem}.b6-chapters .b6-item{grid-template-columns:4rem 1fr}.b6-chapters .b6-copy{grid-column:2}.b6-orbit,.b6-constellation,.b6-staircase,.b6-tree{grid-template-columns:1fr}.b6-tree{padding-left:1.25rem}.b6-tree .b6-item{margin-left:0!important}.b6-ledger .b6-item,.b6-board .b6-item{grid-template-columns:1fr;gap:.55rem}.b6-ledger .b6-meta,.b6-board .b6-meta{grid-column:auto}.b6-heading{overflow-wrap:anywhere}}

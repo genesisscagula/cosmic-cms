@@ -214,14 +214,14 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
                     <EditableText
                         value={data.heading} cosmicType="h1"
-                        className={sparkTw(block, "text_2", `mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`)}
+                        className={sparkTw(block, "text_2", `mt-7 block w-full text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`)}
                         onSave={(value) => onUpdate({ heading: value })}
                     />
 
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className={sparkTw(block, "text_3", `mt-7 text-base leading-8 sm:text-lg ${mediaStyle.body} ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`)}
+                        className={sparkTw(block, "text_3", `mt-7 block w-full text-base leading-8 sm:text-lg ${mediaStyle.body} ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`)}
                         onSave={(value) => onUpdate({ text: value })}
                     />
 

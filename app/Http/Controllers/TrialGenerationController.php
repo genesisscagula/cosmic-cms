@@ -138,12 +138,51 @@ class TrialGenerationController extends Controller
     {
         set_time_limit(480);
 
-        $validated = $request->validate([
+        // Batch 2 keeps the legacy prompt-only contract working for Luna while
+        // adding the structured Create Free Demo payload used by Welcome.
+        $structuredRequest = $request->filled('website_name')
+            || $request->filled('industry')
+            || $request->filled('email')
+            || $request->filled('additional_prompt');
+
+        $validated = $request->validate($structuredRequest ? [
+            'website_name' => ['required', 'string', 'min:2', 'max:120'],
+            'industry' => ['required', 'string', 'min:2', 'max:120'],
+            'email' => ['required', 'email:rfc', 'max:255'],
+            'additional_prompt' => ['nullable', 'string', 'max:1000'],
+            // Accepted only for forwards compatibility; the structured fields
+            // remain the source of truth for business name, industry and email.
+            'prompt' => ['nullable', 'string', 'max:2000'],
+        ] : [
             'prompt' => ['required', 'string', 'min:20', 'max:2000'],
         ]);
 
+        $email = $structuredRequest
+            ? Str::lower(trim((string) $validated['email']))
+            : null;
+
+        if ($structuredRequest) {
+            $emailAlreadyOwnsAnotherTrial = TrialGeneration::query()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->whereNotNull('email_captured_at')
+                ->where('status', '!=', 'failed')
+                ->exists();
+
+            if ($emailAlreadyOwnsAnotherTrial) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email already has a trial website. Enter another email address.',
+                ]);
+            }
+        }
+
         $ipKey = 'trial-generation:ip:'.sha1((string) $request->ip());
         if (RateLimiter::tooManyAttempts($ipKey, 2)) {
+            if ($structuredRequest) {
+                throw ValidationException::withMessages([
+                    'email' => 'You have already generated two drafts today. Please try again tomorrow.',
+                ]);
+            }
+
             return back()->withErrors([
                 'prompt' => 'You have already generated two drafts today. Please try again tomorrow.',
             ]);
@@ -151,9 +190,26 @@ class TrialGenerationController extends Controller
 
         RateLimiter::hit($ipKey, 86400);
 
-        $profile = $this->profileFromPrompt($validated['prompt']);
-        $generationPrompt = $this->buildPrompt($profile);
-        $bundlePlan = $this->siteBundlePlanner->plan($validated['prompt'], $profile['industry']);
+        if ($structuredRequest) {
+            $websiteName = Str::of((string) $validated['website_name'])->squish()->limit(120, '')->toString();
+            $industry = Str::of((string) $validated['industry'])->squish()->limit(120, '')->toString();
+            $additionalPrompt = Str::of((string) ($validated['additional_prompt'] ?? ''))->squish()->limit(1000, '')->toString();
+            $userPrompt = $this->structuredDemoPrompt($websiteName, $industry, $additionalPrompt);
+            $profile = [
+                'email' => $email,
+                'business_name' => $websiteName,
+                'industry' => $industry,
+                'location' => 'Not specified',
+                'business_description' => $additionalPrompt !== ''
+                    ? $additionalPrompt
+                    : "{$websiteName} is a {$industry} business.",
+            ];
+        } else {
+            $userPrompt = (string) $validated['prompt'];
+            $profile = $this->profileFromPrompt($userPrompt);
+        }
+
+        $bundlePlan = $this->siteBundlePlanner->plan($userPrompt, $profile['industry']);
         $bundleMenu = collect($bundlePlan['pages'] ?? [])->map(fn (array $page) => [
             'title' => (string) $page['title'],
             'slug' => (string) $page['slug'],
@@ -170,16 +226,16 @@ class TrialGenerationController extends Controller
             $this->previewThemeForIndustry($profile['industry'])
         );
 
-        $brandContext = $this->trialBrandContext->build($profile, $validated['prompt']);
+        $brandContext = $this->trialBrandContext->build($profile, $userPrompt);
 
         $trial = TrialGeneration::create([
             ...$profile,
             'token' => (string) Str::uuid(),
             // `prompt` stays backward-compatible; brand_prompt is immutable brand intent.
-            'prompt' => $validated['prompt'],
-            'brand_prompt' => $validated['prompt'],
-            'latest_user_prompt' => $validated['prompt'],
-            'prompt_history' => $this->trialBrandContext->appendPromptHistory([], $validated['prompt'], 'initial_generation'),
+            'prompt' => $userPrompt,
+            'brand_prompt' => $userPrompt,
+            'latest_user_prompt' => $userPrompt,
+            'prompt_history' => $this->trialBrandContext->appendPromptHistory([], $userPrompt, 'initial_generation'),
             'brand_context' => $brandContext,
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
@@ -188,6 +244,10 @@ class TrialGenerationController extends Controller
             'bundle_status' => 'planning',
             'preview_theme' => $initialThemeSettings,
             'guest_credits' => TrialCreditService::STARTING_BALANCE,
+            // Structured Welcome demos capture ownership before any AI work so
+            // Builder never needs to ask for the same email again.
+            'email_captured_at' => $structuredRequest ? now() : null,
+            'last_saved_at' => $structuredRequest ? now() : null,
         ]);
 
         $mediaPack = MediaPack::create([
@@ -205,10 +265,14 @@ class TrialGenerationController extends Controller
         try {
             // Build Home before handing the visitor to Builder. This keeps the
             // first screen useful while every inner page remains asynchronous.
-            Log::info('[TrialGeneration] Creating Home-first trial shell.', ['trial' => $trial->id]);
+            Log::info('[TrialGeneration] Creating Home-first trial shell.', [
+                'trial' => $trial->id,
+                'structured' => $structuredRequest,
+                'industry' => $profile['industry'],
+            ]);
 
             $finalThemeSettings = $this->myBrandThemes->ensureInSettings(
-                $this->regenerationThemeForPrompt($profile['industry'], $validated['prompt'])
+                $this->regenerationThemeForPrompt($profile['industry'], $userPrompt)
             );
             $finalThemeSettings['overlay_header_on_banner'] = false;
             $trial->update(['preview_theme' => $finalThemeSettings]);
@@ -253,17 +317,46 @@ class TrialGenerationController extends Controller
                 throw new \RuntimeException($freshTrial->bundle_error ?: 'The trial Home page could not be completed.');
             }
 
-            // Logo generation is intentionally deferred from this request too.
-            // A generic logo remains usable while the AI page queue is running.
+            // Structured Welcome demos also receive one complimentary starter logo.
+            // The Builder already recognizes this exact sync source and opens its
+            // existing 650x200 cropper on first entry, so no duplicate crop UI is
+            // needed here. Logo generation is best-effort and never blocks a demo.
+            $initialLogoUrl = null;
+            if ($structuredRequest) {
+                $initialLogoUrl = $this->initialTrialLogo->generate($trial->fresh());
+                $trial->refresh();
+            }
+
             $builderUrl = route('pages.builder', [
                 'page' => $page,
                 'token' => $trial->token,
             ], false);
 
+            // Email is already captured by the structured Welcome form. Send
+            // the private Builder link automatically after Home is confirmed,
+            // but never strand a successfully built demo because mail delivery
+            // itself is temporarily unavailable.
+            if ($structuredRequest) {
+                $freshTrial = $trial->fresh();
+                try {
+                    $this->sendTrialAccessEmail($freshTrial, false);
+                } catch (\Throwable $mailException) {
+                    Log::error('[TrialGeneration] Welcome email could not be queued/sent after build.', [
+                        'trial' => $trial->id,
+                        'email' => $freshTrial->email,
+                        'message' => $mailException->getMessage(),
+                    ]);
+                    report($mailException);
+                }
+
+                $this->sendTrialLeadNotification($freshTrial);
+            }
+
             Log::info('[TrialGeneration] Home-first Builder redirect prepared.', [
                 'trial' => $trial->id,
                 'page' => $page->id,
                 'builder_url' => $builderUrl,
+                'email_captured' => $structuredRequest,
             ]);
 
             return response()->json([
@@ -280,6 +373,9 @@ class TrialGenerationController extends Controller
                 'bundle_key' => data_get($freshTrial->bundle_manifest, 'bundle_key'),
                 'bundle_status' => $freshTrial->bundle_status,
                 'bundle_page_count' => (int) data_get($freshTrial->bundle_manifest, 'page_count', 1),
+                'email_captured' => $structuredRequest,
+                'welcome_email_requested' => $structuredRequest,
+                'initial_logo_generated' => filled($initialLogoUrl),
                 'message' => 'Your Home page is ready. The remaining pages will continue automatically in the background.',
             ])->header('X-Cosmic-Builder-Url', $builderUrl);
         } catch (TransporterException $exception) {
@@ -366,54 +462,65 @@ class TrialGenerationController extends Controller
     {
         abort_unless($trial->status === 'ready' && ! $trial->claimed_at, 404);
 
-        $previewUrl = null;
-        $previewError = null;
-
-        try {
-            // This also repairs trials where deployment finished but the final
-            // manifest staging_url write was interrupted.
-            $previewUrl = $this->trialStagingPublisher->existingUrl($trial);
-
-            if (! $previewUrl) {
-                $hasReadyPage = collect(data_get($trial->bundle_manifest, 'pages', []))
-                    ->contains(fn (array $page): bool => ($page['build_status'] ?? null) === 'ready');
-
-                if ($trial->bundle_status === 'ready') {
-                    $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
-                } elseif ($hasReadyPage) {
-                    $previewUrl = $this->trialStagingPublisher->publishProgressive($trial->fresh());
-                }
-            }
-        } catch (\Throwable $exception) {
-            Log::warning('[TrialStaging] Preview status repair deferred.', [
-                'trial_id' => $trial->id,
-                'message' => $exception->getMessage(),
-            ]);
-            $previewError = 'The website is built, but its staging link is still being prepared.';
-        }
-
         $trial = $trial->fresh(['website']);
-        $manifestPages = collect(data_get($trial?->bundle_manifest, 'pages', []));
+        $manifestPages = collect(data_get($trial?->bundle_manifest, 'pages', []))->sortBy('sort_order')->values();
         $readyPages = $manifestPages->where('build_status', 'ready')->count();
         $pageCount = $manifestPages->count();
         $bundleStatus = (string) ($trial?->bundle_status ?? 'missing');
-        $ready = filled($previewUrl);
+        $pagesComplete = $pageCount > 0 && $readyPages >= $pageCount && $bundleStatus === 'ready';
+        $activePage = $manifestPages->first(fn (array $page): bool => in_array(($page['build_status'] ?? null), ['building', 'scheduled'], true))
+            ?: $manifestPages->first(fn (array $page): bool => ($page['build_status'] ?? null) === 'queued');
+
+        $previewUrl = null;
+        $previewError = null;
+
+        if ($pagesComplete) {
+            try {
+                // Preview is intentionally withheld until the complete bundle is
+                // built. This keeps the trial CTA deterministic: 100% means the
+                // user can open the entire demo, not a progressively staged subset.
+                $previewUrl = $this->trialStagingPublisher->existingUrl($trial);
+                if (! $previewUrl) {
+                    $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('[TrialStaging] Complete preview finalization deferred.', [
+                    'trial_id' => $trial->id,
+                    'message' => $exception->getMessage(),
+                ]);
+                $previewError = 'All pages are built, but the final preview link is still being prepared.';
+            }
+        }
+
+        $previewReady = $pagesComplete && filled($previewUrl);
+        $progress = $pageCount > 0 ? (int) round(($readyPages / $pageCount) * 100) : 0;
 
         return response()->json([
-            'status' => $ready ? 'ready' : $bundleStatus,
+            'status' => $previewReady ? 'ready' : $bundleStatus,
             'bundle_status' => $bundleStatus,
-            'preview_url' => $previewUrl,
-            'preview_ready' => $ready,
+            'preview_url' => $previewReady ? $previewUrl : null,
+            'preview_ready' => $previewReady,
+            'pages_complete' => $pagesComplete,
             'ready_pages' => $readyPages,
             'page_count' => $pageCount,
-            'progress' => $pageCount > 0 ? (int) round(($readyPages / $pageCount) * 100) : 0,
-            'terminal' => $ready || in_array($bundleStatus, ['failed', 'partial'], true),
-            'poll_after_ms' => $bundleStatus === 'ready' ? 5000 : 3000,
+            'progress' => $progress,
+            'current_page_title' => is_array($activePage) ? (string) ($activePage['title'] ?? '') : null,
+            'pages' => $manifestPages->map(fn (array $page): array => [
+                'id' => (int) ($page['page_id'] ?? 0),
+                'title' => (string) ($page['title'] ?? 'Page'),
+                'slug' => (string) ($page['slug'] ?? ''),
+                'is_home' => (bool) ($page['is_home'] ?? false),
+                'status' => (string) ($page['build_status'] ?? 'queued'),
+            ])->values()->all(),
+            'terminal' => $previewReady || in_array($bundleStatus, ['failed', 'partial'], true),
+            'poll_after_ms' => 2500,
             'preview_error' => $previewError ?: ($trial?->bundle_error ?: null),
             'message' => match (true) {
-                $ready => 'Your complete staging website is ready.',
-                $bundleStatus === 'ready' => 'All pages are built. Finalizing the staging link.',
-                $bundleStatus === 'failed' => 'Some pages could not be prepared.',
+                $previewReady => 'Your complete demo website is ready.',
+                $pagesComplete => 'All pages are built. Finalizing your preview.',
+                $bundleStatus === 'failed' => 'The demo build stopped because one or more pages could not be prepared.',
+                $bundleStatus === 'partial' => 'The demo build finished with an incomplete page.',
+                filled(data_get($activePage, 'title')) => 'Creating '.data_get($activePage, 'title').' page…',
                 default => "Building {$readyPages} of {$pageCount} pages.",
             },
         ])->header('Cache-Control', 'no-store, private');
@@ -640,18 +747,24 @@ class TrialGenerationController extends Controller
 
             $trial->refresh();
 
-            foreach ((array) data_get($trial->bundle_manifest, 'pages', []) as $bundlePage) {
-                if (! ($bundlePage['is_home'] ?? false) && (int) ($bundlePage['page_id'] ?? 0) > 0) {
-                    BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $bundlePage['page_id']);
-                }
+            $firstQueuedBundlePage = collect((array) data_get($trial->bundle_manifest, 'pages', []))
+                ->sortBy('sort_order')
+                ->first(fn (array $bundlePage): bool => ! ($bundlePage['is_home'] ?? false)
+                    && ($bundlePage['build_status'] ?? null) === 'queued'
+                    && (int) ($bundlePage['page_id'] ?? 0) > 0);
+            if (is_array($firstQueuedBundlePage)) {
+                // Regeneration follows the same sequential queue contract as a
+                // fresh demo: start one inner page, then let each completed job
+                // schedule exactly one successor.
+                BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $firstQueuedBundlePage['page_id']);
             }
             if($trial->fresh()->bundle_status==='ready'){
                 try{$this->trialStagingPublisher->publish($trial->fresh());}catch(\Throwable $exception){report($exception);}
             }
 
-            // Patch 5: a full regeneration creates a fresh logo + favicon after the
-            // new prompt, brand context and theme are committed. AI logos are
-            // server-normalized, so the cropper remains upload-only.
+            // A full regeneration creates a fresh logo + favicon after the
+            // new prompt, brand context and theme are committed. The Builder can
+            // then reuse the same crop workflow for generated or uploaded logos.
             $freshLogoUrl = $this->initialTrialLogo->generate($trial);
             $logoRegenerated = filled($freshLogoUrl);
 
@@ -773,6 +886,18 @@ class TrialGenerationController extends Controller
         return $slug;
     }
 
+    private function structuredDemoPrompt(string $websiteName, string $industry, string $additionalPrompt = ''): string
+    {
+        $prompt = "Create a premium, modern, responsive website for {$websiteName}, a {$industry} business. "
+            ."Use suitable sections, professional content, relevant imagery, clear calls to action, and a visual direction appropriate for this industry.";
+
+        if ($additionalPrompt !== '') {
+            $prompt .= " Additional instructions: {$additionalPrompt}";
+        }
+
+        return $prompt;
+    }
+
     private function buildPrompt(array $data): string
     {
         $request = trim((string) ($data['prompt'] ?? ''));
@@ -844,13 +969,14 @@ class TrialGenerationController extends Controller
 
     private function previewThemeForIndustry(?string $industry): array
     {
-        $primary = match ($industry) {
-            'Restaurant', 'Coffee Shop', 'Bakery' => 'terracotta',
-            'Automotive', 'Construction', 'Electrician', 'Plumbing', 'Roofing' => 'asphalt',
-            'Fitness', 'Real Estate', 'Landscaping', 'Salon & Beauty', 'Cleaning' => 'emerald',
-            'Technology' => 'void',
-            'Hotel & Resort', 'Travel' => 'sapphire',
-            'Law Firm', 'Finance' => 'obsidian',
+        $industryKey = IndustryMenuRegistry::normalizeIndustry((string) $industry);
+        $primary = match ($industryKey) {
+            'restaurant', 'coffee', 'bakery' => 'terracotta',
+            'automotive', 'construction', 'electrician', 'plumbing', 'roofing' => 'asphalt',
+            'fitness', 'real-estate', 'landscaping', 'salon', 'cleaning' => 'emerald',
+            'technology' => 'void',
+            'hotel', 'travel' => 'sapphire',
+            'lawyer', 'finance' => 'obsidian',
             default => 'midnight',
         };
 

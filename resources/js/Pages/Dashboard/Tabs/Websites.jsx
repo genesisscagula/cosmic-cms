@@ -54,7 +54,7 @@ export default function Websites({ websites = [], dashboard = {} }) {
             const values = { website_search: query.trim(), website_status: status, website_industry: industry, website_deployment: deployment, website_activity: activity, website_sort: sort };
             Object.entries(values).forEach(([key, value]) => value && value !== "all" && value !== "recent" ? params.set(key, value) : params.delete(key));
             const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
-            window.history.replaceState({}, "", next);
+            window.history.replaceState(window.history.state, "", next);
         }, 250);
         return () => window.clearTimeout(timer);
     }, [query, status, industry, deployment, activity, sort]);

@@ -166,7 +166,7 @@ export default function PageStyleSelector({
                             <p className={`text-[11px] ${light ? 'text-slate-500' : 'text-slate-500'}`}>Balanced is the premium default. Content and explicit Spark themes are preserved.</p>
                             <div className="flex items-center gap-2">
                                 <button type="button" onClick={closeModal} disabled={Boolean(applying)} className={`rounded-xl border px-4 py-2 text-xs font-bold transition disabled:opacity-40 ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Cancel</button>
-                                <button type="button" onClick={applyStyle} disabled={Boolean(applying) || draftStyle === current} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">
+                                <button type="button" onClick={applyStyle} disabled={Boolean(applying) || draftStyle === current} className="cosmic-page-style-apply rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">
                                     {applying ? 'Applying…' : draftStyle === current ? 'Applied' : 'Apply Style'}
                                 </button>
                             </div>

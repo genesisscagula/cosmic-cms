@@ -1260,6 +1260,33 @@ PROMPT;
             ."\nPreferred stock-photo subject vocabulary: {$query}.";
     }
 
+    /**
+     * Personalize copy only after the user asks Luna for content. Selecting a
+     * Spark itself remains instant and preserves the registered default preview.
+     */
+    private function lunaGroundedPopupContentPrompt(string $prompt, Website $website, array $block): string
+    {
+        if (! preg_match('/\b(?:add|write|rewrite|replace|update|improve|personalize|generate|create|change)\b.{0,80}\b(?:content|copy|text|heading|headline|title|description|services?|features?|testimonial|cta|button|eyebrow)\b|\b(?:add\s+content|write\s+copy|rewrite\s+this)\b/i', $prompt)) {
+            return $prompt;
+        }
+
+        $context = array_values(array_filter([
+            trim((string) $website->name) !== '' ? 'Business name: '.trim((string) $website->name).'.' : null,
+            trim((string) $website->industry) !== '' ? 'Saved industry: '.trim((string) $website->industry).'.' : null,
+            trim((string) $website->location) !== '' ? 'Saved location: '.trim((string) $website->location).'.' : null,
+            trim((string) $website->business_description) !== '' ? 'Saved business description: '.Str::limit(trim((string) $website->business_description), 900, '').'.' : null,
+            trim((string) ($block['type'] ?? '')) !== '' ? 'Selected Spark type: '.trim((string) $block['type']).'.' : null,
+        ]));
+
+        if ($context === []) return $prompt;
+
+        return $prompt
+            ."\n\nSAVED WEBSITE CONTEXT (use for this requested copy):\n".implode("\n", $context)
+            ."\nWrite specifically for this business and industry while preserving the selected Spark layout."
+            ." Do not invent awards, certifications, people, dates, statistics, customer counts, guarantees, or other unverifiable claims."
+            ." If the user explicitly requests a different subject or industry in this message, follow that explicit request.";
+    }
+
     private function lunaUpdatedSiteMemory(string $prompt, array $memory, array $theme=[]): array
     {
         $p=Str::lower($prompt);
@@ -3493,10 +3520,11 @@ For the compatible premium Services family (services_bento_premium, services_edi
                         $fullSchemaEdited=true;
                         if(($schemaResult['changed']??false)===true){
                             $applied[]=[
-                                'action'=>'spark_full_schema_edit',
+                                'action'=>(($schemaResult['protocol']??'')==='structural_actions_v1')?'spark_structural_edit':'spark_full_schema_edit',
                                 'index'=>$i,
                                 'spark_type'=>$sparkTarget['type'],
                                 'diff'=>$schemaResult['diff']??[],
+                                'structural_operations'=>$schemaResult['operations']??[],
                                 'before_fingerprint'=>$schemaResult['before_fingerprint']??null,
                                 'after_fingerprint'=>$schemaResult['after_fingerprint']??null,
                                 'verified'=>true,
@@ -4818,6 +4846,7 @@ LUNA CUSTOMIZATION PLAN:
         \App\Services\LunaSparkSchemaEditorService $sparkSchemaEditor,
         \App\Services\LunaAiFlexSparkService $aiFlex,
         \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner,
+        \App\Services\LunaSparkRequestComplianceService $sparkRequestCompliance,
         LunaCategoryPageService $lunaPages,
         LunaSmartSparkEditingService $smartSparkEditing,
         LunaSectionImageService $sectionImages,
@@ -4852,6 +4881,7 @@ LUNA CUSTOMIZATION PLAN:
 
         $current = $blocks[$targetIndex];
         $sparkType = (string) ($current['type'] ?? '');
+        $prompt = $this->lunaGroundedPopupContentPrompt($prompt, $website, $current);
         $blankLunaAiFlex = ($validated['creation_source'] ?? null) === 'blank_luna'
             && (bool) ($validated['ai_flex_mode'] ?? false)
             && (bool) ($validated['skip_spark_match'] ?? false)
@@ -4870,11 +4900,55 @@ LUNA CUSTOMIZATION PLAN:
         ];
         $intent = $intentGateway->route($prompt, [], $routeContext);
 
+        // Contextual Edit Section is a hard local boundary. The general router can
+        // occasionally classify terse design follow-ups ("a little smaller",
+        // "more rounded") as chat or another CMS domain because the section noun
+        // is implicit in the popup. Keep legitimate local edit commands inside the
+        // selected Spark while still rejecting explicit whole-site/global requests.
+        $popupGlobalScopeIntent = (bool) preg_match(
+            '/\b(?:whole\s+(?:site|website|page)|entire\s+(?:site|website|page)|all\s+(?:pages|sections)|global(?:ly)?|site[-\s]?wide|website[-\s]?wide|header|footer|navigation|menu|publish|domain|seo|site\s+theme|website\s+theme|global\s+theme)\b/i',
+            $prompt,
+        );
+        $popupLocalEditIntent = (bool) preg_match(
+            '/(?:\b(?:make|change|update|edit|set|use|apply|reduce|increase|decrease|add|remove|delete|duplicate|reorder|move|insert|replace|swap|rewrite|shorten|expand|align|center|left|right|stack|convert)\b|\b(?:smaller|bigger|larger|shorter|taller|wider|narrower|tighter|roomier|closer|farther|rounder|rounded|square|sharper|lighter|darker|brighter|softer|bolder|thinner|thicker|more\s+premium|more\s+modern|more\s+polished|a\s+little|slightly|desktop\s+only|mobile\s+only)\b)/i',
+            $prompt,
+        );
+
+        if ($popupGlobalScopeIntent) {
+            return response()->json([
+                'mode' => 'reply',
+                'reply' => 'This editor is scoped to the selected section. Use the main Luna chat for whole-page, header, footer, navigation, publishing, SEO, or site-wide theme changes.',
+                'blocks' => $blocks,
+                'applied_operations' => [],
+                'credit_cost' => 0,
+                'credit_balance' => $request->user() ? $credits->balance($request->user()) : null,
+                'popup_api' => true,
+                'verified_diff' => false,
+                'rejection_reason' => 'popup_scope_boundary',
+            ]);
+        }
+
+        if (($intent['intent'] ?? 'chat') !== 'action' && $popupLocalEditIntent) {
+            $intent = array_replace_recursive(is_array($intent) ? $intent : [], [
+                'intent' => 'action',
+                'execution_allowed' => true,
+                'domain' => 'section',
+                'operation' => 'update',
+                'leaf_operation' => 'spark_edit',
+                'scope' => 'section',
+                'routing' => [
+                    'menu_scope' => 'sparks',
+                    'spark_action' => 'edit_spark',
+                    'spark_target' => ['index' => $targetIndex, 'type' => $sparkType],
+                ],
+            ]);
+        }
+
         if (($intent['intent'] ?? 'chat') !== 'action') {
             return response()->json([
                 'mode' => 'reply',
                 'reply' => $blankLunaAiFlex
-                    ? 'Tell me what you want this new section to contain and how it should be arranged—for example, “two columns with an image left and heading, text, and button right.”'
+                    ? 'Tell me what section you need and how you want it to look. I’ll choose a suitable proven layout and customize it for you.'
                     : 'I can help edit this selected section. Tell me the exact content, image, spacing, color, typography, or button change you want.',
                 'blocks' => $blocks,
                 'applied_operations' => [],
@@ -4885,15 +4959,19 @@ LUNA CUSTOMIZATION PLAN:
             ]);
         }
 
-        // Batch 5: proven registered Sparks are the default redesign lane.
-        // AI Flex remains isolated to Start Blank with Luna only.
-        $premadeRedesignIntent = ! $blankLunaAiFlex && (bool) preg_match(
+        // Hotfix 1: Start Blank now follows the Spark-first architecture for recognizable
+        // section requests. AI Flex remains a fallback only when no registered semantic
+        // requirement can be identified (or a later fallback path explicitly needs it).
+        $requestRequirements = $sparkRequestCompliance->requirements($prompt);
+        $premadeCreateIntent = $blankLunaAiFlex && ! empty($requestRequirements['semantic_type']);
+        $premadeRedesignIntent = $premadeCreateIntent || (! $blankLunaAiFlex && (bool) preg_match(
             '/\b(?:redesign|rebuild|reimagine|change\s+(?:the\s+)?layout|another\s+layout|different\s+layout|custom\s+(?:design|layout)|unique\s+(?:design|layout)|make\s+(?:this|it)\s+more\s+(?:premium|modern|editorial|luxury|creative))\b/i',
             $prompt,
-        );
-        $redesignAiFlex = $blankLunaAiFlex;
+        ));
+        $redesignAiFlex = $blankLunaAiFlex && ! $premadeCreateIntent;
         $imageInsertionIntent = $sectionImages->isInsertionIntent($prompt);
-        $imageMode = $imageInsertionIntent ? $sectionImages->mode($prompt) : null;
+        $imageReplacementIntent = $sectionImages->isReplacementIntent($prompt);
+        $imageMode = ($imageInsertionIntent || $imageReplacementIntent) ? $sectionImages->mode($prompt) : null;
         $imageGenerationCost = $imageMode === 'generate' ? AiImageController::COST : 0;
         $plannedAction = ($redesignAiFlex || $premadeRedesignIntent) ? 'replace' : 'edit';
         $pricing = $lunaPricing->estimate($prompt, [['action' => $plannedAction, 'index' => $targetIndex]], 'section');
@@ -4914,66 +4992,202 @@ LUNA CUSTOMIZATION PLAN:
 
         if ($premadeRedesignIntent) {
             try {
-                $selection = $sparkSelectionPlanner->plan($prompt, 'change_spark', [
-                    'current_spark_key' => $sparkType,
-                    'semantic_type' => SparkCatalog::find($sparkType)['semantic_type'] ?? null,
-                ]);
-                $selectedKey = trim((string) ($selection['selected_spark_id'] ?? ''));
-                if ($selectedKey !== '' && $selectedKey !== $sparkType && SparkCatalog::find($selectedKey)) {
-                    $customPlan = is_array($selection['customization_plan'] ?? null) ? $selection['customization_plan'] : [];
-                    $guard = is_array($selection['capability_guard'] ?? null) ? $selection['capability_guard'] : [];
+                $selectionBranch = $premadeCreateIntent ? 'add_spark' : 'change_spark';
+                $selection = $sparkSelectionPlanner->plan($prompt, $selectionBranch, array_filter([
+                    'current_spark_key' => $premadeCreateIntent ? null : $sparkType,
+                    'semantic_type' => $requestRequirements['semantic_type'] ?? (SparkCatalog::find($sparkType)['semantic_type'] ?? null),
+                ]));
+
+                // Hotfix 2: do not stop at Luna's first candidate. Build a bounded,
+                // deterministic retry queue from the selected Spark, Luna alternates,
+                // then the strongest local shortlist rows. Each candidate must pass
+                // the original-request compliance gate before it can reach preview.
+                $candidateKeys = [];
+                $pushCandidate = static function ($value) use (&$candidateKeys): void {
+                    $key = trim((string) $value);
+                    if ($key !== '' && ! in_array($key, $candidateKeys, true) && SparkCatalog::find($key)) {
+                        $candidateKeys[] = $key;
+                    }
+                };
+                $pushCandidate($selection['selected_spark_id'] ?? '');
+                foreach ((array) ($selection['alternate_spark_ids'] ?? []) as $alternateKey) {
+                    $pushCandidate($alternateKey);
+                }
+                foreach ((array) ($selection['shortlist'] ?? []) as $row) {
+                    if (is_array($row)) $pushCandidate($row['id'] ?? $row['spark_id'] ?? '');
+                    if (count($candidateKeys) >= 4) break;
+                }
+                $candidateKeys = array_slice($candidateKeys, 0, 4);
+
+                $retryLog = [];
+                foreach ($candidateKeys as $candidateIndex => $selectedKey) {
+                    if (! $premadeCreateIntent && $selectedKey === $sparkType && count($candidateKeys) > 1) {
+                        // A redesign should prefer a genuinely different proven layout.
+                        continue;
+                    }
+
+                    $basePlan = is_array($selection['customization_plan'] ?? null) ? $selection['customization_plan'] : [];
+                    // Re-authorize the same user intent against EACH candidate's own
+                    // capability manifest. Luna's first-candidate guard is not portable.
+                    $candidateGuard = app(\App\Services\LunaSparkCapabilityBridgeService::class)->guardPlan($selectedKey, $basePlan);
+                    $customPlan = is_array($candidateGuard['customization_plan'] ?? null)
+                        ? $candidateGuard['customization_plan']
+                        : $basePlan;
                     $guardJson = json_encode([
-                        'modules' => $guard['capability_manifest']['modules'] ?? [],
-                        'operations' => $guard['capability_manifest']['operations'] ?? [],
-                        'guardrails' => $guard['capability_manifest']['guardrails'] ?? [],
+                        'modules' => $candidateGuard['capability_manifest']['modules'] ?? [],
+                        'operations' => $candidateGuard['capability_manifest']['operations'] ?? [],
+                        'guardrails' => $candidateGuard['capability_manifest']['guardrails'] ?? [],
                     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-                    $migration = json_encode(array_intersect_key($current, array_flip([
+                    $migration = json_encode($premadeCreateIntent ? [] : array_intersect_key($current, array_flip([
                         'heading','title','eyebrow','text','description','body','subheading',
                         'primary_label','primary_url','secondary_label','secondary_url','cta_label','cta_url',
                         'items','cards','services','features','steps','slides','images','image_url','video_url','theme',
                     ])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $requirementsJson = json_encode($requestRequirements, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                     $instruction = $this->lunaSparkCustomizationInstruction($prompt, $customPlan, true);
-                    $generationPrompt = "LUNA POPUP REGISTERED-SPARK REDESIGN:
-Build exactly one {$selectedKey} Spark.
-{$instruction}"
-                        . ($guardJson ? "
-COSMIC CAPABILITY GUARD: {$guardJson}" : '')
-                        . "
-Preserve/adapt compatible content from the current section:
-{$migration}";
-                    $generated = $lunaPages->generate($generationPrompt, [$selectedKey]);
-                    $replacement = is_array($generated[0] ?? null) ? $generated[0] : null;
-                    if (is_array($replacement)) {
-                        $replacement['type'] = $selectedKey;
+                    $generationPrompt = "LUNA POPUP REGISTERED-SPARK REDESIGN:\nBuild exactly one {$selectedKey} Spark.\n{$instruction}"
+                        . ($requirementsJson ? "\nHARD REQUEST REQUIREMENTS: {$requirementsJson}\nThese requirements are mandatory; preserve the registered Spark schema while satisfying them." : '')
+                        . ($guardJson ? "\nCOSMIC CAPABILITY GUARD: {$guardJson}" : '')
+                        . "\nPreserve/adapt compatible content from the current section:\n{$migration}";
+
+                    try {
+                        $generated = $lunaPages->generate($generationPrompt, [$selectedKey]);
+                        $replacement = is_array($generated[0] ?? null) ? $generated[0] : null;
+                    } catch (\Throwable $candidateException) {
+                        $retryLog[] = [
+                            'spark_type' => $selectedKey,
+                            'attempt' => $candidateIndex + 1,
+                            'status' => 'generation_failed',
+                            'reason' => $candidateException->getMessage(),
+                        ];
+                        continue;
+                    }
+
+                    if (! is_array($replacement)) {
+                        $retryLog[] = [
+                            'spark_type' => $selectedKey,
+                            'attempt' => $candidateIndex + 1,
+                            'status' => 'empty_generation',
+                        ];
+                        continue;
+                    }
+
+                    $replacement['type'] = $selectedKey;
+                    if (! $premadeCreateIntent) {
                         $replacement = $this->lunaPreserveCompatibleSparkContent($current, $replacement);
-                        $blocks[$targetIndex] = $replacement;
-                        if ($creditCost > 0 && $user) {
-                            $credits->consume($user, $creditCost, 'Luna popup registered Spark redesign', $website, 'luna-popup-spark-'.Str::uuid(), [
-                                'category' => 'ai', 'spark_type' => $selectedKey, 'target_index' => $targetIndex,
-                            ]);
-                        }
-                        return response()->json([
-                            'mode' => 'update',
-                            'reply' => 'I matched your request to a proven Spark, customized it, and placed the result in the popup preview.',
-                            'blocks' => $blocks,
-                            'applied_operations' => [[
-                                'action' => 'registered_spark_redesign', 'index' => $targetIndex,
-                                'from_type' => $sparkType, 'spark_type' => $selectedKey, 'verified' => true,
-                            ]],
-                            'spark_selection' => [
-                                'selected_spark_id' => $selectedKey,
-                                'alternate_spark_ids' => array_values((array) ($selection['alternate_spark_ids'] ?? [])),
-                                'confidence' => $selection['confidence'] ?? null,
-                                'selection_source' => $selection['selection_source'] ?? null,
-                                'execution_hint' => $selection['execution_hint'] ?? null,
-                            ],
-                            'credit_cost' => $creditCost,
-                            'credit_balance' => $user ? $credits->balance($user) : null,
-                            'popup_api' => true,
-                            'popup_action' => 'registered_spark_redesign',
-                            'verified_diff' => true,
+                    }
+
+                    // Batch 1: Start Blank + premade Spark must arrive in preview with
+                    // its visual schema hydrated. Luna/page generation can correctly
+                    // choose an image-led Spark while leaving grid/card/slide image_url
+                    // fields empty. Resolve every blank/generic slot through Unsplash
+                    // using per-slot context before compliance/preview. Real existing
+                    // images are preserved by LunaSectionImageService.
+                    $imageHydration = null;
+                    if ($premadeCreateIntent && $sectionImages->mode($prompt) === 'unsplash') {
+                        $imageHydration = $sectionImages->hydrateMissingImages(
+                            $website,
+                            $user,
+                            $prompt,
+                            $replacement,
+                            16,
+                        );
+                        $replacement = is_array($imageHydration['block'] ?? null)
+                            ? $imageHydration['block']
+                            : $replacement;
+                    }
+
+                    $compliance = $sparkRequestCompliance->validate($prompt, $replacement, $selectedKey);
+                    // Hotfix 3: Spark-first means the closest proven premade layout wins.
+                    // Compliance is advisory metadata only; it must never suppress a valid
+                    // registered Spark preview just because the library lacks an exact variant.
+                    // We keep the mismatch details so the catalog can be expanded later.
+                    if (($compliance['ok'] ?? false) !== true) {
+                        $retryLog[] = [
+                            'spark_type' => $selectedKey,
+                            'attempt' => $candidateIndex + 1,
+                            'status' => 'closest_match_with_gaps',
+                            'failures' => array_values((array) ($compliance['failures'] ?? [])),
+                        ];
+                        Log::info('[LunaPopup] using closest proven registered Spark despite non-blocking compliance gaps', [
+                            'website_id' => $website->id,
+                            'target_index' => $targetIndex,
+                            'spark_type' => $selectedKey,
+                            'attempt' => $candidateIndex + 1,
+                            'requirements' => $compliance['requirements'] ?? [],
+                            'failures' => $compliance['failures'] ?? [],
                         ]);
                     }
+
+                    // Charge only after a valid proven registered-Spark preview exists.
+                    $blocks[$targetIndex] = $replacement;
+                    if ($creditCost > 0 && $user) {
+                        $credits->consume($user, $creditCost, 'Luna popup registered Spark redesign', $website, 'luna-popup-spark-'.Str::uuid(), [
+                            'category' => 'ai', 'spark_type' => $selectedKey, 'target_index' => $targetIndex,
+                            'candidate_attempt' => $candidateIndex + 1,
+                        ]);
+                    }
+
+                    $alternates = array_values(array_filter($candidateKeys, static fn ($key) => $key !== $selectedKey));
+                    return response()->json([
+                        'mode' => 'update',
+                        'reply' => $candidateIndex > 0
+                            ? 'I selected another close proven Spark and customized it for your request. The result is ready in the popup preview.'
+                            : (($compliance['ok'] ?? false)
+                                ? 'I matched your request to a proven Spark and customized it in the popup preview.'
+                                : 'I selected the closest proven Spark available and customized it as closely as its layout allows. The result is ready in the popup preview.'),
+                        'blocks' => $blocks,
+                        'applied_operations' => [[
+                            'action' => 'registered_spark_redesign', 'index' => $targetIndex,
+                            'from_type' => $sparkType, 'spark_type' => $selectedKey, 'verified' => true,
+                            'candidate_attempt' => $candidateIndex + 1,
+                        ]],
+                        'spark_selection' => [
+                            'selected_spark_id' => $selectedKey,
+                            'alternate_spark_ids' => array_slice($alternates, 0, 3),
+                            'confidence' => $selection['confidence'] ?? null,
+                            'selection_source' => $selection['selection_source'] ?? null,
+                            'execution_hint' => $candidateGuard['execution_hint'] ?? ($selection['execution_hint'] ?? null),
+                            'candidate_attempt' => $candidateIndex + 1,
+                        ],
+                        'credit_cost' => $creditCost,
+                        'credit_balance' => $user ? $credits->balance($user) : null,
+                        'popup_api' => true,
+                        'popup_action' => 'registered_spark_redesign',
+                        'verified_diff' => true,
+                        'request_compliance' => $compliance,
+                        'candidate_retry_log' => $retryLog,
+                        'image_hydration' => $imageHydration ? [
+                            'hydrated_count' => (int) ($imageHydration['hydrated_count'] ?? 0),
+                            'fallback_count' => (int) ($imageHydration['fallback_count'] ?? 0),
+                            'failed_count' => (int) ($imageHydration['failed_count'] ?? 0),
+                            'slots' => array_values((array) ($imageHydration['slots'] ?? [])),
+                        ] : null,
+                    ]);
+                }
+
+                if ($candidateKeys !== []) {
+                    Log::warning('[LunaPopup] all registered Spark candidates failed request compliance', [
+                        'website_id' => $website->id,
+                        'target_index' => $targetIndex,
+                        'spark_type' => $sparkType,
+                        'candidate_keys' => $candidateKeys,
+                        'requirements' => $requestRequirements,
+                        'retry_log' => $retryLog,
+                    ]);
+                    return response()->json([
+                        'mode' => 'reply',
+                        'reply' => 'I tried the strongest matching layouts, but none fully satisfied your requested structure, so I kept the popup draft unchanged and did not charge credits.',
+                        'blocks' => $blocks,
+                        'applied_operations' => [],
+                        'credit_cost' => 0,
+                        'credit_balance' => $user ? $credits->balance($user) : null,
+                        'popup_api' => true,
+                        'popup_action' => 'registered_spark_candidates_exhausted',
+                        'verified_diff' => false,
+                        'request_compliance' => ['ok' => false, 'requirements' => $requestRequirements],
+                        'candidate_retry_log' => $retryLog,
+                    ]);
                 }
             } catch (\Throwable $exception) {
                 Log::warning('[LunaPopup] registered Spark redesign failed; keeping current Spark', [
@@ -4981,8 +5195,9 @@ Preserve/adapt compatible content from the current section:
                     'error' => $exception->getMessage(),
                 ]);
             }
-            // If matching/generation fails, keep the known-good current Spark and
-            // continue into its schema editor instead of falling back to arbitrary AI Flex.
+            // If matching cannot produce any usable candidate, keep the known-good
+            // current Spark and continue into its schema editor; never fall back to
+            // arbitrary registered-Spark structure or charge for a failed preview.
         }
 
         if ($redesignAiFlex) {
@@ -5145,6 +5360,81 @@ Preserve/adapt compatible content from the current section:
                 'credit_cost' => $creditCost,
                 'credit_balance' => $user ? $credits->balance($user) : null,
                 'popup_api' => true, 'popup_action' => 'cardinality', 'verified_diff' => true,
+            ]);
+        }
+
+        // Existing Spark previews already have an image slot. A request such as
+        // "change the image to a yacht" must replace that slot directly instead
+        // of asking the schema editor to invent a new one and rejecting an empty diff.
+        if ($imageReplacementIntent && ! $imageInsertionIntent) {
+            $resolvedImage = $sectionImages->resolve($website, $user, $prompt, $current);
+            if (($resolvedImage['ok'] ?? false) !== true || blank($resolvedImage['url'] ?? null)) {
+                return response()->json([
+                    'mode' => 'reply',
+                    'reply' => ($resolvedImage['error'] ?? null) ?: 'Luna could not resolve a usable replacement image, so the popup was left unchanged and no credits were charged.',
+                    'blocks' => $blocks,
+                    'applied_operations' => [],
+                    'credit_cost' => 0,
+                    'credit_balance' => $user ? $credits->balance($user) : null,
+                    'popup_api' => true,
+                    'popup_action' => 'replace_image',
+                    'image_mode' => $imageMode,
+                    'verified_diff' => false,
+                    'rejection_reason' => 'image_provider_failed',
+                ]);
+            }
+
+            $replacement = $sectionImages->replacePrimaryImage($current, (string) $resolvedImage['url']);
+            if (($replacement['changed'] ?? false) !== true) {
+                return response()->json([
+                    'mode' => 'reply',
+                    'reply' => 'Luna found a replacement image, but this Spark has no safe image slot to update. Nothing was applied and no credits were charged.',
+                    'blocks' => $blocks,
+                    'applied_operations' => [],
+                    'credit_cost' => 0,
+                    'credit_balance' => $user ? $credits->balance($user) : null,
+                    'popup_api' => true,
+                    'popup_action' => 'replace_image',
+                    'image_mode' => $imageMode,
+                    'verified_diff' => false,
+                    'rejection_reason' => 'image_slot_not_found',
+                ]);
+            }
+
+            $blocks[$targetIndex] = $replacement['block'];
+            if ($creditCost > 0 && $user) {
+                $credits->consume($user, $creditCost, 'Luna popup image replacement', $website, 'luna-popup-image-replace-'.Str::uuid(), [
+                    'category' => 'ai', 'spark_type' => $sparkType, 'target_index' => $targetIndex,
+                ]);
+            }
+            $actualImageGenerationCost = $imageMode === 'generate' ? AiImageController::COST : 0;
+            if ($actualImageGenerationCost > 0 && $user) {
+                $credits->consume($user, $actualImageGenerationCost, 'Luna popup AI image generation', $website, 'luna-popup-image-'.Str::uuid(), [
+                    'category' => 'ai', 'spark_type' => $sparkType, 'target_index' => $targetIndex,
+                    'image_mode' => $imageMode, 'image_query' => $resolvedImage['query'] ?? null,
+                ]);
+            }
+
+            return response()->json([
+                'mode' => 'update',
+                'reply' => $imageMode === 'generate'
+                    ? 'Generated a custom replacement image and verified it in the popup preview.'
+                    : 'Replaced the image with a related Unsplash photo and verified it in the popup preview.',
+                'blocks' => $blocks,
+                'applied_operations' => [[
+                    'action' => 'replace_section_image', 'index' => $targetIndex,
+                    'spark_type' => $sparkType, 'path' => $replacement['path'] ?? null,
+                    'role' => $replacement['role'] ?? null, 'verified' => true,
+                ]],
+                'credit_cost' => $creditCost + $actualImageGenerationCost,
+                'luna_edit_cost' => $creditCost,
+                'image_generation_cost' => $actualImageGenerationCost,
+                'credit_balance' => $user ? $credits->balance($user) : null,
+                'popup_api' => true,
+                'popup_action' => 'replace_image',
+                'image_mode' => $imageMode,
+                'image_query' => $resolvedImage['query'] ?? null,
+                'verified_diff' => true,
             ]);
         }
 

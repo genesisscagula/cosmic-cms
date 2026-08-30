@@ -11,9 +11,9 @@ return [
             'relative' => ['font_size', 'font_weight', 'line_height', 'letter_spacing'],
         ],
         'Spacing' => [
-            'operations' => ['padding', 'gap', 'container_width', 'section_height'],
+            'operations' => ['padding', 'padding_top', 'padding_bottom', 'padding_left', 'padding_right', 'padding_x', 'gap', 'container_width', 'section_height'],
             'storage' => 'luna_section_overrides',
-            'relative' => ['padding', 'gap', 'section_height'],
+            'relative' => ['padding', 'padding_top', 'padding_bottom', 'padding_left', 'padding_right', 'padding_x', 'gap', 'section_height'],
         ],
         'Surface' => [
             'operations' => ['semantic_treatment', 'background', 'card_surface', 'border', 'border_radius', 'shadow'],

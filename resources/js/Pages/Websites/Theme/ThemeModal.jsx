@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
 import { useAppearance } from "../../../Appearance/AppearanceContext";
+import CosmicLoadingIcon from "../../../Components/CosmicLoadingIcon";
 
 const COLOR_FAMILY_SCHEMA = {
     sourceColor: '#RRGGBB', primary: '#RRGGBB', primaryText: '#RRGGBB', primaryHover: '#RRGGBB', primarySoft: '#RRGGBB',
@@ -360,7 +361,7 @@ export default function ThemeModal({
                             )) : <div className={`rounded-xl border p-3 text-xs leading-5 ${isDark ? 'border-white/10 bg-white/[0.035] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>Try “premium navy and warm gold”, “use colors from my logo”, or “make this warmer and less corporate”.</div>}
                         </div>
                         <textarea value={lunaPrompt} onChange={(event) => setLunaPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); askThemeLuna(); } }} rows={4} placeholder="Ask Luna about this theme…" className={`mt-4 w-full resize-none rounded-xl border px-3 py-3 text-xs leading-5 outline-none focus:border-violet-400/50 ${isDark ? 'border-white/10 bg-black/30 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`} />
-                        <button type="button" disabled={lunaBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="mt-2 h-9 rounded-lg bg-violet-500 px-4 text-xs font-bold text-white transition hover:bg-violet-400 disabled:opacity-40">{lunaBusy ? 'Updating preview…' : 'Ask Luna'}</button>
+                        <button type="button" disabled={lunaBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="mt-2 inline-flex h-9 items-center gap-2 rounded-lg bg-violet-500 px-4 text-xs font-bold text-white transition hover:bg-violet-400 disabled:opacity-40">{lunaBusy ? <><CosmicLoadingIcon className="h-3.5 w-3.5"/>Updating preview…</> : 'Ask Luna'}</button>
                     </aside>
                     </div>
                 </div>

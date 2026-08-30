@@ -24,6 +24,17 @@
     }
 }
 
+/* Compact API/Luna wait indicator for chat bubbles and colored action buttons. */
+.cosmic-loading-icon {
+    border: 2px solid rgba(255,255,255,.32);
+    border-top-color: #ffffff;
+    border-right-color: #ffffff;
+    animation: cosmic-loading-spin .72s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-loading-icon { animation-duration: 1.8s; }
+}
+
 /* Cosmic modal scrollbars — shared by all dark dialogs and editors. */
 .cosmic-scrollbar {
     scrollbar-width: thin;
@@ -108,30 +119,82 @@
 }
 
 
-/* Cosmic Spark rhythm follows Global Styling instead of fixed 50/80px values.
-   Local Luna section overrides remain authoritative through --cosmic-local-*. */
-.cosmic-builder-spark > section {
-    padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px))) !important;
-    padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px))) !important;
-    padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px))) !important;
-    padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px))) !important;
+/* Cosmic Spark premium layout contract.
+   Builder, Add Section previews and other read-only Spark surfaces share the same
+   safe section rhythm. Local Luna/Tailwind ownership remains authoritative. */
+.cosmic-spark-layout-host {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
 }
+.cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-y),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px)))) !important;
+    padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px)))) !important;
+}
+.cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-x),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-x),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-x),
+.cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-x) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px)))) !important;
+    padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px)))) !important;
+}
+.cosmic-spark-layout-host :is(img, video, iframe, svg, canvas) { max-width: 100%; }
+.cosmic-spark-layout-host :is(h1, h2, h3, h4, h5, h6, p, a, button, label) { overflow-wrap: anywhere; }
+.cosmic-spark-layout-host .grid > *,
+.cosmic-spark-layout-host [data-cosmic-layout="grid"] > * { min-width: 0; }
+.cosmic-spark-layout-host :is(input, select, textarea, button) { max-width: 100%; }
 @media (min-width: 768px) {
-    .cosmic-builder-spark > section {
-        padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px))) !important;
-        padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px))) !important;
-        padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px))) !important;
-        padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px))) !important;
+    .cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
+        padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px)))) !important;
+        padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px)))) !important;
+    }
+    .cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-x) {
+        padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px)))) !important;
+        padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px)))) !important;
     }
 }
 @media (min-width: 1025px) {
-    .cosmic-builder-spark > section {
-        padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px))) !important;
-        padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px))) !important;
-        padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px))) !important;
-        padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px))) !important;
+    .cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
+        padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px)))) !important;
+        padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px)))) !important;
+    }
+    .cosmic-spark-layout-host > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-x),
+    .cosmic-spark-layout-host > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-x) {
+        padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px)))) !important;
+        padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px)))) !important;
     }
 }
+@media (max-width: 767px) {
+    .cosmic-spark-layout-host table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 @layer components {
   .input { @apply w-full rounded-xl border border-white/10 bg-black/20 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50; }
 }
@@ -1445,73 +1508,81 @@ html[data-theme] .cosmic-app-shell main {
     box-shadow: 0 24px 70px rgba(15, 23, 42, .24), 0 2px 8px rgba(15, 23, 42, .08) !important;
 }
 
-/* Normalize typography inside all application dialogs. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h1,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h2,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h3,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h4,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-white"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-100"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-200"] {
+/* Normalize typography inside application dialogs, but never inside a rendered Spark preview. */
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h1:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h2:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h3:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h4:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-white"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-100"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-200"]:not(.cosmic-preview-isolation *) {
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) p,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) label,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-300"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-400"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-500"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) p:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) label:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-300"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-400"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-500"]:not(.cosmic-preview-isolation *) {
     color: #64748b !important;
 }
 
 /* Panels, rows and controls inside legacy dark dialogs. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#0"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#1"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-slate-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-zinc-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-neutral-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-gray-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/5"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/10"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#0"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#1"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-slate-9"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-zinc-9"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-neutral-9"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-gray-9"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/5"]:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/10"]:not(.cosmic-preview-isolation *) {
     background-color: var(--cosmic-dialog-soft) !important;
     border-color: var(--cosmic-dialog-border) !important;
 }
 
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:not([type="checkbox"]):not([type="radio"]),
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:not(.cosmic-preview-isolation *):not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select:not(.cosmic-preview-isolation *) {
     color: #0f172a !important;
     background: #fff !important;
     border-color: #bfd5c9 !important;
     box-shadow: none !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input::placeholder,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea::placeholder { color: #94a3b8 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:focus,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea:focus,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select:focus {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:not(.cosmic-preview-isolation *)::placeholder,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea:not(.cosmic-preview-isolation *)::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:not(.cosmic-preview-isolation *):focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea:not(.cosmic-preview-isolation *):focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select:not(.cosmic-preview-isolation *):focus {
     border-color: #2f9b70 !important;
     box-shadow: 0 0 0 3px rgba(47,155,112,.14) !important;
     outline: none !important;
 }
 
-/* Primary actions stay readable. Secondary and icon actions remain flat. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-emerald"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-green"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-violet"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-blue"],
+/* Strong dialog actions stay readable. Token-aware matching avoids treating hover:bg-* as the actual button background. */
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-emerald"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-emerald"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-green"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-green"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-violet"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-violet"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-blue"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-blue"],
 :root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .cosmic-primary-action,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] {
     color: #fff !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-emerald"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-green"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-violet"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-blue"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-emerald"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-emerald"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-green"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-green"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-violet"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-violet"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class^="bg-blue"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*=" bg-blue"] *,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] * { color: #fff !important; }
 
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-full"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-xl"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-lg"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*="rounded-full"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*="rounded-xl"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(.cosmic-preview-isolation *)[class*="rounded-lg"] {
     transform: none !important;
     filter: none !important;
 }
@@ -1593,37 +1664,70 @@ html[data-theme] .cosmic-app-shell main {
     box-shadow: 0 0 0 3px rgba(47,147,107,.13) !important;
 }
 
-/* Any intentionally dark/strong action surface must remain readable. */
-:root[data-theme="light"] button[class*="bg-slate-8"],
-:root[data-theme="light"] button[class*="bg-slate-9"],
-:root[data-theme="light"] button[class*="bg-zinc-8"],
-:root[data-theme="light"] button[class*="bg-zinc-9"],
-:root[data-theme="light"] button[class*="bg-neutral-8"],
-:root[data-theme="light"] button[class*="bg-neutral-9"],
-:root[data-theme="light"] button[class*="bg-gray-8"],
-:root[data-theme="light"] button[class*="bg-gray-9"],
-:root[data-theme="light"] button[class*="bg-[#0"],
-:root[data-theme="light"] button[class*="bg-[#1"],
-:root[data-theme="light"] button[class*="bg-emerald-"],
-:root[data-theme="light"] button[class*="bg-green-"],
-:root[data-theme="light"] button[class*="bg-blue-"],
-:root[data-theme="light"] button[class*="bg-violet-"],
-:root[data-theme="light"] button[class*="bg-red-"] {
+/* Any intentionally dark/strong action surface must remain readable.
+   Match an actual bg-* class token, not hover:bg-* / focus:bg-* variants. */
+:root[data-theme="light"] button[class^="bg-slate-8"],
+:root[data-theme="light"] button[class*=" bg-slate-8"],
+:root[data-theme="light"] button[class^="bg-slate-9"],
+:root[data-theme="light"] button[class*=" bg-slate-9"],
+:root[data-theme="light"] button[class^="bg-zinc-8"],
+:root[data-theme="light"] button[class*=" bg-zinc-8"],
+:root[data-theme="light"] button[class^="bg-zinc-9"],
+:root[data-theme="light"] button[class*=" bg-zinc-9"],
+:root[data-theme="light"] button[class^="bg-neutral-8"],
+:root[data-theme="light"] button[class*=" bg-neutral-8"],
+:root[data-theme="light"] button[class^="bg-neutral-9"],
+:root[data-theme="light"] button[class*=" bg-neutral-9"],
+:root[data-theme="light"] button[class^="bg-gray-8"],
+:root[data-theme="light"] button[class*=" bg-gray-8"],
+:root[data-theme="light"] button[class^="bg-gray-9"],
+:root[data-theme="light"] button[class*=" bg-gray-9"],
+:root[data-theme="light"] button[class^="bg-[#0"],
+:root[data-theme="light"] button[class*=" bg-[#0"],
+:root[data-theme="light"] button[class^="bg-[#1"],
+:root[data-theme="light"] button[class*=" bg-[#1"],
+:root[data-theme="light"] button[class^="bg-emerald-"],
+:root[data-theme="light"] button[class*=" bg-emerald-"],
+:root[data-theme="light"] button[class^="bg-green-"],
+:root[data-theme="light"] button[class*=" bg-green-"],
+:root[data-theme="light"] button[class^="bg-blue-"],
+:root[data-theme="light"] button[class*=" bg-blue-"],
+:root[data-theme="light"] button[class^="bg-violet-"],
+:root[data-theme="light"] button[class*=" bg-violet-"],
+:root[data-theme="light"] button[class^="bg-red-"],
+:root[data-theme="light"] button[class*=" bg-red-"] {
     color: #fff !important;
 }
-:root[data-theme="light"] button[class*="bg-slate-8"] *,
-:root[data-theme="light"] button[class*="bg-slate-9"] *,
-:root[data-theme="light"] button[class*="bg-zinc-8"] *,
-:root[data-theme="light"] button[class*="bg-zinc-9"] *,
-:root[data-theme="light"] button[class*="bg-neutral-8"] *,
-:root[data-theme="light"] button[class*="bg-neutral-9"] *,
-:root[data-theme="light"] button[class*="bg-gray-8"] *,
-:root[data-theme="light"] button[class*="bg-gray-9"] *,
-:root[data-theme="light"] button[class*="bg-emerald-"] *,
-:root[data-theme="light"] button[class*="bg-green-"] *,
-:root[data-theme="light"] button[class*="bg-blue-"] *,
-:root[data-theme="light"] button[class*="bg-violet-"] *,
-:root[data-theme="light"] button[class*="bg-red-"] * { color: #fff !important; }
+:root[data-theme="light"] button[class^="bg-slate-8"] *,
+:root[data-theme="light"] button[class*=" bg-slate-8"] *,
+:root[data-theme="light"] button[class^="bg-slate-9"] *,
+:root[data-theme="light"] button[class*=" bg-slate-9"] *,
+:root[data-theme="light"] button[class^="bg-zinc-8"] *,
+:root[data-theme="light"] button[class*=" bg-zinc-8"] *,
+:root[data-theme="light"] button[class^="bg-zinc-9"] *,
+:root[data-theme="light"] button[class*=" bg-zinc-9"] *,
+:root[data-theme="light"] button[class^="bg-neutral-8"] *,
+:root[data-theme="light"] button[class*=" bg-neutral-8"] *,
+:root[data-theme="light"] button[class^="bg-neutral-9"] *,
+:root[data-theme="light"] button[class*=" bg-neutral-9"] *,
+:root[data-theme="light"] button[class^="bg-gray-8"] *,
+:root[data-theme="light"] button[class*=" bg-gray-8"] *,
+:root[data-theme="light"] button[class^="bg-gray-9"] *,
+:root[data-theme="light"] button[class*=" bg-gray-9"] *,
+:root[data-theme="light"] button[class^="bg-[#0"] *,
+:root[data-theme="light"] button[class*=" bg-[#0"] *,
+:root[data-theme="light"] button[class^="bg-[#1"] *,
+:root[data-theme="light"] button[class*=" bg-[#1"] *,
+:root[data-theme="light"] button[class^="bg-emerald-"] *,
+:root[data-theme="light"] button[class*=" bg-emerald-"] *,
+:root[data-theme="light"] button[class^="bg-green-"] *,
+:root[data-theme="light"] button[class*=" bg-green-"] *,
+:root[data-theme="light"] button[class^="bg-blue-"] *,
+:root[data-theme="light"] button[class*=" bg-blue-"] *,
+:root[data-theme="light"] button[class^="bg-violet-"] *,
+:root[data-theme="light"] button[class*=" bg-violet-"] *,
+:root[data-theme="light"] button[class^="bg-red-"] *,
+:root[data-theme="light"] button[class*=" bg-red-"] * { color: #fff !important; }
 
 /* Blog composer: polished light editor without changing dark mode. */
 :root[data-theme="light"] .cosmic-blog-editor-modal {
@@ -4818,7 +4922,15 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 [data-cosmic-services-hover-card="true"]:hover *,
 [data-cosmic-services-hover-card="true"]:focus-within * {
-    color: inherit !important;
+    color: var(--cosmic-hover-card-fg) !important;
+    -webkit-text-fill-color: var(--cosmic-hover-card-fg) !important;
+}
+
+/* Exported Spark theme rules are intentionally strong. Repeat the card marker so
+   the interactive foreground remains authoritative when a card turns white. */
+[data-cosmic-services-hover-card="true"][data-cosmic-services-hover-card="true"][data-cosmic-services-hover-card="true"][data-cosmic-services-hover-card="true"]:is(:hover, :focus-within) * {
+    color: var(--cosmic-hover-card-fg) !important;
+    -webkit-text-fill-color: var(--cosmic-hover-card-fg) !important;
 }
 [data-cosmic-services-hover-card="true"]:hover [class*="opacity-"],
 [data-cosmic-services-hover-card="true"]:focus-within [class*="opacity-"] {
@@ -8385,6 +8497,39 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: inherit !important;
 }
 
+/* Related-layout disclosure is a primary action, not a quiet filter. Keep it
+   visually prominent in both app appearances and distinct from Spark tabs. */
+.cosmic-edit-session-dialog .cosmic-section-layout-toggle {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+    background-image: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+    border-color: rgba(124, 58, 237, .75) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(109, 40, 217, .24) !important;
+    opacity: 1 !important;
+}
+.cosmic-edit-session-dialog .cosmic-section-layout-toggle:hover:not(:disabled) {
+    background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%) !important;
+    background-image: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%) !important;
+    border-color: #6d28d9 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 10px 24px rgba(109, 40, 217, .34) !important;
+    transform: translateY(-1px);
+}
+.cosmic-edit-session-dialog .cosmic-section-layout-toggle:focus-visible {
+    outline: 3px solid rgba(196, 181, 253, .8) !important;
+    outline-offset: 2px;
+}
+.cosmic-edit-session-dialog .cosmic-section-layout-toggle__icon {
+    display: inline-grid;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border-radius: 9999px;
+    background: rgba(255,255,255,.16);
+}
+
 .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"] {
     opacity: 1 !important;
     filter: none !important;
@@ -10127,7 +10272,6 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library {
     background: #ffffff !important;
     color: #0f172a !important;
-    -webkit-text-fill-color: currentColor !important;
 }
 html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library > div:first-child h2 {
     color: #0f172a !important;
@@ -10186,7 +10330,6 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     background: #ffffff !important;
     background-image: none !important;
     color: #0f172a !important;
-    -webkit-text-fill-color: currentColor !important;
     border-color: #cbd5e1 !important;
 }
 #cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > .cosmic-add-section-library,
@@ -10195,7 +10338,6 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     background-color: #f8fafc !important;
     background-image: none !important;
     color: #0f172a !important;
-    -webkit-text-fill-color: currentColor !important;
 }
 #cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > .cosmic-add-section-library > div:first-child {
     background: #f8fafc !important;
@@ -10468,10 +10610,10 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     opacity: 1 !important;
 }
 :root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="status"] {
-    background: #f3efff !important;
-    border-color: #c4b5fd !important;
-    color: #5b21b6 !important;
-    -webkit-text-fill-color: #5b21b6 !important;
+    background: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     opacity: 1 !important;
     filter: none !important;
 }
@@ -11280,4 +11422,2002 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     #cosmic-add-section-modal .cosmic-add-section-whole-page {
         transition-duration: .01ms !important;
     }
+}
+
+/* Contextual Luna popup containment hotfix.
+   Every edit-session popup shares this assistant rail, so only the conversation
+   viewport scrolls while context + composer remain fixed in place. */
+.cosmic-edit-session-dialog .cosmic-contextual-luna-panel {
+    min-height: 0;
+    overflow: hidden;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scroll-behavior: smooth;
+}
+@media (min-width: 1024px) {
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-panel {
+        height: 100%;
+        max-height: 100%;
+    }
+}
+
+/* Premium Start Blank with Luna — visual polish only.
+   Keeps the latest closest-premade Spark pipeline and popup draft semantics. */
+.cosmic-edit-session-dialog--blank-luna {
+    box-shadow: 0 34px 90px rgba(15, 23, 42, .34), 0 8px 28px rgba(15, 23, 42, .12);
+}
+
+:root[data-theme="light"] .cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-header {
+    background:
+        radial-gradient(circle at 58% -80%, rgba(124, 58, 237, .09), transparent 44%),
+        linear-gradient(180deg, #ffffff 0%, #fefeff 100%);
+}
+
+:root[data-theme="light"] .cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-workspace {
+    background:
+        radial-gradient(circle at 84% 14%, rgba(139, 92, 246, .055), transparent 30%),
+        linear-gradient(180deg, #fdfdff 0%, #fafbfe 100%);
+}
+
+.cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-preview {
+    min-height: clamp(500px, 65vh, 710px);
+    border-radius: 22px;
+    box-shadow: 0 16px 46px rgba(15, 23, 42, .07);
+}
+
+.cosmic-blank-luna-canvas {
+    position: relative;
+    min-height: clamp(500px, 65vh, 710px);
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 68% 36%, rgba(139, 92, 246, .12), transparent 28%),
+        radial-gradient(circle at 36% 72%, rgba(99, 102, 241, .08), transparent 30%),
+        linear-gradient(180deg, #fcfcff 0%, #f8f9fd 100%);
+    color: #475569;
+}
+
+.cosmic-blank-luna-canvas::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(124, 58, 237, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 58, 237, .025) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,.48), transparent 88%);
+}
+
+.cosmic-blank-luna-canvas--dark {
+    background:
+        radial-gradient(circle at 68% 36%, rgba(139, 92, 246, .17), transparent 28%),
+        radial-gradient(circle at 36% 72%, rgba(99, 102, 241, .10), transparent 30%),
+        linear-gradient(180deg, #12131a 0%, #0e1016 100%);
+    color: #cbd5e1;
+}
+
+.cosmic-blank-luna-canvas__chrome {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    padding: 28px 38px 0;
+    opacity: .72;
+}
+
+.cosmic-blank-luna-canvas__chrome-pill {
+    justify-self: end;
+    width: 62px;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(139, 92, 246, .12), rgba(99, 102, 241, .20));
+}
+
+.cosmic-blank-luna-canvas__chrome-pill--wide {
+    justify-self: start;
+    width: 78px;
+}
+
+.cosmic-blank-luna-canvas__chrome-dots {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+}
+
+.cosmic-blank-luna-canvas__chrome-dots i {
+    display: block;
+    width: 44px;
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, .14);
+}
+
+.cosmic-blank-luna-canvas__intro {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    min-height: 315px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 54px 24px 32px;
+    text-align: center;
+}
+
+.cosmic-blank-luna-canvas__spark {
+    margin-bottom: 18px;
+    font-size: 34px;
+    line-height: 1;
+    color: #8b5cf6;
+    filter: drop-shadow(0 8px 18px rgba(124, 58, 237, .18));
+}
+
+.cosmic-blank-luna-canvas__intro h4 {
+    margin: 0;
+    font-size: clamp(20px, 2vw, 27px);
+    font-weight: 750;
+    letter-spacing: -.025em;
+    color: #475569;
+}
+
+.cosmic-blank-luna-canvas--dark .cosmic-blank-luna-canvas__intro h4 {
+    color: #e2e8f0;
+}
+
+.cosmic-blank-luna-canvas__intro p {
+    margin: 10px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #7c879a;
+}
+
+.cosmic-blank-luna-canvas__add {
+    display: grid;
+    width: 178px;
+    height: 48px;
+    margin-top: 20px;
+    place-items: center;
+    border: 1px dashed rgba(124, 58, 237, .34);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .42);
+    color: #8b5cf6;
+    font-size: 23px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.38);
+}
+
+.cosmic-blank-luna-canvas--dark .cosmic-blank-luna-canvas__add {
+    background: rgba(255,255,255,.025);
+}
+
+.cosmic-blank-luna-canvas__skeleton {
+    position: relative;
+    z-index: 1;
+    width: min(700px, 78%);
+    margin: 0 auto;
+    padding: 18px;
+    border: 1px solid rgba(139, 92, 246, .09);
+    border-radius: 22px 22px 0 0;
+    background: rgba(255,255,255,.38);
+    box-shadow: 0 -20px 70px rgba(124, 58, 237, .035);
+    opacity: .54;
+}
+
+.cosmic-blank-luna-canvas--dark .cosmic-blank-luna-canvas__skeleton {
+    border-color: rgba(167, 139, 250, .09);
+    background: rgba(255,255,255,.018);
+}
+
+.cosmic-blank-luna-canvas__cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.cosmic-blank-luna-canvas__card,
+.cosmic-blank-luna-canvas__wide {
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, .16);
+    border-radius: 16px;
+    background: rgba(255,255,255,.55);
+}
+
+.cosmic-blank-luna-canvas--dark .cosmic-blank-luna-canvas__card,
+.cosmic-blank-luna-canvas--dark .cosmic-blank-luna-canvas__wide {
+    background: rgba(255,255,255,.025);
+}
+
+.cosmic-blank-luna-canvas__image {
+    display: grid;
+    height: 82px;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, .08), rgba(99, 102, 241, .11));
+    color: rgba(124, 58, 237, .28);
+    font-size: 23px;
+}
+
+.cosmic-blank-luna-canvas__card i,
+.cosmic-blank-luna-canvas__wide i {
+    display: block;
+    height: 7px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: rgba(100, 116, 139, .10);
+}
+
+.cosmic-blank-luna-canvas__card i:nth-of-type(2) { width: 78%; }
+.cosmic-blank-luna-canvas__card i:nth-of-type(3) { width: 56%; }
+
+.cosmic-blank-luna-canvas__wide {
+    display: grid;
+    grid-template-columns: 34% 1fr;
+    gap: 18px;
+    margin-top: 16px;
+}
+
+.cosmic-blank-luna-canvas__wide .cosmic-blank-luna-canvas__image {
+    height: 92px;
+}
+
+.cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-panel--create {
+    position: relative;
+    background:
+        radial-gradient(circle at 54% 26%, rgba(139, 92, 246, .08), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, #fbfbfe 100%);
+}
+
+:root[data-theme="dark"] .cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-panel--create {
+    background:
+        radial-gradient(circle at 54% 26%, rgba(139, 92, 246, .12), transparent 28%),
+        linear-gradient(180deg, #101118 0%, #0d0e14 100%);
+}
+
+.cosmic-contextual-luna-orb-wrap {
+    display: grid;
+    min-height: 145px;
+    place-items: center;
+    padding: 6px 0 0;
+}
+
+.cosmic-luna-network-orb {
+    position: relative;
+    display: grid;
+    width: 132px;
+    height: 132px;
+    place-items: center;
+}
+
+.cosmic-luna-network-orb__halo {
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 58, 237, .26) 0%, rgba(139, 92, 246, .12) 42%, transparent 72%);
+    box-shadow: 0 0 46px rgba(124, 58, 237, .16);
+    animation: cosmic-luna-orb-pulse 4.5s ease-in-out infinite;
+}
+
+.cosmic-luna-network-orb__svg {
+    position: relative;
+    z-index: 1;
+    width: 116px;
+    height: 116px;
+    overflow: visible;
+    color: #7c3aed;
+    filter: drop-shadow(0 9px 20px rgba(124, 58, 237, .16));
+    animation: cosmic-luna-orb-float 5.5s ease-in-out infinite;
+}
+
+.cosmic-luna-network-orb__ring {
+    stroke: rgba(124, 58, 237, .24);
+    stroke-width: 1.5;
+}
+.cosmic-luna-network-orb__mesh {
+    stroke: rgba(124, 58, 237, .78);
+    stroke-width: 1.35;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.cosmic-luna-network-orb__mesh--soft { stroke: rgba(139, 92, 246, .32); stroke-width: 1; }
+.cosmic-luna-network-orb__node { fill: #a78bfa; stroke: rgba(255,255,255,.94); stroke-width: 1.2; }
+.cosmic-luna-network-orb__node--core { fill: #7c3aed; stroke-width: 1.8; }
+.cosmic-luna-network-orb__spark { stroke: rgba(139, 92, 246, .34); stroke-width: 1.4; stroke-linecap: round; }
+
+.cosmic-contextual-luna-tip {
+    border-radius: 18px !important;
+}
+.cosmic-contextual-luna-tip__icon {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139,92,246,.12), rgba(99,102,241,.10));
+    color: #7c3aed;
+    font-size: 17px;
+}
+
+.cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-input {
+    min-height: 112px;
+    border-radius: 15px;
+    transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+:root[data-theme="light"] .cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-input:focus {
+    border-color: rgba(124, 58, 237, .58) !important;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, .07);
+}
+
+.cosmic-contextual-luna-ask {
+    min-height: 42px;
+}
+
+.cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-footer {
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, .035);
+}
+
+.cosmic-edit-session-draft-note__icon {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-apply {
+    min-width: 142px;
+}
+
+@keyframes cosmic-luna-orb-float {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(1.5deg); }
+}
+
+@keyframes cosmic-luna-orb-pulse {
+    0%,100% { transform: scale(.96); opacity: .78; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+@media (max-width: 1279px) {
+    .cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-orb-wrap {
+        min-height: 112px;
+    }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-luna-network-orb {
+        transform: scale(.82);
+    }
+    .cosmic-blank-luna-canvas__intro {
+        min-height: 280px;
+    }
+}
+
+@media (max-width: 1023px) {
+    .cosmic-edit-session-dialog--blank-luna {
+        height: 96dvh !important;
+    }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-body {
+        overflow-y: auto;
+    }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-workspace {
+        overflow: visible;
+    }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-panel--create {
+        min-height: 520px;
+    }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-contextual-luna-scroll {
+        min-height: 130px;
+    }
+}
+
+@media (max-width: 639px) {
+    .cosmic-blank-luna-canvas__chrome {
+        grid-template-columns: 1fr auto;
+        padding: 20px 20px 0;
+    }
+    .cosmic-blank-luna-canvas__chrome-dots { display: none; }
+    .cosmic-blank-luna-canvas__intro { padding-inline: 18px; }
+    .cosmic-blank-luna-canvas__skeleton { width: 90%; }
+    .cosmic-blank-luna-canvas__cards { grid-template-columns: 1fr; }
+    .cosmic-blank-luna-canvas__card:nth-child(n+2) { display: none; }
+    .cosmic-blank-luna-canvas__wide { grid-template-columns: 1fr; }
+    .cosmic-edit-session-dialog--blank-luna .cosmic-edit-session-footer {
+        align-items: stretch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-luna-network-orb__halo,
+    .cosmic-luna-network-orb__svg {
+        animation: none !important;
+    }
+    .cosmic-contextual-luna-ask,
+    .cosmic-edit-session-apply {
+        transition-duration: .01ms !important;
+    }
+}
+
+/* ============================================================================
+   Font Rendering Batch 1 — application text surface contract
+   ---------------------------------------------------------------------------
+   Public pages, auth screens and dashboard chrome must render on a native
+   browser text layer. This intentionally excludes Builder/Spark render shells
+   so website typography, transforms and media effects keep their own contract.
+   ========================================================================== */
+:where(
+    .cosmic-welcome-page,
+    .cosmic-public-light,
+    .cosmic-guest-light,
+    .cosmic-authenticated-shell,
+    .cosmic-app-shell,
+    .cosmic-dashboard-shell
+) {
+    zoom: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    backface-visibility: visible !important;
+    will-change: auto !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: auto;
+    font-kerning: normal;
+    font-synthesis: none;
+}
+
+/* Keep application copy on a predictable UI stack. Dashboard keeps Manrope
+   through its own font-dashboard utility; the remaining app pages use the
+   same native sans fallback chain instead of inheriting Spark font variables. */
+:where(
+    .cosmic-welcome-page,
+    .cosmic-public-light,
+    .cosmic-guest-light,
+    .cosmic-authenticated-shell
+) {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+:where(.cosmic-app-shell, .cosmic-dashboard-shell) {
+    font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* Form controls do not always inherit the root typography consistently across
+   Chromium/WebKit. Make app-owned controls inherit without touching website
+   preview controls inside Builder render shells. */
+:where(
+    .cosmic-welcome-page,
+    .cosmic-public-light,
+    .cosmic-guest-light,
+    .cosmic-authenticated-shell,
+    .cosmic-app-shell,
+    .cosmic-dashboard-shell
+) :where(button, input, textarea, select, option) {
+    font: inherit;
+    letter-spacing: inherit;
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+}
+
+/* Do not globally promote whole text-bearing cards/sections to a composited
+   bitmap. Element-level hover transforms remain allowed; this rule only keeps
+   the page roots themselves native and predictable. */
+:where(
+    .cosmic-welcome-page,
+    .cosmic-public-light,
+    .cosmic-guest-light,
+    .cosmic-authenticated-shell,
+    .cosmic-app-shell,
+    .cosmic-dashboard-shell
+) :where(h1,h2,h3,h4,h5,h6,p,span,a,label,small,strong) {
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+}
+
+/* ============================================================================
+   Font Audit Batch 2 — public/dashboard compositing cleanup
+   --------------------------------------------------------------------------
+   Prevent app chrome from becoming a blurred composited bitmap. Decorative
+   Spark/site preview effects are deliberately excluded from this contract.
+   ========================================================================== */
+.cosmic-welcome-page,
+.cosmic-guest-light,
+.cosmic-authenticated-shell,
+.cosmic-dashboard-shell {
+    isolation: isolate;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: auto;
+}
+
+/* Text-bearing application surfaces must not own backdrop blur. Keep their
+   translucent fills/shadows, but render glyphs on a native browser layer. */
+.cosmic-dashboard-sidebar,
+.cosmic-edit-page-modal,
+.cosmic-page-templates-header,
+.cosmic-template-preview-header,
+.cosmic-global-header-modal > .sticky,
+.cosmic-global-footer-modal > .sticky,
+.cosmic-blog-editor-modal > .sticky,
+.cosmic-welcome-page :is(header,nav,main,section,article,footer),
+.cosmic-guest-light main,
+.cosmic-authenticated-shell :is(nav,main,header),
+.cosmic-dashboard-shell :is(header,nav,main,aside) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* Full-screen app overlays may keep a translucent backdrop color, but not a
+   backdrop blur: the blur often promotes the complete page underneath into a
+   texture and makes small text look soft on Chromium/WebKit. */
+.cosmic-inquiry-overlay,
+.cosmic-alert-overlay,
+.cosmic-dialog-backdrop,
+.cosmic-inline-edit-overlay,
+.cosmic-media-manager-overlay,
+.cosmic-add-owned-spark-overlay > button,
+.cosmic-spark-progress-overlay,
+.cosmic-page-templates-backdrop,
+.cosmic-template-install-overlay,
+.cosmic-template-ai-loading,
+.cosmic-template-confirm-overlay,
+.cosmic-contact-fields-overlay,
+#cosmic-initial-design-overlay,
+#cosmic-new-page-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* Remove accidental filters from actual UI text/control layers. Decorative
+   images, SVG artwork and pseudo-elements are not selected here. */
+.cosmic-welcome-page :where(h1,h2,h3,h4,h5,h6,p,span,a,button,label,input,textarea,select,small,strong),
+.cosmic-guest-light :where(h1,h2,h3,h4,h5,h6,p,span,a,button,label,input,textarea,select,small,strong),
+.cosmic-authenticated-shell :where(h1,h2,h3,h4,h5,h6,p,span,a,button,label,input,textarea,select,small,strong),
+.cosmic-dashboard-shell :where(h1,h2,h3,h4,h5,h6,p,span,a,button,label,input,textarea,select,small,strong) {
+    filter: none;
+    -webkit-filter: none;
+    text-shadow: none;
+    backface-visibility: visible;
+}
+
+/* Hover elevation in the application shell should use shadows/borders rather
+   than moving an entire text-bearing element onto a transformed GPU layer. */
+.cosmic-dashboard-main article:hover,
+.cosmic-quick-action:hover,
+.cosmic-dashboard-tab-frame tbody tr:hover,
+.cosmic-top-site-row:hover,
+.cosmic-panel-link:hover,
+#cosmic-page-list .cosmic-page-icon-action:hover,
+#cosmic-workspace-header .cosmic-new-page-button:hover,
+.cosmic-edit-page-save:hover,
+.cosmic-welcome-guide-card:hover {
+    transform: none !important;
+}
+
+/* Keep intentional disabled-state opacity, but do not fade whole active
+   application panels. This catches legacy parent opacity/filter combinations. */
+.cosmic-dashboard-shell :where(.cosmic-dashboard-main,.cosmic-dashboard-tab-frame,.cosmic-workspace-header,.cosmic-dashboard-sidebar),
+.cosmic-welcome-page > :not(.pointer-events-none),
+.cosmic-guest-light > :not(.pointer-events-none),
+.cosmic-authenticated-shell > :not(.pointer-events-none) {
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
+/* ============================================================================
+   Font Audit Batch 3 — Builder chrome isolation + final native text contract
+   --------------------------------------------------------------------------
+   Builder application chrome must stay crisp without changing the customer
+   website rendered inside CosmicRenderShell. Spark/site effects remain owned
+   by the render shell and are deliberately not normalized here.
+   ========================================================================== */
+.cosmic-builder-shell {
+    zoom: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    backface-visibility: visible !important;
+    will-change: auto !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* The sticky Builder header previously used backdrop-blur-xl. On Chromium and
+   WebKit that can composite the complete header text into a soft bitmap. Keep
+   the existing translucent background colors, but not the backdrop blur. */
+[data-cosmic-builder-header] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    filter: none !important;
+    transform: none !important;
+    will-change: auto !important;
+}
+
+/* Builder-owned controls/editors use native text layers. Do not target
+   customer website render surfaces; those retain their own design contract. */
+[data-cosmic-builder-header] :where(button,a,input,select,textarea,label,span,p,strong,small),
+.cosmic-edit-session-dialog :where(button,a,input,select,textarea,label,span,p,h1,h2,h3,h4,h5,h6,strong,small),
+.cosmic-nav-link-dialog :where(button,a,input,select,textarea,label,span,p,strong,small),
+.cosmic-global-header-modal :where(button,a,input,select,textarea,label,span,p,strong,small),
+.cosmic-global-footer-modal :where(button,a,input,select,textarea,label,span,p,strong,small) {
+    filter: none !important;
+    -webkit-filter: none !important;
+    text-shadow: none;
+    backface-visibility: visible;
+    text-rendering: auto;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+}
+
+/* Preview canvas itself must not be scaled to compensate for browser zoom.
+   Browser zoom at 90/100/110% is left to the browser; the canvas remains 1:1. */
+.cosmic-builder-canvas,
+.cosmic-preview-isolation {
+    zoom: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    will-change: auto !important;
+}
+
+/* Luna busy indicators must remain visible on light dialogs. Late app-wide
+   button/span normalization previously flattened every border to one color. */
+:root[data-theme="light"] :is(
+    .cosmic-edit-session-dialog,
+    .cosmic-global-header-modal,
+    .cosmic-global-footer-modal,
+    .cosmic-page-templates-modal,
+    .cosmic-theme-modal
+) .cosmic-loading-icon {
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    opacity: 1 !important;
+    background: transparent !important;
+    border-style: solid !important;
+    border-width: 2px !important;
+    border-top-color: #fff !important;
+    border-right-color: #fff !important;
+    border-bottom-color: rgba(255, 255, 255, .28) !important;
+    border-left-color: rgba(255, 255, 255, .28) !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    animation: cosmic-loading-spin .72s linear infinite !important;
+}
+
+/* Hero Spark working previews keep a dependable content gutter even when an
+   older saved Spark schema carries px-0 section overrides. The hero background
+   remains full bleed; only its authored content is inset from the modal edge. */
+[data-popup-section-preview="true"][data-popup-section-kind="hero"]
+    :is(section.cosmic-tw-slot--section, section[class*="cosmic-tw-slot--section"]) {
+    padding-left: clamp(28px, 4vw, 56px) !important;
+    padding-right: clamp(28px, 4vw, 56px) !important;
+}
+
+@media (max-width: 639px) {
+    [data-popup-section-preview="true"][data-popup-section-kind="hero"]
+        :is(section.cosmic-tw-slot--section, section[class*="cosmic-tw-slot--section"]) {
+        padding-left: 22px !important;
+        padding-right: 22px !important;
+    }
+}
+
+
+/* ==========================================================================
+   Hotfix v1.0.2 Batch 2 - Add Section preview ownership + navigation contrast
+   ========================================================================== */
+#cosmic-add-section-modal[data-appearance="light"] .cosmic-add-section-all-types {
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+#cosmic-add-section-modal[data-appearance="light"] .cosmic-add-section-all-types * {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+#cosmic-add-section-modal[data-appearance="light"] .cosmic-add-section-all-types:hover,
+#cosmic-add-section-modal[data-appearance="light"] .cosmic-add-section-all-types:focus-visible {
+    border-color: #a78bfa !important;
+    background: #f5f3ff !important;
+    color: #5b21b6 !important;
+    outline: none;
+}
+#cosmic-add-section-modal[data-appearance="dark"] .cosmic-add-section-all-types {
+    color: #e2e8f0 !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+
+/* ==========================================================================
+   Hotfix v1.0.2 - Action ownership + universal section theme contrast
+   Fixes Page Style Apply, universal All Section Types, and Primary/White/Surface
+   heading readability without leaking app-shell light-mode styles into Sparks.
+   ========================================================================== */
+
+/* Page Style CTA must own its authored violet/white treatment. */
+:root[data-theme="light"] .cosmic-page-style-menu button.cosmic-page-style-apply,
+:root[data-theme="light"] .cosmic-page-style-menu button.cosmic-page-style-apply:focus-visible {
+    background: #7c3aed !important;
+    background-image: none !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-page-style-menu button.cosmic-page-style-apply:hover {
+    background: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-page-style-menu button.cosmic-page-style-apply:disabled {
+    background: #ddd6fe !important;
+    border-color: #ddd6fe !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: .72 !important;
+}
+
+/* Universal Hero-style Add/Customize editor navigation owns its own contrast. */
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-edit-session-all-types {
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-edit-session-all-types * {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-edit-session-all-types:hover,
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-edit-session-all-types:focus-visible {
+    border-color: #a78bfa !important;
+    background: #f5f3ff !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+:root[data-theme="dark"] .cosmic-edit-session-dialog .cosmic-edit-session-all-types {
+    color: #e2e8f0 !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+/* Primary / White / Surface semantic foreground contract. */
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] {
+    --cosmic-current-text: var(--cosmic-on-primary, #f8fafc);
+    --cosmic-current-muted: var(--cosmic-on-primary-muted, rgba(248,250,252,.76));
+    color: var(--cosmic-current-text);
+}
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+) {
+    --cosmic-current-text: var(--cosmic-on-surface, #172033);
+    --cosmic-current-muted: var(--cosmic-on-surface-muted, #64748b);
+    color: var(--cosmic-current-text);
+}
+
+/* Headings in the section's main authored surface follow semantic foreground. */
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"]
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading),
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+) :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading) {
+    color: var(--cosmic-current-text) !important;
+    -webkit-text-fill-color: var(--cosmic-current-text) !important;
+}
+
+/* Explicit nested dark/contrast surfaces retain their authored foreground. */
+.cosmic-render-shell :is(
+    [data-cosmic-contrast-surface],
+    [data-cosmic-card-surface="dark"],
+    [class*="bg-slate-9"],
+    [class*="bg-black"]
+) :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading) {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+/* Hotfix: Hero slider bottom-right controls share one visual baseline. */
+.cosmic-hero-slider-controls {
+    align-items: center !important;
+}
+.cosmic-hero-slider-controls .cosmic-hero-slider-floating-cta {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    margin-block: 0 !important;
+    align-self: center !important;
+}
+.cosmic-hero-slider-controls [data-cosmic-slider-nav] {
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+    align-self: center !important;
+}
+
+
+/* HOTFIX 3 — Fresh Start direct full-page generation + action hierarchy. */
+.cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template,
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template,
+:root[data-theme="dark"] .cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template {
+    background: #16a36f !important;
+    border-color: #16a36f !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template *,
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template *,
+:root[data-theme="dark"] .cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-builder-shell [data-cosmic-fresh-start-action="choose-template"].cosmic-fresh-start-template:hover {
+    background: #12845c !important;
+    border-color: #12845c !important;
+}
+
+/* Publish split control owns its contrast. Generic light-mode button/text
+   remaps must never turn the green Publish trigger text or chevron dark. */
+.cosmic-builder-shell .cosmic-publish-split-trigger,
+.cosmic-builder-shell .cosmic-publish-split-trigger button,
+.cosmic-builder-shell .cosmic-publish-split-trigger svg,
+.cosmic-builder-shell .cosmic-publish-split-trigger svg * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-builder-shell .cosmic-publish-split-trigger svg,
+.cosmic-builder-shell .cosmic-publish-split-trigger svg [fill="currentColor"] {
+    fill: currentColor !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-split-trigger,
+:root[data-theme="dark"] .cosmic-builder-shell .cosmic-publish-split-trigger {
+    background: #059669 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-split-trigger button,
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-split-trigger button *,
+:root[data-theme="dark"] .cosmic-builder-shell .cosmic-publish-split-trigger button,
+:root[data-theme="dark"] .cosmic-builder-shell .cosmic-publish-split-trigger button * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ============================================================================
+   Cosmic Templates — Batch 2 preview semantic parity hotfix
+   Marketplace cards/full preview now use the same render-shell boundary as the
+   Builder. These scoped rules deliberately outrank the older light-mode utility
+   restoration layer so a hard-coded text-slate-* class cannot turn PRIMARY
+   headings black. White/Surface states remain dark, matching Builder semantics.
+   ============================================================================ */
+.cosmic-page-templates [data-cosmic-preview-isolation="true"]
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"]
+:is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading):not([data-cosmic-preserve-heading-color]) {
+    color: var(--cosmic-color-on-dark, var(--cosmic-color-on-primary, #f8fafc)) !important;
+    -webkit-text-fill-color: var(--cosmic-color-on-dark, var(--cosmic-color-on-primary, #f8fafc)) !important;
+}
+
+.cosmic-page-templates [data-cosmic-preview-isolation="true"]
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+)
+:is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading):not([data-cosmic-preserve-heading-color]) {
+    color: var(--cosmic-on-surface, #172033) !important;
+    -webkit-text-fill-color: var(--cosmic-on-surface, #172033) !important;
+}
+
+/* Nested explicit dark/contrast surfaces keep their authored foreground even
+   when the parent section is White/Surface. This mirrors the Builder exception. */
+.cosmic-page-templates [data-cosmic-preview-isolation="true"]
+.cosmic-render-shell[data-cosmic-resolved-theme]
+:is([data-cosmic-contrast-surface],[data-cosmic-card-surface="dark"],[class*="bg-slate-9"],[class*="bg-black"])
+:is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],.x-heading,.b2-heading,.b3-heading,.b4-heading,.b5-heading) {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+/* Batch 1 — Create Free Demo modal isolation on the public Welcome page. */
+.cosmic-create-demo-modal,
+.cosmic-create-demo-modal * {
+    -webkit-text-fill-color: currentColor;
+    text-shadow: none;
+}
+.cosmic-create-demo-modal {
+    color-scheme: light;
+}
+.cosmic-create-demo-modal input,
+.cosmic-create-demo-modal textarea,
+.cosmic-create-demo-modal button {
+    font-family: inherit;
+}
+.cosmic-create-demo-modal input::placeholder,
+.cosmic-create-demo-modal textarea::placeholder {
+    -webkit-text-fill-color: #94a3b8;
+    opacity: 1;
+}
+.cosmic-create-demo-modal .cosmic-create-demo-industry-option {
+    background-color: #fff !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    opacity: 1 !important;
+}
+.cosmic-create-demo-modal .cosmic-create-demo-industry-other {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+.cosmic-create-demo-modal .cosmic-create-demo-industry-option:hover,
+.cosmic-create-demo-modal .cosmic-create-demo-industry-option:focus-visible {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+}
+
+/* Clean page style media contract: the image remains visible beneath a strong
+   white wash, and all authored hero copy uses dark semantic foregrounds. This
+   final scoped layer intentionally outranks saved Spark Tailwind slot classes. */
+.cosmic-render-shell[data-cosmic-page-style="clean"]
+    [data-cosmic-media-banner="true"]
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],[data-cosmic-type="h1"],[data-cosmic-type="h2"]),
+.cosmic-render-shell[data-cosmic-page-style="clean"][data-cosmic-layout-mode="hero"]
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],[data-cosmic-type="h1"],[data-cosmic-type="h2"]) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-render-shell[data-cosmic-page-style="clean"]
+    [data-cosmic-media-banner="true"]
+    :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]),
+.cosmic-render-shell[data-cosmic-page-style="clean"][data-cosmic-layout-mode="hero"]
+    :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]) {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+
+/* ========================================================================== */
+/* Luna premium chat — Batch 1: main Builder / Whole Page surface            */
+/* ========================================================================== */
+.cosmic-luna-premium {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 970;
+    display: flex;
+    width: min(460px, calc(100vw - 16px));
+    height: min(940px, calc(100dvh - 32px));
+    min-height: min(620px, calc(100dvh - 32px));
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(139, 92, 246, .13);
+    border-radius: 26px;
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139, 92, 246, .075), transparent 28%),
+        #fff;
+    color: #101828;
+    box-shadow: 0 28px 75px rgba(30, 41, 59, .20), 0 8px 28px rgba(124, 58, 237, .08);
+    isolation: isolate;
+}
+
+.cosmic-luna-premium[data-appearance="dark"] {
+    border-color: rgba(196, 181, 253, .13);
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139, 92, 246, .13), transparent 30%),
+        #111318;
+    color: #f8fafc;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .48), 0 8px 30px rgba(76, 29, 149, .18);
+}
+
+.cosmic-luna-premium__header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 20px 20px 18px;
+    border-bottom: 1px solid #eceef4;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__header { border-color: rgba(255,255,255,.08); }
+
+.cosmic-luna-premium__eyebrow {
+    margin: 0;
+    color: #7c3aed !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    line-height: 1.35 !important;
+    letter-spacing: .16em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__eyebrow {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+
+.cosmic-luna-premium__title {
+    max-width: 270px;
+    margin: 5px 0 0 !important;
+    overflow: hidden;
+    color: #111827 !important;
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.025em !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-text-fill-color: #111827 !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__title {
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+
+.cosmic-luna-premium__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-top: 1px;
+}
+
+.cosmic-luna-premium__header-action,
+.cosmic-luna-premium__close {
+    border: 0;
+    background: transparent;
+    color: #667085 !important;
+    -webkit-text-fill-color: #667085 !important;
+    box-shadow: none;
+    transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+.cosmic-luna-premium__header-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 8px;
+    border-radius: 9px;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+.cosmic-luna-premium__close {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 9px;
+    font-size: 19px !important;
+    line-height: 1 !important;
+}
+.cosmic-luna-premium__header-action:hover:not(:disabled),
+.cosmic-luna-premium__close:hover {
+    background: #f5f3ff;
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+.cosmic-luna-premium__header-action:disabled { cursor: not-allowed; opacity: .32; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__header-action,
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__close {
+    color: #a5adbd !important;
+    -webkit-text-fill-color: #a5adbd !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__header-action:hover:not(:disabled),
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__close:hover {
+    background: rgba(139, 92, 246, .12);
+    color: #ddd6fe !important;
+    -webkit-text-fill-color: #ddd6fe !important;
+}
+
+.cosmic-luna-premium__context {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 20px;
+    border-bottom: 1px solid #eff1f6;
+    background: rgba(248, 250, 252, .72);
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__context {
+    border-color: rgba(255,255,255,.07);
+    background: rgba(255,255,255,.018);
+}
+.cosmic-luna-premium__context-label {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 9px;
+    overflow: hidden;
+    color: #667085 !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    letter-spacing: .13em !important;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-luna-premium__context-label > span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #8b5cf6;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, .08);
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__context-label {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-luna-premium__active {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border: 1px solid #eaecf0;
+    border-radius: 999px;
+    background: #fff;
+    color: #475467 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.cosmic-luna-premium__active > span {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #34d399;
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, .12);
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__active {
+    border-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.045);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+
+.cosmic-luna-premium__chat {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 18px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, .24) transparent;
+}
+.cosmic-luna-premium__chat::-webkit-scrollbar { width: 6px; }
+.cosmic-luna-premium__chat::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(139, 92, 246, .20); }
+
+.cosmic-luna-premium__message-row { display: flex; width: 100%; }
+.cosmic-luna-premium__message-row--user { justify-content: flex-end; }
+.cosmic-luna-premium__message-row--assistant { justify-content: flex-start; }
+.cosmic-luna-premium__message-wrap { max-width: 88%; }
+.cosmic-luna-premium__bubble {
+    padding: 11px 13px;
+    border-radius: 17px;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.6 !important;
+    overflow-wrap: anywhere;
+}
+.cosmic-luna-premium__bubble--user {
+    border-bottom-right-radius: 7px;
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 52%, #4f46e5 100%);
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    box-shadow: 0 8px 20px rgba(109, 40, 217, .18);
+}
+.cosmic-luna-premium__bubble--assistant {
+    border: 1px solid #e7e9f0;
+    border-bottom-left-radius: 7px;
+    background: #fff;
+    color: #344054 !important;
+    -webkit-text-fill-color: #344054 !important;
+    box-shadow: 0 7px 22px rgba(15, 23, 42, .055);
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__bubble--assistant {
+    border-color: rgba(255,255,255,.085);
+    background: rgba(255,255,255,.045);
+    color: #e4e7ec !important;
+    -webkit-text-fill-color: #e4e7ec !important;
+    box-shadow: none;
+}
+.cosmic-luna-premium__empty {
+    align-self: flex-start;
+    max-width: 84%;
+    padding: 13px 14px;
+    border: 1px solid #e7e9f0;
+    border-radius: 17px 17px 17px 7px;
+    background: #fff;
+    box-shadow: 0 7px 22px rgba(15, 23, 42, .05);
+}
+.cosmic-luna-premium__empty strong,
+.cosmic-luna-premium__empty span { display: block; }
+.cosmic-luna-premium__empty strong {
+    color: #1d2939 !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    -webkit-text-fill-color: #1d2939 !important;
+}
+.cosmic-luna-premium__empty span {
+    margin-top: 3px;
+    color: #98a2b3 !important;
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__empty {
+    border-color: rgba(255,255,255,.085);
+    background: rgba(255,255,255,.045);
+    box-shadow: none;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__empty strong { color: #f2f4f7 !important; -webkit-text-fill-color: #f2f4f7 !important; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__empty span { color: #98a2b3 !important; -webkit-text-fill-color: #98a2b3 !important; }
+
+.cosmic-luna-premium__message-actions,
+.cosmic-luna-premium__placement-targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 8px;
+}
+.cosmic-luna-premium__placement { margin-top: 8px; }
+.cosmic-luna-premium__placement-label {
+    margin-bottom: 5px;
+    color: #98a2b3 !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-luna-premium__action {
+    border: 1px solid #e4e7ec;
+    border-radius: 9px;
+    background: #fff;
+    padding: 7px 9px;
+    color: #475467 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.cosmic-luna-premium__action:hover:not(:disabled) { border-color: #c4b5fd; background: #faf8ff; color: #6d28d9 !important; -webkit-text-fill-color: #6d28d9 !important; }
+.cosmic-luna-premium__action--primary { border-color: #7c3aed; background: #7c3aed; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.cosmic-luna-premium__action--primary:hover:not(:disabled) { border-color: #6d28d9; background: #6d28d9; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.cosmic-luna-premium__action--quiet { border-color: transparent; background: transparent; }
+.cosmic-luna-premium__action:disabled { opacity: .4; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__action {
+    border-color: rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__action--primary {
+    border-color: #8b5cf6;
+    background: #7c3aed;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+
+.cosmic-luna-process-card {
+    width: min(330px, 88%);
+    padding: 14px 14px 12px;
+    border: 1px solid #e5e7ef;
+    border-radius: 17px 17px 17px 7px;
+    background: #fff;
+    color: #344054;
+    box-shadow: 0 9px 26px rgba(15, 23, 42, .07);
+}
+.cosmic-luna-process-card--dark {
+    border-color: rgba(255,255,255,.09);
+    background: rgba(255,255,255,.045);
+    color: #e4e7ec;
+    box-shadow: none;
+}
+.cosmic-luna-process-card__intro {
+    margin: 0 0 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eff1f5;
+    color: #344054 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #344054 !important;
+}
+.cosmic-luna-process-card--dark .cosmic-luna-process-card__intro { border-color: rgba(255,255,255,.07); color: #f2f4f7 !important; -webkit-text-fill-color: #f2f4f7 !important; }
+.cosmic-luna-process-card__steps { display: grid; gap: 8px; }
+.cosmic-luna-process-card__step {
+    display: grid;
+    grid-template-columns: 19px minmax(0,1fr);
+    align-items: center;
+    gap: 8px;
+    color: #667085 !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-luna-process-card__step--complete,
+.cosmic-luna-process-card__step--active { color: #344054 !important; -webkit-text-fill-color: #344054 !important; }
+.cosmic-luna-process-card--dark .cosmic-luna-process-card__step { color: #98a2b3 !important; -webkit-text-fill-color: #98a2b3 !important; }
+.cosmic-luna-process-card--dark .cosmic-luna-process-card__step--complete,
+.cosmic-luna-process-card--dark .cosmic-luna-process-card__step--active { color: #e4e7ec !important; -webkit-text-fill-color: #e4e7ec !important; }
+.cosmic-luna-process-card__marker {
+    position: relative;
+    display: grid;
+    width: 19px;
+    height: 19px;
+    place-items: center;
+    border: 2px solid #ddd6fe;
+    border-radius: 999px;
+    color: #8b5cf6 !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #8b5cf6 !important;
+}
+.cosmic-luna-process-card__step--complete .cosmic-luna-process-card__marker {
+    border-color: #7c3aed;
+    background: #7c3aed;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+.cosmic-luna-process-card__step--active .cosmic-luna-process-card__marker {
+    border-color: #ddd6fe;
+    border-top-color: #7c3aed;
+    animation: cosmic-luna-process-spin .85s linear infinite;
+}
+.cosmic-luna-process-card__step--pending .cosmic-luna-process-card__marker { color: #c4b5fd !important; -webkit-text-fill-color: #c4b5fd !important; }
+.cosmic-luna-process-card__status {
+    margin: 10px 0 0;
+    color: #8b5cf6 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+    -webkit-text-fill-color: #8b5cf6 !important;
+}
+.cosmic-luna-process-card--dark .cosmic-luna-process-card__status { color: #c4b5fd !important; -webkit-text-fill-color: #c4b5fd !important; }
+@keyframes cosmic-luna-process-spin { to { transform: rotate(360deg); } }
+
+.cosmic-luna-premium__thinking {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    color: #8b5cf6 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    -webkit-text-fill-color: #8b5cf6 !important;
+}
+.cosmic-luna-premium__thinking > span {
+    width: 13px;
+    height: 13px;
+    border: 2px solid #ddd6fe;
+    border-top-color: #7c3aed;
+    border-radius: 999px;
+    animation: cosmic-luna-process-spin .85s linear infinite;
+}
+
+.cosmic-luna-premium__quick-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 0 18px 12px;
+    scrollbar-width: none;
+}
+.cosmic-luna-premium__quick-actions::-webkit-scrollbar { display: none; }
+.cosmic-luna-premium__quick-actions button {
+    flex: 0 0 auto;
+    border: 1px solid #e4e7ec;
+    border-radius: 11px;
+    background: #fff;
+    padding: 8px 10px;
+    color: #475467 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #475467 !important;
+    transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+}
+.cosmic-luna-premium__quick-actions button:hover:not(:disabled) {
+    border-color: #c4b5fd;
+    background: #faf8ff;
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+    transform: translateY(-1px);
+}
+.cosmic-luna-premium__quick-actions button:disabled { opacity: .42; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__quick-actions button {
+    border-color: rgba(255,255,255,.09);
+    background: rgba(255,255,255,.035);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__quick-actions button:hover:not(:disabled) {
+    border-color: rgba(196,181,253,.32);
+    background: rgba(139,92,246,.10);
+    color: #ddd6fe !important;
+    -webkit-text-fill-color: #ddd6fe !important;
+}
+
+.cosmic-luna-premium__composer {
+    flex: 0 0 auto;
+    padding: 14px 18px 16px;
+    border-top: 1px solid #eff1f5;
+    background: rgba(255,255,255,.96);
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__composer {
+    border-color: rgba(255,255,255,.075);
+    background: rgba(17,19,24,.98);
+}
+.cosmic-luna-premium__textarea {
+    display: block;
+    width: 100%;
+    min-height: 88px;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid #dfe3eb !important;
+    border-radius: 15px !important;
+    outline: 0 !important;
+    background: #fff !important;
+    padding: 12px 13px !important;
+    color: #1d2939 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.6 !important;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, .035) !important;
+    -webkit-text-fill-color: #1d2939 !important;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.cosmic-luna-premium__textarea::placeholder { color: #98a2b3 !important; opacity: 1; -webkit-text-fill-color: #98a2b3 !important; }
+.cosmic-luna-premium__textarea:focus {
+    border-color: #b9a7fa !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,.08), 0 5px 18px rgba(15,23,42,.04) !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__textarea {
+    border-color: rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.035) !important;
+    color: #f2f4f7 !important;
+    box-shadow: none !important;
+    -webkit-text-fill-color: #f2f4f7 !important;
+}
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__textarea::placeholder { color: #667085 !important; -webkit-text-fill-color: #667085 !important; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__textarea:focus { border-color: rgba(196,181,253,.42) !important; box-shadow: 0 0 0 3px rgba(139,92,246,.10) !important; }
+
+.cosmic-luna-premium__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+}
+.cosmic-luna-premium__builder-label,
+.cosmic-luna-premium__switch {
+    color: #667085 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-luna-premium__builder-label { display: inline-flex; align-items: center; gap: 6px; }
+.cosmic-luna-premium__builder-label > span { color: #7c3aed !important; font-size: 13px !important; -webkit-text-fill-color: #7c3aed !important; }
+.cosmic-luna-premium__switch { border: 0; background: transparent; padding: 4px 0; }
+.cosmic-luna-premium__switch:hover { color: #6d28d9 !important; -webkit-text-fill-color: #6d28d9 !important; }
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__builder-label,
+.cosmic-luna-premium[data-appearance="dark"] .cosmic-luna-premium__switch { color: #98a2b3 !important; -webkit-text-fill-color: #98a2b3 !important; }
+
+.cosmic-luna-premium__send {
+    display: inline-flex;
+    min-width: 92px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 0 !important;
+    border-radius: 11px !important;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9 52%, #a855f7) !important;
+    padding: 9px 13px !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    box-shadow: 0 8px 18px rgba(109,40,217,.20) !important;
+    -webkit-text-fill-color: #fff !important;
+    transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.cosmic-luna-premium__send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(109,40,217,.28) !important; }
+.cosmic-luna-premium__send:disabled { cursor: not-allowed; opacity: .48; }
+
+@media (max-width: 640px) {
+    .cosmic-luna-premium {
+        right: 8px;
+        bottom: 8px;
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+        min-height: 0;
+        border-radius: 20px;
+    }
+    .cosmic-luna-premium__header { padding: 16px 15px 14px; }
+    .cosmic-luna-premium__header-action span { display: none; }
+    .cosmic-luna-premium__header-action { width: 30px; height: 30px; justify-content: center; padding: 0; font-size: 13px !important; }
+    .cosmic-luna-premium__title { max-width: 210px; font-size: 18px !important; }
+    .cosmic-luna-premium__context { padding: 11px 15px; }
+    .cosmic-luna-premium__chat { padding: 16px 14px; }
+    .cosmic-luna-premium__quick-actions { padding-inline: 14px; }
+    .cosmic-luna-premium__composer { padding: 12px 14px 14px; }
+    .cosmic-luna-premium__message-wrap { max-width: 92%; }
+    .cosmic-luna-process-card { width: 92%; }
+}
+
+@media (max-height: 690px) {
+    .cosmic-luna-premium { min-height: 0; }
+    .cosmic-luna-premium__header { padding-top: 14px; padding-bottom: 12px; }
+    .cosmic-luna-premium__context { padding-top: 10px; padding-bottom: 10px; }
+    .cosmic-luna-premium__chat { gap: 11px; padding-top: 14px; padding-bottom: 12px; }
+    .cosmic-luna-premium__textarea { min-height: 70px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-luna-process-card__step--active .cosmic-luna-process-card__marker,
+    .cosmic-luna-premium__thinking > span { animation: none !important; }
+    .cosmic-luna-premium__header-action,
+    .cosmic-luna-premium__close,
+    .cosmic-luna-premium__quick-actions button,
+    .cosmic-luna-premium__send { transition: none !important; }
+}
+
+/* ========================================================================== */
+/* Luna premium chat — Batch 2: contextual edit-session / popup assistant     */
+/* ========================================================================== */
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    align-self: stretch;
+    overflow: hidden;
+    padding: 0 !important;
+    border-top: 1px solid #eceef4;
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139, 92, 246, .065), transparent 30%),
+        #fff !important;
+    color: #101828 !important;
+    isolation: isolate;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] {
+    border-color: rgba(255,255,255,.08);
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139, 92, 246, .12), transparent 30%),
+        #111318 !important;
+    color: #f8fafc !important;
+}
+@media (min-width: 1024px) {
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium {
+        height: 100%;
+        max-height: 100%;
+        border-top: 0;
+        border-left: 1px solid #eceef4;
+    }
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] {
+        border-left-color: rgba(255,255,255,.08);
+    }
+}
+
+.cosmic-contextual-luna-premium__header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 18px 15px;
+    border-bottom: 1px solid #eceef4;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__header {
+    border-color: rgba(255,255,255,.08);
+}
+.cosmic-contextual-luna-premium__eyebrow {
+    margin: 0 !important;
+    color: #7c3aed !important;
+    font-size: 9px !important;
+    font-weight: 900 !important;
+    line-height: 1.35 !important;
+    letter-spacing: .15em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__eyebrow {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-contextual-luna-premium__title {
+    max-width: 235px;
+    margin: 5px 0 0 !important;
+    overflow: hidden;
+    color: #111827 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.02em !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-text-fill-color: #111827 !important;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__title {
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+.cosmic-contextual-luna-premium__active {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border: 1px solid #eaecf0;
+    border-radius: 999px;
+    background: rgba(255,255,255,.92);
+    color: #475467 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.cosmic-contextual-luna-premium__active > span {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #34d399;
+    box-shadow: 0 0 0 3px rgba(52,211,153,.12);
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__active {
+    border-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.045);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+
+.cosmic-contextual-luna-premium__context {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-width: 0;
+    padding: 11px 18px;
+    border-bottom: 1px solid #eff1f6;
+    background: rgba(248,250,252,.72);
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__context {
+    border-color: rgba(255,255,255,.07);
+    background: rgba(255,255,255,.018);
+}
+.cosmic-contextual-luna-premium__context-label {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    color: #667085 !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    letter-spacing: .12em !important;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-contextual-luna-premium__context-label > span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: #8b5cf6;
+    box-shadow: 0 0 0 4px rgba(139,92,246,.08);
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__context-label {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__chat {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 13px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 17px 16px 15px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139,92,246,.24) transparent;
+}
+.cosmic-contextual-luna-premium__chat::-webkit-scrollbar { width: 6px; }
+.cosmic-contextual-luna-premium__chat::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(139,92,246,.20); }
+.cosmic-contextual-luna-premium__message-row { display: flex; width: 100%; }
+.cosmic-contextual-luna-premium__message-row--user { justify-content: flex-end; }
+.cosmic-contextual-luna-premium__message-row--assistant { justify-content: flex-start; }
+
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__bubble {
+    max-width: 90%;
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+    overflow-wrap: anywhere;
+    opacity: 1 !important;
+    filter: none !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__bubble--user[data-luna-message-role="user"] {
+    border: 0 !important;
+    border-bottom-right-radius: 6px !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 52%, #4f46e5 100%) !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    box-shadow: 0 8px 18px rgba(109,40,217,.17) !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__bubble--assistant[data-luna-message-role="assistant"] {
+    border: 1px solid #e7e9f0 !important;
+    border-bottom-left-radius: 6px !important;
+    background: #fff !important;
+    color: #344054 !important;
+    -webkit-text-fill-color: #344054 !important;
+    box-shadow: 0 7px 20px rgba(15,23,42,.05) !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__bubble--assistant[data-luna-message-role="assistant"] {
+    border-color: rgba(255,255,255,.085) !important;
+    background: rgba(255,255,255,.045) !important;
+    color: #e4e7ec !important;
+    -webkit-text-fill-color: #e4e7ec !important;
+    box-shadow: none !important;
+}
+
+.cosmic-contextual-luna-premium .cosmic-luna-process-card {
+    width: min(100%, 300px);
+    align-self: flex-start;
+    margin: 0;
+}
+
+.cosmic-contextual-luna-premium__error {
+    flex: 0 0 auto;
+    margin: 0 16px 10px;
+    padding: 9px 11px;
+    border: 1px solid #fecdd3;
+    border-radius: 11px;
+    background: #fff1f2;
+    color: #be123c !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #be123c !important;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__error {
+    border-color: rgba(251,113,133,.20);
+    background: rgba(244,63,94,.08);
+    color: #fda4af !important;
+    -webkit-text-fill-color: #fda4af !important;
+}
+
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__composer {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    padding: 13px 16px 15px !important;
+    border-top: 1px solid #eff1f5 !important;
+    background: rgba(255,255,255,.97);
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__composer {
+    border-color: rgba(255,255,255,.075) !important;
+    background: rgba(17,19,24,.98);
+}
+.cosmic-contextual-luna-premium__locked {
+    margin-bottom: 9px;
+    padding: 9px 10px;
+    border: 1px solid #ddd6fe;
+    border-radius: 11px;
+    background: #f5f3ff;
+    color: #6d28d9 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__locked {
+    border-color: rgba(196,181,253,.18);
+    background: rgba(139,92,246,.08);
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__textarea {
+    display: block;
+    width: 100%;
+    min-height: 92px !important;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid #dfe3eb !important;
+    border-radius: 14px !important;
+    outline: 0 !important;
+    background: #fff !important;
+    padding: 11px 12px !important;
+    color: #1d2939 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 3px 14px rgba(15,23,42,.035) !important;
+    -webkit-text-fill-color: #1d2939 !important;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__textarea::placeholder {
+    color: #98a2b3 !important;
+    opacity: 1;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__textarea:focus {
+    border-color: #b9a7fa !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,.08), 0 5px 18px rgba(15,23,42,.04) !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__textarea {
+    border-color: rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.035) !important;
+    color: #f2f4f7 !important;
+    box-shadow: none !important;
+    -webkit-text-fill-color: #f2f4f7 !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__textarea::placeholder {
+    color: #667085 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__textarea:focus {
+    border-color: rgba(196,181,253,.42) !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,.10) !important;
+}
+.cosmic-contextual-luna-premium__composer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 9px;
+}
+.cosmic-contextual-luna-premium__builder-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #667085 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-contextual-luna-premium__builder-label > span {
+    color: #7c3aed !important;
+    font-size: 12px !important;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-contextual-luna-premium[data-appearance="dark"] .cosmic-contextual-luna-premium__builder-label {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__send {
+    display: inline-flex;
+    min-width: 88px;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9 52%, #a855f7) !important;
+    padding: 9px 12px !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    box-shadow: 0 8px 18px rgba(109,40,217,.20) !important;
+    -webkit-text-fill-color: #fff !important;
+    transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__send:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(109,40,217,.28) !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium__send:disabled {
+    cursor: not-allowed;
+    opacity: .48;
+    transform: none;
+}
+.cosmic-contextual-luna-premium__credit-note {
+    margin: 8px 0 0 !important;
+    color: #98a2b3 !important;
+    font-size: 8px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+
+/* The old Start Blank orb was a visual avatar. Contextual Luna is pure chat. */
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium .cosmic-contextual-luna-orb-wrap,
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium .cosmic-luna-network-orb,
+.cosmic-edit-session-dialog .cosmic-contextual-luna-premium .cosmic-contextual-luna-tip__icon {
+    display: none !important;
+}
+
+@media (max-width: 1023px) {
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium {
+        min-height: 430px;
+        max-height: min(570px, 70dvh);
+    }
+    .cosmic-contextual-luna-premium__chat { min-height: 150px; }
+}
+@media (max-width: 639px) {
+    .cosmic-contextual-luna-premium__header { padding: 15px 14px 13px; }
+    .cosmic-contextual-luna-premium__title { max-width: 190px; font-size: 15px !important; }
+    .cosmic-contextual-luna-premium__active { padding: 5px 8px; }
+    .cosmic-contextual-luna-premium__context { padding: 10px 14px; }
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium__chat { padding: 14px 13px; }
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium__composer { padding: 12px 13px 13px !important; }
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium__bubble { max-width: 94%; }
+    .cosmic-contextual-luna-premium .cosmic-luna-process-card { width: 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-edit-session-dialog .cosmic-contextual-luna-premium__send { transition: none !important; }
+}
+
+/* Final Clean hero foreground guard. Keep this at the end of app.css so legacy
+   Spark slot utilities cannot restore white copy over the Clean white wash. */
+.cosmic-render-shell[data-cosmic-page-style="clean"]:is([data-cosmic-layout-mode="hero"],[data-cosmic-layout-mode="immersive"])
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],[data-cosmic-type="h1"],[data-cosmic-type="h2"]),
+.cosmic-render-shell[data-cosmic-page-style="clean"] [data-cosmic-media-banner="true"]
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],[data-cosmic-type="h1"],[data-cosmic-type="h2"]) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-render-shell[data-cosmic-page-style="clean"]:is([data-cosmic-layout-mode="hero"],[data-cosmic-layout-mode="immersive"])
+    :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]),
+.cosmic-render-shell[data-cosmic-page-style="clean"] [data-cosmic-media-banner="true"]
+    :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]) {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+
+/* Light-mode preview isolation used to force every photographic banner to
+   white copy. Clean is the semantic exception: its overlay is white, so its
+   copy must remain dark. Handle isolation on the shell itself and on a parent. */
+:root[data-theme="light"]
+    :is(
+        .cosmic-render-shell[data-cosmic-preview-isolation="true"][data-cosmic-page-style="clean"],
+        [data-cosmic-preview-isolation="true"] .cosmic-render-shell[data-cosmic-page-style="clean"]
+    )
+    [data-cosmic-media-banner="true"]
+    :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"],[data-cosmic-type="h1"],[data-cosmic-type="h2"]) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"]
+    :is(
+        .cosmic-render-shell[data-cosmic-preview-isolation="true"][data-cosmic-page-style="clean"],
+        [data-cosmic-preview-isolation="true"] .cosmic-render-shell[data-cosmic-page-style="clean"]
+    )
+    [data-cosmic-media-banner="true"]
+    :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]) {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
 }

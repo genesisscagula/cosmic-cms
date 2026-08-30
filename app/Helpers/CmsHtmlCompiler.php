@@ -3139,6 +3139,7 @@ HTML;
                     $cardsHtml .= "<article data-cosmic-services-hover-card='true' style='--cosmic-hover-card-bg:".e($hoverBg).";--cosmic-hover-card-fg:".e($hoverFg)."' class='group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 {$border} {$card}'><div class='flex items-start justify-between gap-4'><span class='text-xs font-black tracking-[.2em] {$muted}'>".e($d['card_'.$word.'_number'])."</span><span class='flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 {$border}'>↗</span></div><div class='mt-14'><h3 class='text-2xl font-semibold tracking-[-.03em]'>".e($d['card_'.$word.'_title'])."</h3><p class='mt-3 text-sm font-semibold {$muted}'>".e($d['card_'.$word.'_summary'])."</p><p class='mt-5 translate-y-3 text-sm leading-6 opacity-75 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100'>".e($d['card_'.$word.'_text'])."</p><span class='mt-7 block text-xs font-black uppercase tracking-[.16em] opacity-70 group-hover:opacity-100'>".e($d['card_'.$word.'_link'])."</span></div></article>";
                 }
                 $html .= "<section data-cosmic-services-hover-cards='true' class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><style>[data-cosmic-services-hover-card=true]{transition-property:transform,box-shadow,background-color,color,border-color}[data-cosmic-services-hover-card=true]:hover,[data-cosmic-services-hover-card=true]:focus-within{background-color:var(--cosmic-hover-card-bg)!important;color:var(--cosmic-hover-card-fg)!important}[data-cosmic-services-hover-card=true]:hover *,[data-cosmic-services-hover-card=true]:focus-within *{color:inherit!important}[data-cosmic-services-hover-card=true]:hover [class*=opacity-],[data-cosmic-services-hover-card=true]:focus-within [class*=opacity-]{opacity:.86}[data-cosmic-services-hover-card=true]:hover [class*=border-],[data-cosmic-services-hover-card=true]:focus-within [class*=border-]{border-color:currentColor!important}</style><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end'><div class='max-w-3xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>".e($d['text'])."</p></div><a href='".e($d['primary_url'])."' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3'>{$cardsHtml}</div></div></section>";
+                $html .= "<style>[data-cosmic-services-hover-card=true]:is(:hover,:focus-within){color:var(--cosmic-hover-card-fg)!important;-webkit-text-fill-color:var(--cosmic-hover-card-fg)!important}[data-cosmic-services-hover-card=true][data-cosmic-services-hover-card=true][data-cosmic-services-hover-card=true][data-cosmic-services-hover-card=true]:is(:hover,:focus-within) *{color:var(--cosmic-hover-card-fg)!important;-webkit-text-fill-color:var(--cosmic-hover-card-fg)!important}</style>";
                 break;
 
                 case 'services_feature_comparison':
@@ -6314,6 +6315,8 @@ HTML;
                     'py_top'=>'--cosmic-local-section-py-top',
                     'py_bottom'=>'--cosmic-local-section-py-bottom',
                     'px'=>'--cosmic-local-section-px',
+                    'px_left'=>'--cosmic-local-section-px-left',
+                    'px_right'=>'--cosmic-local-section-px-right',
                     'container'=>'--cosmic-local-section-container',
                     'gap'=>'--cosmic-local-section-gap',
                     'min_height'=>'--cosmic-local-section-min-height',
@@ -6439,7 +6442,7 @@ HTML;
                     : 'legacy_fallback';
                 $taggedFragment = preg_replace(
                     '/<section(?![^>]*data-cosmic-spark)/i',
-                    "<section data-cosmic-spark='1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-tailwind-schema='{$tailwindSchemaState}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}' data-cosmic-implementation-type='{$implementationTypeAttr}'",
+                    "<section data-cosmic-spark='1' data-cosmic-layout-contract='premium-v1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-tailwind-schema='{$tailwindSchemaState}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}' data-cosmic-implementation-type='{$implementationTypeAttr}'",
                     $fragment,
                     1
                 );
@@ -6615,8 +6618,8 @@ CSS;
 width:100%;
 padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)));
 padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)));
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px));
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px));
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px)));
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px)));
 min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height))
 }
 .cosmic-section-container,[data-cosmic-section-container='1']{width:100%;max-width:var(--cosmic-local-section-container,var(--cosmic-section-container));margin-left:auto;margin-right:auto}
@@ -6625,26 +6628,26 @@ min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height
 .cosmic-section-stack{display:flex;flex-direction:column;gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap))}
 .cosmic-surface-contrast{-webkit-text-fill-color:currentColor!important}.cosmic-primary-contrast{color:var(--cosmic-color-on-primary,#fff)!important;-webkit-text-fill-color:currentColor!important}.cosmic-surface-contrast :is(h1,h2,h3,h4,h5,h6,p,span),.cosmic-primary-contrast :is(h1,h2,h3,h4,h5,h6,p,span){-webkit-text-fill-color:currentColor!important}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important}
 @media(max-width:1024px){
-.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))}
+.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)));padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)))}
 .cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-tablet))}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important}
 }
 @media(max-width:767px){
-.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))}
+.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)));padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))}
 .cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-mobile))}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important}
 }
 
 /* Batch 4: migrate all compiled Spark roots to the centralized wrapper rhythm.
    Fullscreen/cinematic roots retain their vertical composition but inherit horizontal padding. */
-section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){
 padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;
 padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important;
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important
 }
-section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen'],
-section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']{
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important
+section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen']:not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]),
+section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']:not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important;
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important
 }
 section[data-cosmic-spark='1']>:is(div,article)[class*='mx-auto'][class*='max-w-']{
 width:100%;margin-left:auto!important;margin-right:auto!important
@@ -6665,24 +6668,32 @@ section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='ga
 gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important
 }
 @media(max-width:1024px){
-section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){
 padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;
 padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important;
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)))!important;
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)))!important
 }}
 @media(max-width:767px){
-section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){
 padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;
 padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important;
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important
 }
-section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen'],
-section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']{
-padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;
-padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important
+section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen']:not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]),
+section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']:not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){
+padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important;
+padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important
 }}
+
+/* Batch 4 premium layout safety: mirror the Builder/Add Section boundary for published Sparks. */
+section[data-cosmic-spark='1']{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:clip}
+section[data-cosmic-spark='1'] :is(img,video,iframe,svg,canvas){max-width:100%}
+section[data-cosmic-spark='1'] :is(h1,h2,h3,h4,h5,h6,p,a,button,label){overflow-wrap:anywhere}
+section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])>*{min-width:0}
+section[data-cosmic-spark='1'] :is(input,select,textarea,button){max-width:100%}
+@media(max-width:767px){section[data-cosmic-spark='1'] table{display:block;width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}}
 
 /* Global component compatibility for legacy registered Sparks. */
 section[data-cosmic-spark='1'] :is(button,a)[class*='px-'][class*='py-']:not([aria-label]):not([data-cosmic-preserve-button]){
@@ -6972,7 +6983,7 @@ CSS;
         // their authored round shape instead of forcing CTA pills globally.
         $globalPriorityCss=<<<'CSS'
 <style data-cosmic-global-priority-hotfix>
-section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important}
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important;padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px)))!important}
 section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important}
 section[data-cosmic-spark='1'] :is(h1,[data-cosmic-type='h1']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important}
 section[data-cosmic-spark='1'] :is(h2,[data-cosmic-type='h2']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important}
@@ -6990,8 +7001,8 @@ section[data-cosmic-spark='1'] img[class*='rounded']:not(.rounded-full):not([dat
 section[data-cosmic-spark='1'] img:not([data-cosmic-preserve-fit]){object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit,cover))}
 section[data-cosmic-spark='1'] :is(input[type='text'],input[type='email'],input[type='tel'],input[type='url'],input[type='number'],input[type='search'],input:not([type]),textarea,select):not([data-cosmic-preserve-form]){border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input,10px))!important}
 section[data-cosmic-spark='1'] section[class*='rounded']:not([data-cosmic-preserve-radius]){border-radius:var(--cosmic-local-section-radius,var(--cosmic-radius-section,32px))!important}
-@media(max-width:1024px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))!important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-card-padding)))!important}}
-@media(max-width:767px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))!important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-card-padding)))!important}}
+@media(max-width:1024px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)))!important;padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-card-padding)))!important}}
+@media(max-width:767px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not(.cosmic-tw-own-section-y):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;padding-left:var(--cosmic-local-section-px-left,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important;padding-right:var(--cosmic-local-section-px-right,var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-card-padding)))!important}}
 </style>
 CSS;
         $html = $typographyCss . $globalTypographyCss . $globalComponentCss . $backgroundOverlayCss . $globalBackgroundCss . $semanticPaletteCss . $sectionWrapperCss . $globalSectionCss . self::sparkFieldExtrasCoreCss() . "<style data-cosmic-button-default>section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button']):not([aria-label]):not([data-cosmic-preserve-button]){border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button,9999px))!important}section[data-cosmic-spark='1'] [class~='rounded-full']:not(button):not(a):not([role='button']){border-radius:9999px!important}</style>" . $globalPriorityCss . $html;
@@ -8129,7 +8140,7 @@ CSS;
         $id = 'cosmic-b6-'.substr(sha1($type.'|'.$heading.'|'.count($items)), 0, 12);
         $css = <<<CSS
 <style>
-#{$id}{--b6-bg:{$bg};--b6-surface:{$surface};--b6-text:{$text};--b6-muted:{$muted};--b6-border:{$border};--b6-accent:{$accent};position:relative;overflow:hidden;background:var(--b6-bg);color:var(--b6-text);padding:7rem 1.75rem}
+#{$id}{--b6-bg:{$bg};--b6-surface:{$surface};--b6-text:{$text};--b6-muted:{$muted};--b6-border:{$border};--b6-accent:{$accent};position:relative;overflow:hidden;container-type:inline-size;container-name:cosmic-b6;background:var(--b6-bg);color:var(--b6-text);padding:7rem 1.75rem}
 #{$id} *{box-sizing:border-box}#{$id} .b6-shell{width:100%;max-width:88rem;margin:0 auto}#{$id} .b6-head{max-width:52rem}
 #{$id} .b6-eyebrow,#{$id} .b6-label{display:block;color:var(--b6-muted);font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
 #{$id} .b6-heading{display:block;margin-top:1rem;font-size:clamp(2.45rem,5vw,4.8rem);font-weight:700;line-height:.97;letter-spacing:-.05em}
@@ -8160,6 +8171,16 @@ CSS;
 #{$id}.b6-ticket .b6-ticket-layout{position:relative;display:grid;grid-template-columns:1.3fr .7fr;overflow:hidden;border:1px solid var(--b6-border);border-radius:2rem;background:var(--b6-surface)}#{$id}.b6-ticket .b6-ticket-layout>div{padding:clamp(2rem,5vw,4.5rem)}#{$id}.b6-ticket .b6-ticket-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-left:1px dashed var(--b6-border)}#{$id}.b6-ticket .b6-actions{flex-direction:column}#{$id} .b6-ticket-tags{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:2rem}#{$id} .b6-ticket-tag{border:1px solid var(--b6-border);border-radius:999px;padding:.5rem .8rem;color:var(--b6-muted)}
 
 #{$id}.b6-board .b6-grid{margin-top:4rem;overflow:hidden;border:1px solid var(--b6-border);border-radius:1.75rem}#{$id}.b6-board .b6-item{padding:1.35rem 1.5rem}#{$id}.b6-board .b6-item:last-child{border-bottom:0}#{$id}.b6-board .b6-meta{color:var(--b6-accent)}
+
+/* Match Builder/Section Editor container-responsive family behavior in exported/live HTML. */
+@container cosmic-b6 (max-width:1100px){
+#{$id}.b6-chapters .b6-chapter-layout{grid-template-columns:1fr;gap:2.75rem}#{$id}.b6-chapters .b6-head{position:static;max-width:46rem}#{$id}.b6-chapters .b6-heading{font-size:clamp(2.5rem,7cqw,4.35rem);max-width:12ch}#{$id}.b6-chapters .b6-item{grid-template-columns:5rem minmax(10rem,.9fr) minmax(0,1.1fr);gap:1.25rem}
+#{$id}.b6-constellation .b6-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem 1rem}#{$id}.b6-constellation .b6-grid:before{display:none}#{$id}.b6-constellation .b6-item{padding:0 1rem 1.25rem}
+#{$id}.b6-ticket .b6-ticket-layout{grid-template-columns:1fr}#{$id}.b6-ticket .b6-ticket-action{border-top:1px dashed var(--b6-border);border-left:0}#{$id}.b6-ticket .b6-ticket-layout>div{padding:clamp(2rem,5cqw,3.5rem)}#{$id}.b6-ticket .b6-heading{max-width:13ch;font-size:clamp(2.5rem,7cqw,4.35rem)}
+}
+@container cosmic-b6 (max-width:720px){
+#{$id} .b6-heading{font-size:clamp(2.25rem,10cqw,3.5rem)}#{$id}.b6-chapters .b6-item{grid-template-columns:4rem minmax(0,1fr)}#{$id}.b6-chapters .b6-copy{grid-column:2}#{$id}.b6-constellation .b6-grid{grid-template-columns:1fr;gap:1.5rem}#{$id}.b6-constellation .b6-item{padding:0 0 1.25rem}
+}
 
 @media(max-width:900px){#{$id}{padding:5rem 1.25rem}#{$id}.b6-chapters .b6-chapter-layout{grid-template-columns:1fr}#{$id}.b6-chapters .b6-head{position:static}#{$id}.b6-orbit .b6-grid{grid-template-columns:repeat(2,1fr)}#{$id}.b6-orbit .b6-grid:before{display:none}#{$id}.b6-orbit .b6-orbit-core{grid-column:1/-1;grid-row:auto;border-radius:1.75rem}#{$id}.b6-orbit .b6-item{grid-column:auto!important;grid-row:auto!important}#{$id}.b6-constellation .b6-grid,#{$id}.b6-staircase .b6-grid{grid-template-columns:repeat(2,1fr)}#{$id}.b6-staircase .b6-item{margin-top:0!important}#{$id}.b6-ticket .b6-ticket-layout{grid-template-columns:1fr}#{$id}.b6-ticket .b6-ticket-action{border-top:1px dashed var(--b6-border);border-left:0}#{$id}.b6-ledger .b6-item,#{$id}.b6-board .b6-item{grid-template-columns:6rem 1fr 1.4fr}#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-meta{grid-column:2/-1;text-align:left}}
 @media(max-width:640px){#{$id}{padding:4rem 1rem}#{$id}.b6-chapters .b6-item{grid-template-columns:4rem 1fr}#{$id}.b6-chapters .b6-copy{grid-column:2}#{$id}.b6-orbit .b6-grid,#{$id}.b6-constellation .b6-grid,#{$id}.b6-staircase .b6-grid,#{$id}.b6-tree .b6-grid{grid-template-columns:1fr}#{$id}.b6-tree .b6-grid{padding-left:1.25rem}#{$id}.b6-tree .b6-item{margin-left:0!important}#{$id}.b6-ledger .b6-item,#{$id}.b6-board .b6-item{grid-template-columns:1fr;gap:.55rem}#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-meta{grid-column:auto}#{$id} .b6-heading{overflow-wrap:anywhere}}

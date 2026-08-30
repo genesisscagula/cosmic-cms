@@ -54,6 +54,8 @@ export const cosmicLocalSectionVars = (settings = {}) => {
         py_top: "--cosmic-local-section-py-top",
         py_bottom: "--cosmic-local-section-py-bottom",
         px: "--cosmic-local-section-px",
+        px_left: "--cosmic-local-section-px-left",
+        px_right: "--cosmic-local-section-px-right",
         container: "--cosmic-local-section-container",
         gap: "--cosmic-local-section-gap",
         min_height: "--cosmic-local-section-min-height",

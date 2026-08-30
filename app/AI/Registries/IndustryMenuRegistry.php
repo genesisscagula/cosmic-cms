@@ -38,12 +38,68 @@ final class IndustryMenuRegistry
         $normalized = Str::of($industry)->lower()->trim()->toString();
 
         return match ($normalized) {
-            'coffee shop' => 'coffee',
+            // Business & professional
+            'accounting & bookkeeping', 'financial services', 'insurance', 'mortgage & lending' => 'finance',
+            'advertising & marketing', 'business consulting', 'recruitment & staffing',
+            'technology & it services', 'saas / software', 'web design & development',
+            'cybersecurity', 'telecommunications' => 'technology',
+            'architecture', 'architecture & design' => 'construction',
+            'law firm' => 'lawyer',
+            'property management' => 'real-estate',
+
+            // Construction & home services
+            'glass & aluminum installation', 'hvac / air conditioning', 'painting', 'carpentry',
+            'flooring', 'handyman services', 'interior design', 'garage door services' => 'construction',
+            'electrical services', 'solar installation', 'security systems' => 'electrician',
+            'cleaning services', 'pest control' => 'cleaning',
+            'pool services' => 'plumbing',
+
+            // Health & wellness
+            'veterinary clinic', 'pharmacy', 'optometry', 'chiropractic', 'physical therapy',
+            'mental health & counseling', 'wellness center', 'home healthcare', 'senior care',
+            'nutrition & dietetics', 'dermatology', 'aesthetic clinic' => 'medical',
             'dental clinic' => 'dentist',
             'medical clinic' => 'medical',
-            'law firm' => 'lawyer',
-            'hotel & resort', 'hotel and resort' => 'hotel',
+
+            // Food, hospitality & events
+            'cafe / coffee shop', 'coffee shop' => 'coffee',
+            'catering', 'food delivery' => 'restaurant',
+            'hotel & resort', 'hotel and resort', 'resort', 'travel agency', 'tour operator',
+            'event planning', 'wedding services', 'venue & events' => 'hotel',
+
+            // Beauty, fitness & lifestyle
+            'beauty salon', 'spa', 'barbershop', 'nail salon', 'cosmetics & skincare',
             'salon & beauty', 'salon and beauty' => 'salon',
+            'fitness gym', 'personal training', 'yoga / pilates', 'martial arts', 'sports club', 'dance studio' => 'fitness',
+
+            // Retail & ecommerce
+            'ecommerce store', 'fashion & apparel', 'jewelry', 'electronics', 'gifts & crafts',
+            'wholesale & distribution' => 'technology',
+            'furniture', 'home & living' => 'construction',
+            'grocery' => 'restaurant',
+            'florist' => 'landscaping',
+            'pet store' => 'medical',
+
+            // Automotive & marine
+            'automotive repair', 'car dealership', 'car wash', 'auto detailing', 'motorcycle services',
+            'tire shop', 'towing services', 'marine engine repair', 'boat & yacht services' => 'automotive',
+
+            // Education & training
+            'school / academy', 'college / university', 'preschool / daycare', 'tutoring',
+            'training center', 'online courses', 'language school', 'driving school' => 'education',
+
+            // Industrial & logistics
+            'manufacturing', 'engineering services', 'warehousing', 'equipment rental', 'industrial supplies' => 'construction',
+            'logistics & freight', 'courier & delivery' => 'technology',
+            'agriculture', 'farm & agribusiness' => 'landscaping',
+            'food manufacturing' => 'restaurant',
+
+            // Creative, media, community & organizations
+            'photography', 'videography', 'graphic design', 'creative agency', 'printing services',
+            'music & entertainment', 'content creator', 'media production', 'portfolio / personal brand' => 'technology',
+            'nonprofit organization', 'community organization', 'religious organization',
+            'professional association', 'government / public service', 'charity / foundation' => 'education',
+
             default => Str::slug($normalized),
         };
     }

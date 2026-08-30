@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import SeoHead from '@/Components/Seo/SeoHead';
 import PublicHeader from '@/Components/Public/PublicHeader';
+import CreateFreeDemoModal from '@/Components/CreateFreeDemoModal';
 import { trackCosmicEvent } from '@/Analytics/tracking';
 import rocketSpace from '../../images/cosmic-rocket-space.png';
 import welcomeHeroBg from '../../images/cosmic-welcome-curve-rocket.png';
@@ -166,10 +168,22 @@ function BuilderMockup() {
 }
 
 export default function Welcome() {
-    const openLunaBuild = (source = 'home') => {
-        trackCosmicEvent('trial_cta_click', { source });
-        window.dispatchEvent(new CustomEvent('cosmic:luna-open-build', { detail: { source } }));
+    const [demoModal, setDemoModal] = useState({ open: false, source: 'home', initialPrompt: '' });
+
+    const openFreeDemo = (source = 'home', initialPrompt = '') => {
+        trackCosmicEvent('trial_cta_click', { source, flow: 'create_free_demo' });
+        setDemoModal({ open: true, source, initialPrompt: String(initialPrompt || '').trim() });
     };
+
+    useEffect(() => {
+        const handleLunaDemoRequest = (event) => {
+            const detail = event?.detail || {};
+            openFreeDemo(detail.source || 'luna_welcome', detail.prompt || '');
+        };
+
+        window.addEventListener('cosmic:open-free-demo', handleLunaDemoRequest);
+        return () => window.removeEventListener('cosmic:open-free-demo', handleLunaDemoRequest);
+    }, []);
 
     return (
         <>
@@ -206,7 +220,7 @@ export default function Welcome() {
                                         Describe your business and Luna builds the first draft. Refine visually, add content, and publish — all in one connected platform.
                                     </p>
                                     <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                                        <button type="button" onClick={() => openLunaBuild('home_hero')} className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800">Build with Luna <span className="ml-2">→</span></button>
+                                        <button type="button" onClick={() => openFreeDemo('home_hero')} className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800">Create Free Demo <span className="ml-2">→</span></button>
                                         <a href="#workflow" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-black text-[#07132c] shadow-sm transition hover:bg-slate-50"><span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-[9px] text-white shadow-sm">▶</span> See how it works</a>
                                     </div>
                                     <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-slate-500">
@@ -274,7 +288,7 @@ export default function Welcome() {
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(16,185,129,.12),transparent_32%)]" />
                         <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center">
-                                <div><span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">How it works</span><h2 className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-[-.025em]">A faster path from idea to live website.</h2><p className="mt-4 max-w-md leading-7 text-slate-300">AI handles the repetitive starting work. You stay in control of the content, design, and final result.</p><button type="button" onClick={() => openLunaBuild('home_workflow')} className="mt-6 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white">Build with Luna →</button></div>
+                                <div><span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">How it works</span><h2 className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-[-.025em]">A faster path from idea to live website.</h2><p className="mt-4 max-w-md leading-7 text-slate-300">AI handles the repetitive starting work. You stay in control of the content, design, and final result.</p><button type="button" onClick={() => openFreeDemo('home_workflow')} className="mt-6 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white">Create Free Demo →</button></div>
                                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                                     {workflow.map(([num, title, copy]) => <div key={num} className="border-t border-emerald-400/40 pt-5"><div className="grid h-9 w-9 place-items-center rounded-full border border-emerald-400 bg-emerald-400/10 text-[10px] font-black text-emerald-300">{num}</div><h3 className="mt-4 text-base font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p></div>)}
                                 </div>
@@ -316,7 +330,7 @@ export default function Welcome() {
                         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-2xl bg-[#03112a] px-7 py-10 text-white sm:px-10 sm:py-12">
                             <img src={welcomeHeroBg} alt="" aria-hidden="true" className="absolute inset-y-0 right-0 h-full w-[56%] object-cover object-right opacity-75" />
                             <div className="absolute inset-0 bg-gradient-to-r from-[#03112a] via-[#03112a]/95 to-[#03112a]/15" />
-                            <div className="relative max-w-[650px] pr-3 sm:pr-8 lg:pr-16"><span className="text-[9px] font-bold uppercase tracking-[.18em] text-emerald-300">Your next website can start today</span><h2 className="mt-3 max-w-[580px] text-4xl font-extrabold leading-[1.1] tracking-[-.025em]">Ready to launch your next website?</h2><p className="mt-4 max-w-[560px] text-sm leading-6 text-slate-300">Turn a short business description into a complete, editable website in minutes.</p><div className="mt-6 flex gap-3"><button type="button" onClick={() => openLunaBuild('home_final_cta')} className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold">Build with Luna →</button><Link href="/pricing" className="rounded-lg border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold">View plans</Link></div></div>
+                            <div className="relative max-w-[650px] pr-3 sm:pr-8 lg:pr-16"><span className="text-[9px] font-bold uppercase tracking-[.18em] text-emerald-300">Your next website can start today</span><h2 className="mt-3 max-w-[580px] text-4xl font-extrabold leading-[1.1] tracking-[-.025em]">Ready to launch your next website?</h2><p className="mt-4 max-w-[560px] text-sm leading-6 text-slate-300">Turn a short business description into a complete, editable website in minutes.</p><div className="mt-6 flex gap-3"><button type="button" onClick={() => openFreeDemo('home_final_cta')} className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold">Create Free Demo →</button><Link href="/pricing" className="rounded-lg border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold">View plans</Link></div></div>
                         </div>
                     </section>
                 </main>
@@ -330,6 +344,13 @@ export default function Welcome() {
                     </div>
                 </footer>
             </div>
+
+            <CreateFreeDemoModal
+                open={demoModal.open}
+                source={demoModal.source}
+                initialPrompt={demoModal.initialPrompt}
+                onClose={() => setDemoModal((current) => ({ ...current, open: false }))}
+            />
         </>
     );
 }

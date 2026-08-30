@@ -99,7 +99,7 @@ const CTA_STYLES = [
     'border border-white/25 bg-black/35 !text-white hover:border-white/50 hover:bg-black/55',
 ];
 
-export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globalTheme }) {
+export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globalTheme, onEditSlide }) {
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const { props } = usePage();
@@ -312,16 +312,16 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             </div>
 
             <div className={sparkTw(block, "wrapper_9", "absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6")}>
-                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={() => openEditor(activeIndex)} className="cosmic-hero-slider-edit rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide {activeIndex + 1}</button>
+                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={() => onEditSlide ? onEditSlide(activeIndex) : openEditor(activeIndex)} className="cosmic-hero-slider-edit rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide {activeIndex + 1}</button>
                 <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={addSlide} className={sparkTw(block, "button", "cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white")}>Add slide</button>
             </div>
 
-            <div className={sparkTw(block, "wrapper_10", "absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14")}>
+            <div className={sparkTw(block, "wrapper_10", "cosmic-hero-slider-controls absolute bottom-6 right-6 z-40 flex items-center gap-2 sm:right-10 lg:right-14")}>
                 {floatingCta && (
                     <a
                         href={floatingCta.url}
                         onClick={(event) => event.preventDefault()}
-                        className={sparkTwPath(block, ["slides", activeIndex, "ctas", 3], "button", sparkTw(block, "floating_button", `mr-1 rounded-full px-4 py-2 text-xs font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`))}
+                        className={sparkTwPath(block, ["slides", activeIndex, "ctas", 3], "button", sparkTw(block, "floating_button", `cosmic-hero-slider-floating-cta inline-flex h-10 items-center justify-center rounded-full px-5 py-0 text-sm font-bold leading-none backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`))}
                     >
                         {floatingCta.text}
                     </a>
@@ -332,7 +332,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
 
             <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={slides.map((slide)=>slide.image_url).filter(Boolean)} maxItems={12} title="Hero slider images" onSave={saveGalleryImages} />
 
-            {editingIndex !== null && draft && createPortal(
+            {!onEditSlide && editingIndex !== null && draft && createPortal(
                 <div className={sparkTw(block, "wrapper_11", "fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm")} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
                     <div className={sparkTw(block, "wrapper_12", "cosmic-hero-slider-editor max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl")} role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
                         <div className={sparkTw(block, "wrapper_13", "flex items-start justify-between gap-4")}>

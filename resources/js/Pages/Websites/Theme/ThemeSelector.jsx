@@ -92,7 +92,18 @@ export default function ThemeSelector({
                 open={open}
                 onClose={() => { onCancelSession?.(); setOpen(false); }}
                 onApply={() => {
-                    onApplySession?.({ selectedTheme: draftTheme, generatedTheme: draftGeneratedTheme });
+                    const payload = { selectedTheme: draftTheme, generatedTheme: draftGeneratedTheme };
+
+                    // Builder uses an explicit theme-session bridge, while lighter
+                    // consumers (for example the Templates popup) only provide
+                    // onChange. Keep both contracts working so Save Theme always
+                    // commits the selected family back to the parent.
+                    if (typeof onApplySession === 'function') {
+                        onApplySession(payload);
+                    } else {
+                        onChange?.(draftTheme);
+                    }
+
                     setOpen(false);
                 }}
                 selectedTheme={draftTheme}

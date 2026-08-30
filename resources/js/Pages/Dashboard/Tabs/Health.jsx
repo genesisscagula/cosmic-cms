@@ -55,7 +55,7 @@ export default function Health({ websites = [] }) {
         const url = new URL(window.location.href);
         url.searchParams.set("tab", "health");
         url.searchParams.set("website", String(websiteId));
-        window.history.replaceState({}, "", url);
+        window.history.replaceState(window.history.state, "", url);
     }, [websiteId]);
 
     const runHealthCheck = async () => {

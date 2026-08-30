@@ -448,14 +448,16 @@ function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTa
                 {linkedPage?.id && (
                     <button
                         type="button"
+                        disabled={Boolean(linkedPage?.build_status) && linkedPage.build_status !== 'ready'}
                         onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
+                            if (linkedPage?.build_status && linkedPage.build_status !== 'ready') return;
                             window.location.assign(linkedPage.builder_url || `/pages/${linkedPage.id}/builder`);
                         }}
-                        className="mr-1 hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-violet-500/10 hover:text-violet-600 group-hover/menu-edit:flex group-focus-within/menu-edit:flex"
-                        title={`Open ${linkedPage.title || item.label || 'page'} in Builder`}
-                        aria-label={`Open ${linkedPage.title || item.label || 'page'} in Builder`}
+                        className="mr-1 hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-violet-500/10 hover:text-violet-600 disabled:cursor-wait disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-400 group-hover/menu-edit:flex group-focus-within/menu-edit:flex"
+                        title={linkedPage?.build_status && linkedPage.build_status !== 'ready' ? `${linkedPage.title || item.label || 'Page'} is still building` : `Open ${linkedPage.title || item.label || 'page'} in Builder`}
+                        aria-label={linkedPage?.build_status && linkedPage.build_status !== 'ready' ? `${linkedPage.title || item.label || 'Page'} is still building` : `Open ${linkedPage.title || item.label || 'page'} in Builder`}
                     >
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-3.5 w-3.5" aria-hidden="true">
                             <path d="M4 16h3.25L16 7.25 12.75 4 4 12.75V16Z" />

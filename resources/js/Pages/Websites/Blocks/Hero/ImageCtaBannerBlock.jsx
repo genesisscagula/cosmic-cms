@@ -1,6 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import { useRef } from "react";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
+import { resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -32,7 +33,7 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const imageRef = useRef(null);
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;
     const mediaStyle = isLightMediaTheme

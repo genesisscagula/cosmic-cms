@@ -3,13 +3,229 @@ import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 're
 import { showCosmicNotification } from '../../../Components/CosmicNotification';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { BlockRegistry } from '../BlockRegistry';
-import { createSparkTailwindRuntime } from '../Blocks/Shared/sparkTailwindRuntime';
+import { createSparkTailwindRuntime, hasSparkTailwindSchema } from '../Blocks/Shared/sparkTailwindRuntime';
 import ThemeSelector from '../Theme/ThemeSelector';
 import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
+import CosmicLoadingIcon from '../../../Components/CosmicLoadingIcon';
+import { colorFamilies } from '../../../theme/colorFamilies';
+import { resolveSemanticPalette } from '../../../theme/semanticPalette';
+import { cosmicTypographyVars } from './CosmicTypography';
+import { cosmicSectionVars, cosmicLocalSectionVars } from './CosmicSection';
+import { cosmicBackgroundVars, cosmicLocalBackgroundVars } from './CosmicBackground';
+import { cosmicComponentVars, cosmicLocalComponentVars } from './CosmicComponentTokens';
+import renderContract from '../../../../render-contract.json';
 
 const clone = (value) => typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 
 const previewThemeCycle = ['primary', 'white', 'surface', 'white', 'primary', 'surface'];
+
+
+const previewClampNumber = (value, min, max, fallback) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+};
+
+const resolveTemplatePreviewTheme = (block, index) => {
+    const requested = String(block?.theme || '').trim().toLowerCase();
+    if (requested && requested !== 'auto') return requested;
+
+    const resolved = String(block?.resolvedTheme || '').trim().toLowerCase();
+    if (resolved && resolved !== 'auto') return resolved;
+
+    return previewThemeCycle[index % previewThemeCycle.length];
+};
+
+const templatePreviewRenderVars = (block, websiteTheme = {}, index = 0) => {
+    const activeFamilyKey = String(websiteTheme?.primary || 'midnight');
+    const activeFamily = activeFamilyKey === 'my-brand'
+        ? (websiteTheme?.custom_brand_theme || colorFamilies.midnight)
+        : (colorFamilies[activeFamilyKey] || colorFamilies.midnight);
+    const semanticPalette = resolveSemanticPalette(activeFamilyKey, websiteTheme || {});
+    const design = block?.luna_design_overrides || {};
+    const localSection = block?.luna_section_overrides || {};
+    const localBackground = block?.luna_background_overrides || {};
+    const localTypography = block?.luna_typography_overrides || {};
+    const localComponent = block?.luna_component_overrides || {};
+    const localCardSurface = localComponent?.card_surface === 'dark' ? 'dark' : null;
+    const localCardSurfaceVars = localCardSurface === 'dark' ? {
+        '--cosmic-local-card-bg': 'var(--cosmic-bg-primary-surface,var(--cosmic-brand-primary,#0f172a))',
+        '--cosmic-local-card-heading': 'var(--cosmic-color-on-dark,#f8fafc)',
+        '--cosmic-local-card-text': 'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 82%,transparent)',
+        '--cosmic-local-card-border': 'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 24%,transparent)',
+    } : {};
+    const localTypographyVars = Object.fromEntries(
+        Object.entries(localTypography)
+            .filter(([, value]) => value !== null && value !== undefined && value !== '')
+            .map(([key, value]) => [`--cosmic-local-${String(key).replaceAll('_', '-')}`, String(value)]),
+    );
+    const blockType = String(block?.type || '').toLowerCase();
+    const heroNeedsDefaultPadding = (index === 0 || /hero|banner/.test(blockType))
+        && !/fullscreen|cinematic/.test(blockType)
+        && design.section_padding_y == null;
+
+    return {
+        vars: {
+            ...cosmicTypographyVars(websiteTheme?.typography || {}),
+            ...cosmicSectionVars(websiteTheme?.section_layout || {}),
+            ...cosmicBackgroundVars(activeFamily, websiteTheme?.background_style || {}),
+            ...cosmicComponentVars(websiteTheme?.components || {}),
+            ...cosmicLocalSectionVars(localSection),
+            ...cosmicLocalComponentVars(localComponent),
+            ...localCardSurfaceVars,
+            ...cosmicLocalBackgroundVars(localBackground),
+            ...localTypographyVars,
+            '--cosmic-primary': semanticPalette.primary,
+            '--cosmic-surface': semanticPalette.brand_surface,
+            '--cosmic-accent': semanticPalette.accent,
+            '--cosmic-bg-white': semanticPalette.white,
+            '--cosmic-bg-surface': semanticPalette.surface,
+            '--cosmic-bg-primary': semanticPalette.primary,
+            '--cosmic-bg-primary-surface': semanticPalette.brand_surface,
+            '--cosmic-bg-accent': semanticPalette.accent,
+            '--cosmic-brand-primary': semanticPalette.primary,
+            '--cosmic-brand-secondary': semanticPalette.secondary,
+            '--cosmic-brand-accent': semanticPalette.accent,
+            '--cosmic-color-heading': semanticPalette.heading,
+            '--cosmic-color-body': semanticPalette.body,
+            '--cosmic-color-muted': semanticPalette.muted,
+            '--cosmic-color-border': semanticPalette.border,
+            '--cosmic-color-border-strong': semanticPalette.border_strong,
+            '--cosmic-color-surface': semanticPalette.surface,
+            '--cosmic-color-surface-alt': semanticPalette.surface_alt,
+            '--cosmic-color-page': semanticPalette.page,
+            '--cosmic-color-on-primary': semanticPalette.on_primary,
+            '--cosmic-color-on-secondary': semanticPalette.on_secondary,
+            '--cosmic-color-on-accent': semanticPalette.on_accent,
+            '--cosmic-color-on-surface': semanticPalette.on_surface,
+            '--cosmic-color-on-dark': semanticPalette.on_dark,
+            '--cosmic-button-primary-bg': semanticPalette.button_primary,
+            '--cosmic-button-primary-text': semanticPalette.button_text,
+            '--cosmic-button-secondary-bg': semanticPalette.button_secondary,
+            '--cosmic-button-secondary-text': semanticPalette.button_secondary_text,
+            '--cosmic-link-color': semanticPalette.primary,
+            '--cosmic-link-hover': semanticPalette.primary_hover,
+            '--cosmic-color-success': semanticPalette.success,
+            '--cosmic-color-warning': semanticPalette.warning,
+            '--cosmic-color-error': semanticPalette.error,
+            '--cosmic-gradient-from': 'var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))',
+            '--cosmic-gradient-via': 'var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))',
+            '--cosmic-gradient-to': 'var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to))',
+            '--cosmic-gradient-glow': 'var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))',
+            '--cosmic-gradient-angle': 'var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle))',
+            ...(design.heading_size != null ? {
+                '--cosmic-local-h1-size': `${previewClampNumber(design.heading_size, 20, 112, 52)}px`,
+                '--cosmic-local-h2-size': `${previewClampNumber(design.heading_size, 20, 112, 52)}px`,
+                '--cosmic-local-h3-size': `${previewClampNumber(design.heading_size * .62, 16, 72, 32)}px`,
+            } : {}),
+            ...(design.body_size != null ? {
+                '--cosmic-local-body-size': `${previewClampNumber(design.body_size, 12, 26, 16)}px`,
+                '--cosmic-local-lead-size': `${previewClampNumber(design.body_size * 1.12, 13, 34, 18)}px`,
+            } : {}),
+            ...(design.heading_line_height != null ? {
+                '--cosmic-local-h1-line': previewClampNumber(design.heading_line_height, .88, 1.6, 1.05),
+                '--cosmic-local-h2-line': previewClampNumber(design.heading_line_height, .88, 1.6, 1.05),
+                '--cosmic-local-h3-line': previewClampNumber(design.heading_line_height, .88, 1.6, 1.08),
+            } : {}),
+            ...(design.body_line_height != null ? {
+                '--cosmic-local-body-line': previewClampNumber(design.body_line_height, 1.15, 2, 1.55),
+                '--cosmic-local-lead-line': previewClampNumber(design.body_line_height, 1.15, 2, 1.65),
+            } : {}),
+            ...(design.letter_spacing != null ? {
+                '--cosmic-local-h1-tracking': `${previewClampNumber(design.letter_spacing, -2, 8, 0)}px`,
+                '--cosmic-local-h2-tracking': `${previewClampNumber(design.letter_spacing, -2, 8, 0)}px`,
+                '--cosmic-local-h3-tracking': `${previewClampNumber(design.letter_spacing, -2, 8, 0)}px`,
+            } : {}),
+            ...(design.section_padding_y != null
+                ? {
+                    '--luna-section-py': `${previewClampNumber(design.section_padding_y, 0, 200, 72)}px`,
+                    '--cosmic-local-section-py': `${previewClampNumber(design.section_padding_y, 0, 200, 72)}px`,
+                }
+                : heroNeedsDefaultPadding
+                    ? {
+                        '--luna-section-py': '100px',
+                        '--luna-section-py-tablet': '76px',
+                        '--luna-section-py-mobile': '56px',
+                        '--cosmic-local-section-py': '100px',
+                    }
+                    : {}),
+            ...(design.section_padding_x != null ? {
+                '--luna-section-px': `${previewClampNumber(design.section_padding_x, 0, 120, 24)}px`,
+                '--cosmic-local-section-px': `${previewClampNumber(design.section_padding_x, 0, 120, 24)}px`,
+            } : {}),
+            ...(design.content_gap != null ? {
+                '--luna-content-gap': `${previewClampNumber(design.content_gap, 0, 96, 24)}px`,
+                '--cosmic-local-section-gap': `${previewClampNumber(design.content_gap, 0, 96, 24)}px`,
+            } : {}),
+            ...((design.card_radius != null || localComponent.card_radius != null) ? {
+                '--luna-card-radius': localComponent.card_radius != null
+                    ? String(localComponent.card_radius)
+                    : `${previewClampNumber(design.card_radius, 0, 64, 16)}px`,
+                ...(localComponent.card_radius == null ? {
+                    '--cosmic-local-card-radius': `${previewClampNumber(design.card_radius, 0, 64, 16)}px`,
+                } : {}),
+            } : {}),
+            ...(design.image_radius != null ? {
+                '--luna-image-radius': `${previewClampNumber(design.image_radius, 0, 64, 16)}px`,
+                '--cosmic-local-image-radius': `${previewClampNumber(design.image_radius, 0, 64, 16)}px`,
+            } : {}),
+            ...(design.content_max_width != null ? {
+                '--luna-content-max': `${previewClampNumber(design.content_max_width, 560, 1800, 1280)}px`,
+                '--cosmic-local-section-container': `${previewClampNumber(design.content_max_width, 560, 1800, 1280)}px`,
+            } : {}),
+            ...(design.section_min_height != null ? {
+                '--luna-section-min-height': `${previewClampNumber(design.section_min_height, 0, 1200, 0)}px`,
+                '--cosmic-local-section-min-height': `${previewClampNumber(design.section_min_height, 0, 1200, 0)}px`,
+            } : {}),
+            ...(['left', 'center', 'right'].includes(design.text_align) ? { '--luna-text-align': design.text_align } : {}),
+        },
+        localCardSurface,
+        heroNeedsDefaultPadding,
+        hasLegacyDesignTypography: ['heading_size', 'body_size', 'heading_line_height', 'body_line_height', 'letter_spacing', 'text_align']
+            .some((key) => design[key] !== null && design[key] !== undefined && design[key] !== ''),
+    };
+};
+
+const TemplatePreviewBlock = memo(function TemplatePreviewBlock({ block, index, websiteTheme }) {
+    const Component = BlockRegistry[block.type]?.component;
+    if (!Component) return null;
+
+    const resolvedTheme = resolveTemplatePreviewTheme(block, index);
+    const previewBlock = { ...block, resolvedTheme };
+    const { vars, localCardSurface, heroNeedsDefaultPadding, hasLegacyDesignTypography } = templatePreviewRenderVars(previewBlock, websiteTheme, index);
+    const blockType = String(block?.type || '').toLowerCase();
+    const hasLunaDesign = Object.keys(block?.luna_design_overrides || {}).length > 0 || heroNeedsDefaultPadding;
+
+    return (
+        <div
+            data-cosmic-render-shell="1"
+            data-cosmic-render-contract={renderContract.version}
+            data-cosmic-spark="1"
+            data-cosmic-design-system="1"
+            data-cosmic-block-index={index}
+            data-cosmic-block-type={block.type}
+            data-cosmic-tailwind-schema={hasSparkTailwindSchema(previewBlock) ? 'schema_backed' : 'legacy_fallback'}
+            data-cosmic-resolved-theme={resolvedTheme}
+            data-cosmic-card-surface={localCardSurface || undefined}
+            data-cosmic-background-state={String(block?.universal_background_state || resolvedTheme || 'light').toLowerCase()}
+            data-cosmic-layout-mode={/fullscreen|cinematic/.test(blockType) ? 'immersive' : (/hero|banner/.test(blockType) ? 'hero' : 'standard')}
+            data-luna-design={hasLunaDesign ? '1' : undefined}
+            data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
+            className={`cosmic-render-shell ${hasLunaDesign ? 'cosmic-luna-design-host' : ''}`}
+            style={vars}
+        >
+            <div className="cosmic-render-content">
+                <Component
+                    block={previewBlock}
+                    blockIndex={index}
+                    globalTheme={websiteTheme}
+                    tailwind={createSparkTailwindRuntime(previewBlock)}
+                    onUpdate={() => {}}
+                    blogPosts={[]}
+                />
+            </div>
+        </div>
+    );
+});
 
 function buildBlocks(template, previewMode = false) {
     if (template?.saved && Array.isArray(template.blocks) && template.blocks.length) {
@@ -34,24 +250,18 @@ const TemplateMiniPreview = memo(function TemplateMiniPreview({ template, websit
 
     return (
         <div
-            className="cosmic-preview-isolation h-52 overflow-hidden rounded-xl bg-white text-slate-900"
+            className="cosmic-preview-isolation h-52 overflow-hidden rounded-xl bg-white"
             data-cosmic-preview-isolation="true"
         >
             <div className="origin-top-left w-[400%]" style={{ transform: 'scale(.25)' }}>
-                {blocks.map((block, index) => {
-                    const Component = BlockRegistry[block.type]?.component;
-                    return Component ? (
-                        <Component
-                            key={`${block.type}-${index}`}
-                            block={block}
-                            blockIndex={index}
-                            globalTheme={websiteTheme}
-                            tailwind={createSparkTailwindRuntime(block)}
-                            onUpdate={() => {}}
-                            blogPosts={[]}
-                        />
-                    ) : null;
-                })}
+                {blocks.map((block, index) => (
+                    <TemplatePreviewBlock
+                        key={`${block.type}-${index}`}
+                        block={block}
+                        index={index}
+                        websiteTheme={websiteTheme}
+                    />
+                ))}
             </div>
         </div>
     );
@@ -506,8 +716,7 @@ export default function PageTemplatesModal({
                                     className="cosmic-template-accent inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
                                     title="Let Luna rank the best matching Templates"
                                 >
-                                    <span aria-hidden="true">✦</span>
-                                    {aiSearchBusy ? 'Searching…' : 'Ask Luna'}
+                                    {aiSearchBusy ? <><CosmicLoadingIcon className="h-3.5 w-3.5"/>Searching…</> : <><span aria-hidden="true">✦</span>Ask Luna</>}
                                 </button>
                             )}
                         </div>
@@ -720,20 +929,14 @@ export default function PageTemplatesModal({
                                 }}
                                 onDoubleClickCapture={(event) => { event.preventDefault(); event.stopPropagation(); }}
                             >
-                                {buildBlocks(preview, true).map((block, index) => {
-                                    const Component = BlockRegistry[block.type]?.component;
-                                    return Component ? (
-                                        <Component
-                                            key={`${block.type}-${index}`}
-                                            block={block}
-                                            blockIndex={index}
-                                            globalTheme={websiteTheme}
-                                            tailwind={createSparkTailwindRuntime(block)}
-                                            onUpdate={() => {}}
-                                            blogPosts={[]}
-                                        />
-                                    ) : null;
-                                })}
+                                {buildBlocks(preview, true).map((block, index) => (
+                                    <TemplatePreviewBlock
+                                        key={`${block.type}-${index}`}
+                                        block={block}
+                                        index={index}
+                                        websiteTheme={websiteTheme}
+                                    />
+                                ))}
                             </div>
                         </div>
                     </section>

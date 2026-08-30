@@ -123,7 +123,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
         autoCheckoutStarted.current = true;
         // Remove the one-shot query flag before leaving this page so Back/refresh
         // cannot create another checkout automatically.
-        window.history.replaceState({}, '', route('onboarding.pending'));
+        window.history.replaceState(window.history.state, '', route('onboarding.pending'));
         continueToPayPal();
     }, [autoCheckout, paymentConfirmed, expired]);
 

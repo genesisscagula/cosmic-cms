@@ -1,3 +1,15 @@
 {
-  "version": "2026.08-b24"
+  "version": "2026.08-b24",
+  "spark_contract": {
+    "inventory": 329,
+    "layout": "premium-v1",
+    "round_trip": "batch6",
+    "surfaces": [
+      "builder",
+      "add_section",
+      "preview",
+      "export",
+      "live"
+    ]
+  }
 }

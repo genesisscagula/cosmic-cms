@@ -47,7 +47,7 @@ export default function Dashboard({ websites, dashboard }) {
             const url = new URL(window.location.href);
             if (normalizedTab === "home") url.searchParams.delete("tab");
             else url.searchParams.set("tab", normalizedTab);
-            window.history.replaceState({}, "", url);
+            window.history.replaceState(window.history.state, "", url);
         }
     };
 

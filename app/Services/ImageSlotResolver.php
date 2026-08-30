@@ -17,6 +17,23 @@ final class ImageSlotResolver
 
         $walk = function (mixed $value, string $path = '', ?string $key = null) use (&$walk, &$slots, $type): void {
             if (is_array($value)) {
+                // AI Flex / extras image primitives store their source as `src`
+                // rather than an `image_url`-style schema field. Treat that as
+                // an assignable slot only when the node explicitly declares
+                // itself as an image, so unrelated src attributes stay untouched.
+                if (strtolower((string) ($value['type'] ?? '')) === 'image' && array_key_exists('src', $value)) {
+                    $srcPath = $path === '' ? 'src' : $path.'.src';
+                    $srcValue = $value['src'];
+                    if (! $this->isProtectedPath($srcPath, 'src', $srcValue)) {
+                        $slots[] = [
+                            'path' => $srcPath,
+                            'key' => 'src',
+                            'role' => $this->roleFor($type, $srcPath, 'src'),
+                            'value' => $srcValue,
+                        ];
+                    }
+                }
+
                 foreach ($value as $childKey => $childValue) {
                     $childKeyString = (string) $childKey;
                     $childPath = $path === '' ? $childKeyString : $path.'.'.$childKeyString;

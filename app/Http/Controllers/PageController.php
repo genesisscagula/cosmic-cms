@@ -864,12 +864,24 @@ class PageController extends Controller
             : null;
         $isWebsiteEditor = $websiteAccessRole === 'website_editor';
 
+        $trialBundlePages = $trial
+            ? collect(data_get($trial->bundle_manifest, 'pages', []))->sortBy('sort_order')->values()
+            : collect();
+        $trialBundlePagesById = $trialBundlePages->keyBy(fn (array $item) => (int) ($item['page_id'] ?? 0));
+        $trialBundleReadyPages = $trialBundlePages->where('build_status', 'ready')->count();
+        $trialBundlePageCount = $trialBundlePages->count();
+        $trialBundlePagesComplete = $trial
+            && $trial->bundle_status === 'ready'
+            && $trialBundlePageCount > 0
+            && $trialBundleReadyPages >= $trialBundlePageCount;
+
         $builderPreviewUrl = null;
-        if ($isTrialMode && $trial) {
+        if ($isTrialMode && $trial && $trialBundlePagesComplete) {
             try {
+                // A trial Preview button is only exposed for the complete bundle.
                 $builderPreviewUrl = app(\App\Services\TrialStagingPublisherService::class)->existingUrl($trial);
             } catch (Throwable $exception) {
-                // The Builder status poll retries staging repair without blocking
+                // The Builder status poll retries final staging without blocking
                 // the initial page render.
                 report($exception);
             }
@@ -906,6 +918,7 @@ class PageController extends Controller
                         'parent_id' => $trialPage->parent_id,
                         'is_home' => (int) $trialPage->id === (int) $trial->page_id,
                         'sort_order' => $trialPage->sort_order,
+                        'build_status' => (string) data_get($trialBundlePagesById->get((int) $trialPage->id), 'build_status', 'queued'),
                         'builder_url' => route('pages.builder', ['page' => $trialPage], false)
                             .'?token='.rawurlencode($trial->token),
                     ])
@@ -1007,6 +1020,19 @@ class PageController extends Controller
                 'logo_theme_sync_source' => $trial->logo_theme_sync_source,
                 'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
                 'guest_credits' => $trial ? app(TrialCreditService::class)->balance($trial) : 0,
+                'bundle_status' => (string) ($trial->bundle_status ?: 'queued'),
+                'bundle_ready_pages' => $trialBundleReadyPages,
+                'bundle_page_count' => $trialBundlePageCount,
+                'bundle_progress' => $trialBundlePageCount > 0 ? (int) round(($trialBundleReadyPages / $trialBundlePageCount) * 100) : 0,
+                'bundle_pages_complete' => (bool) $trialBundlePagesComplete,
+                'bundle_preview_ready' => (bool) ($trialBundlePagesComplete && filled($builderPreviewUrl)),
+                'bundle_pages' => $trialBundlePages->map(fn (array $item): array => [
+                    'id' => (int) ($item['page_id'] ?? 0),
+                    'title' => (string) ($item['title'] ?? 'Page'),
+                    'slug' => (string) ($item['slug'] ?? ''),
+                    'is_home' => (bool) ($item['is_home'] ?? false),
+                    'status' => (string) ($item['build_status'] ?? 'queued'),
+                ])->values()->all(),
             ] : null,
             'cosmicPricing' => [
                 'balance' => $trial ? app(TrialCreditService::class)->balance($trial) : (int) ($request->user()?->fresh()?->credits ?? 0),

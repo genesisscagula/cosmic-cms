@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { handoffToBuilder, normalizeBuilderUrl } from '@/Support/builderHandoff';
 import { useAppearance } from '@/Appearance/AppearanceContext';
+import CosmicLoadingIcon from './CosmicLoadingIcon';
 
 const lunaText = (value, fallback = '') => {
     if (typeof value === 'string') return value;
@@ -351,7 +352,13 @@ useEffect(()=>{
             if(Number.isFinite(Number(data.credit_balance)))setBalance(Number(data.credit_balance));
             const cost=Number(data.credit_cost||0);
             const baseReply=lunaText(data.reply,'I’m working on that now.');
-            const trialNotice=(data.mode==='start_trial' || data.start_trial===true) ? ' This may take a moment while I build and QA your website. Please keep this tab open — I’ll take you to the Builder as soon as it’s ready.' : '';
+            const startingTrial=(data.mode==='start_trial' || data.start_trial===true);
+            const welcomeDemoHandoff=startingTrial && component==='Welcome' && !effectiveAuthenticated;
+            const trialNotice=startingTrial
+                ? (welcomeDemoHandoff
+                    ? ' I opened the free demo details for you. Add your website name, industry, and email — I kept your request as the additional instructions.'
+                    : ' This may take a moment while I build and QA your website. Please keep this tab open — I’ll take you to the Builder as soon as it’s ready.')
+                : '';
             const reply=`${baseReply}${trialNotice}${cost>0?` · ${cost} credit${cost===1?'':'s'}`:''}`;
             setMessages(current=>[...current,{
                 role:'assistant',
@@ -366,12 +373,23 @@ useEffect(()=>{
             }]);
             setStatus(data.status_label||'Ready');
 
-            if(data.mode==='start_trial' || data.start_trial===true){
+            if(startingTrial){
                 if (timer) window.clearInterval(timer);
-                // The AI acknowledgement above is rendered first. Generation then
-                // continues inside this same chat instead of opening the old /start loader.
-                await new Promise(resolve=>window.setTimeout(resolve,420));
-                await generatePublicTrial(String(data.generation_prompt || message));
+                const generationPrompt=String(data.generation_prompt || message).trim();
+                if(welcomeDemoHandoff){
+                    setStatus('Complete your free demo details');
+                    window.dispatchEvent(new CustomEvent('cosmic:open-free-demo', {
+                        detail:{
+                            source:'luna_welcome',
+                            prompt:generationPrompt,
+                        },
+                    }));
+                }else{
+                    // Preserve the existing prompt-only public trial path outside Welcome
+                    // until those surfaces are intentionally migrated to the guided demo flow.
+                    await new Promise(resolve=>window.setTimeout(resolve,420));
+                    await generatePublicTrial(generationPrompt);
+                }
             } else if(data.mode==='navigate'&&data.navigate_action==='back'){
                 window.setTimeout(()=>window.history.back(),500);
             } else if(data.mode==='navigate'&&data.navigate_url){
@@ -501,7 +519,7 @@ useEffect(()=>{
 
             {starterSiteContext ? <div className="border-t border-white/10 px-4 py-3 text-[10px] leading-5 text-slate-500">Bundle selection uses saved website context. AI page generation starts only after you choose <strong className="text-slate-300">Install Starter Pages</strong>.</div> : <div className={`border-t p-4 ${appDark?'border-white/10':'border-slate-200'}`}>
                 <textarea ref={inputRef} value={input} onChange={event=>setInput(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}} rows={3} placeholder="Ask Luna…" className={`w-full resize-none rounded-xl border px-3 py-3 text-sm leading-6 outline-none focus:border-violet-400 ${appDark?'border-white/10 bg-black/25 text-white placeholder:text-slate-600':'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`} />
-                <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-slate-600">{effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span><button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?'Working…':'Send'}</button></div>
+                <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-slate-600">{effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span><button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="inline-flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?<><CosmicLoadingIcon className="h-3.5 w-3.5"/>Working…</>:'Send'}</button></div>
             </div>}
         </section>}
     </>;

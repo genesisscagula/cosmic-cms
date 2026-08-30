@@ -150,6 +150,31 @@ final class SparkEditCapabilityRegistry
                 'render_token' => '--cosmic-local-section-py',
                 'step' => 8, 'min' => 0, 'max' => 240, 'unit' => 'px',
             ],
+            'padding_top' => [
+                'module' => 'Spacing', 'storage_path' => 'luna_section_overrides.py_top',
+                'fallback_paths' => ['luna_section_overrides.py', 'luna_design_overrides.section_padding_y'],
+                'render_token' => '--cosmic-local-section-py-top', 'step' => 8, 'min' => 0, 'max' => 240, 'unit' => 'px',
+            ],
+            'padding_bottom' => [
+                'module' => 'Spacing', 'storage_path' => 'luna_section_overrides.py_bottom',
+                'fallback_paths' => ['luna_section_overrides.py', 'luna_design_overrides.section_padding_y'],
+                'render_token' => '--cosmic-local-section-py-bottom', 'step' => 8, 'min' => 0, 'max' => 240, 'unit' => 'px',
+            ],
+            'padding_left' => [
+                'module' => 'Spacing', 'storage_path' => 'luna_section_overrides.px_left',
+                'fallback_paths' => ['luna_section_overrides.px', 'luna_design_overrides.section_padding_x'],
+                'render_token' => '--cosmic-local-section-px-left', 'step' => 8, 'min' => 0, 'max' => 160, 'unit' => 'px',
+            ],
+            'padding_right' => [
+                'module' => 'Spacing', 'storage_path' => 'luna_section_overrides.px_right',
+                'fallback_paths' => ['luna_section_overrides.px', 'luna_design_overrides.section_padding_x'],
+                'render_token' => '--cosmic-local-section-px-right', 'step' => 8, 'min' => 0, 'max' => 160, 'unit' => 'px',
+            ],
+            'padding_x' => [
+                'module' => 'Spacing', 'storage_path' => 'luna_section_overrides.px',
+                'fallback_paths' => ['luna_design_overrides.section_padding_x'],
+                'render_token' => '--cosmic-local-section-px', 'step' => 8, 'min' => 0, 'max' => 160, 'unit' => 'px',
+            ],
             'gap' => [
                 'module' => 'Spacing',
                 'storage_path' => 'luna_section_overrides.gap',

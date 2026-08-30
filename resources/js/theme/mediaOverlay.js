@@ -34,8 +34,10 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
         ? { primary: globalTheme }
         : (globalTheme || {});
     const sectionTheme = resolvedTheme || "primary";
-    const cleanPageStyle = String(normalizedGlobalTheme.pageStyle || normalizedGlobalTheme.page_style || "").toLowerCase() === "clean";
-    const sectionRequestedLight = cleanPageStyle || LIGHT_MEDIA_THEMES.has(sectionTheme);
+    // Clean page style no longer forces every photo/video hero through a 90%
+    // white wash. The resolved hero theme decides media contrast; ordinary Clean
+    // heroes are still resolved to white by heroTheme.js.
+    const sectionRequestedLight = LIGHT_MEDIA_THEMES.has(sectionTheme);
 
     // Hero/media state contract: primary uses the active family color as the
     // overlay tint; white/surface and Clean use a strong white wash with slate copy.

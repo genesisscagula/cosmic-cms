@@ -22,6 +22,8 @@ final class LunaSectionImageService
     public function __construct(
         private readonly UnsplashProvider $unsplash,
         private readonly MediaLibraryRegistry $media,
+        private readonly ImageSlotResolver $imageSlots,
+        private readonly SmartImageService $smartImages,
     ) {}
 
     public function isInsertionIntent(string $prompt): bool
@@ -35,6 +37,54 @@ final class LunaSectionImageService
         $hasComposition = (bool) preg_match('/\b(?:with|featuring|using)\s+(?:an?\s+)?(?:image|photo|picture|visual)\b/i', $p);
 
         return $hasImage && ($hasInsert || $hasPlacement || $hasComposition);
+    }
+
+    public function isReplacementIntent(string $prompt): bool
+    {
+        $p = Str::lower(trim($prompt));
+        if ($p === '') return false;
+
+        $hasVisual = (bool) preg_match('/\b(?:image|photo|picture|photograph|visual|background)\b/i', $p);
+        $hasReplacement = (bool) preg_match('/\b(?:change|replace|swap|update|use|set|make)\b/i', $p);
+
+        return $hasVisual && $hasReplacement;
+    }
+
+    /** @return array{block:array,changed:bool,path?:string,role?:string} */
+    public function replacePrimaryImage(array $block, string $url): array
+    {
+        $url = trim($url);
+        if ($url === '') return ['block' => $block, 'changed' => false];
+
+        $slots = $this->imageSlots->slots($block);
+        usort($slots, static function (array $left, array $right): int {
+            $score = static function (array $slot): int {
+                $path = Str::lower((string) ($slot['path'] ?? ''));
+                $role = Str::lower((string) ($slot['role'] ?? ''));
+                if ($path === 'universal_background_image_url') return 0;
+                if ($path === 'image_url') return 1;
+                if ($role === 'background') return 2;
+                if ($role === 'hero') return 3;
+                return 10 + substr_count($path, '.');
+            };
+            return $score($left) <=> $score($right);
+        });
+
+        foreach ($slots as $slot) {
+            $path = trim((string) ($slot['path'] ?? ''));
+            if ($path === '') continue;
+            $before = trim((string) data_get($block, $path, ''));
+            if ($before === $url) continue;
+            data_set($block, $path, $url);
+            return [
+                'block' => $block,
+                'changed' => true,
+                'path' => $path,
+                'role' => (string) ($slot['role'] ?? 'general'),
+            ];
+        }
+
+        return ['block' => $block, 'changed' => false];
     }
 
     public function mode(string $prompt): string
@@ -62,6 +112,164 @@ final class LunaSectionImageService
         }
 
         return $this->stock($website, $user, $query, $block);
+    }
+
+    /**
+     * Hydrate every blank/generic image slot in a newly selected premade Spark.
+     *
+     * Start Blank with Luna is Spark-first now, so the generated registered Spark
+     * can legitimately contain nested image grids/cards/slides whose image fields
+     * are empty. This pass resolves those slots with contextual Unsplash photos
+     * before the popup preview is returned. Existing real/user-selected images are
+     * never replaced. When Unsplash cannot resolve a slot, a local industry/default
+     * fallback is assigned so the preview never ships with a blank media hole.
+     *
+     * @return array{block:array,changed:bool,hydrated_count:int,fallback_count:int,failed_count:int,slots:array}
+     */
+    public function hydrateMissingImages(
+        Website $website,
+        ?User $user,
+        string $prompt,
+        array $block,
+        int $maxSlots = 16,
+    ): array {
+        $slots = array_values(array_filter(
+            $this->imageSlots->slots($block),
+            fn (array $slot): bool => $this->shouldAutoHydrateValue($slot['value'] ?? null),
+        ));
+
+        if ($slots === []) {
+            return [
+                'block' => $block,
+                'changed' => false,
+                'hydrated_count' => 0,
+                'fallback_count' => 0,
+                'failed_count' => 0,
+                'slots' => [],
+            ];
+        }
+
+        $slots = array_slice($slots, 0, max(1, $maxSlots));
+        $hydrated = 0;
+        $fallbacks = 0;
+        $failed = 0;
+        $slotLog = [];
+        $usedUrls = [];
+        $industry = Str::slug((string) ($website->industry ?: 'default')) ?: 'default';
+
+        foreach ($slots as $index => $slot) {
+            $path = (string) ($slot['path'] ?? '');
+            if ($path === '') continue;
+
+            $query = $this->slotContextQuery($prompt, $block, $website, $slot, $index);
+            $resolved = $this->stock($website, $user, $query, $block);
+            $url = trim((string) ($resolved['url'] ?? ''));
+            $source = 'unsplash';
+
+            // Different image-grid slots should not silently collapse to the same
+            // photograph. Give a duplicate result one more context variation.
+            if ($url !== '' && isset($usedUrls[$url])) {
+                $retryQuery = $this->slotContextQuery($prompt, $block, $website, $slot, $index + count($slots) + 3);
+                $retry = $this->stock($website, $user, $retryQuery, $block);
+                $retryUrl = trim((string) ($retry['url'] ?? ''));
+                if ($retryUrl !== '' && ! isset($usedUrls[$retryUrl])) {
+                    $resolved = $retry;
+                    $url = $retryUrl;
+                    $query = $retryQuery;
+                }
+            }
+
+            if ($url === '') {
+                $url = trim($this->smartImages->localFallback($industry));
+                $source = 'fallback';
+                $fallbacks++;
+            }
+
+            if ($url === '') {
+                $failed++;
+                $slotLog[] = ['path' => $path, 'role' => $slot['role'] ?? 'general', 'status' => 'failed'];
+                continue;
+            }
+
+            data_set($block, $path, $url);
+            $usedUrls[$url] = true;
+            $hydrated++;
+            $slotLog[] = [
+                'path' => $path,
+                'role' => $slot['role'] ?? 'general',
+                'status' => $source,
+                'query' => $query,
+                'url' => $url,
+            ];
+        }
+
+        return [
+            'block' => $block,
+            'changed' => $hydrated > 0,
+            'hydrated_count' => $hydrated,
+            'fallback_count' => $fallbacks,
+            'failed_count' => $failed,
+            'slots' => $slotLog,
+        ];
+    }
+
+    private function shouldAutoHydrateValue(mixed $value): bool
+    {
+        if (! is_string($value)) return false;
+
+        $url = trim($value);
+        if ($url === '') return true;
+
+        $normalized = Str::lower($url);
+        return str_contains($normalized, '/cms-images/default/')
+            || str_contains($normalized, '/cms-images/background/')
+            || str_contains($normalized, '/cosmic-images/cosmic-fallback.svg');
+    }
+
+    /** @param array{path?:string,key?:string,role?:string,value?:mixed} $slot */
+    private function slotContextQuery(string $prompt, array $block, Website $website, array $slot, int $index): string
+    {
+        $role = trim((string) ($slot['role'] ?? 'general')) ?: 'general';
+        $path = trim((string) ($slot['path'] ?? ''));
+        $parentPath = str_contains($path, '.') ? Str::beforeLast($path, '.') : '';
+        $parent = $parentPath !== '' ? data_get($block, $parentPath) : $block;
+        $parts = [];
+
+        if (is_array($parent)) {
+            foreach (['eyebrow','heading','title','name','label','text','description','service','category'] as $key) {
+                $value = trim(strip_tags((string) ($parent[$key] ?? '')));
+                if ($value !== '') $parts[] = $value;
+            }
+        }
+
+        foreach (['eyebrow','heading','title','description','semantic_type','category'] as $key) {
+            $value = trim(strip_tags((string) ($block[$key] ?? '')));
+            if ($value !== '') $parts[] = $value;
+        }
+
+        $cleanPrompt = preg_replace('/\b(?:add|insert|put|place|include|show|attach|image|images|photo|photos|picture|pictures|visual|section|please)\b/i', ' ', $prompt) ?? $prompt;
+        $cleanPrompt = preg_replace('/\s+/', ' ', trim($cleanPrompt)) ?? trim($cleanPrompt);
+        $cleanPrompt = preg_replace('/\byatch\b/i', 'yacht', $cleanPrompt) ?? $cleanPrompt;
+        if ($cleanPrompt !== '') array_unshift($parts, $cleanPrompt);
+
+        $industry = trim((string) ($website->industry ?: ''));
+        if ($industry !== '') $parts[] = $industry;
+
+        $rolePhrase = match ($role) {
+            'hero' => 'wide cinematic website hero photography',
+            'services' => 'professional service work editorial photography',
+            'people' => 'authentic professional people portrait photography',
+            'gallery' => 'premium project portfolio editorial photography',
+            'background' => 'wide atmospheric website background photography',
+            default => 'premium commercial editorial photography',
+        };
+        $parts[] = $rolePhrase;
+
+        $variants = ['craftsmanship','workspace','project detail','team at work','materials','finished result','environment','process','architecture','close-up detail','professional scene','editorial detail'];
+        $parts[] = $variants[$index % count($variants)];
+
+        $query = preg_replace('/\s+/', ' ', implode(' ', array_slice(array_values(array_unique(array_filter($parts))), 0, 7))) ?? '';
+        return Str::limit(trim($query) ?: 'premium business editorial photography', 220, '');
     }
 
     public function hasNewImageSlot(array $before, array $after): bool
@@ -306,6 +514,7 @@ final class LunaSectionImageService
 
         $cleanPrompt = preg_replace('/\b(?:add|insert|put|place|include|show|attach|image|photo|picture|photograph|visual|after|before|below|under|above|over|the|this|that|title|heading|section|here|please)\b/i', ' ', $prompt) ?? $prompt;
         $cleanPrompt = preg_replace('/\s+/', ' ', trim($cleanPrompt)) ?? trim($cleanPrompt);
+        $cleanPrompt = preg_replace('/\byatch\b/i', 'yacht', $cleanPrompt) ?? $cleanPrompt;
         if ($cleanPrompt !== '') array_unshift($parts, $cleanPrompt);
 
         $query = trim(preg_replace('/\s+/', ' ', implode(' ', array_slice(array_filter($parts), 0, 6))) ?? '');

@@ -4,6 +4,7 @@ import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
+import CosmicLoadingIcon from '../../Components/CosmicLoadingIcon';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { logoFilterFor } from '@/Branding/logoFilters';
 
@@ -212,6 +213,82 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
     },
 });
 
+
+function LunaNetworkOrb({ compact = false }) {
+    const sizeClass = compact ? 'cosmic-luna-network-orb--compact' : '';
+    return <div className={`cosmic-luna-network-orb ${sizeClass}`} aria-hidden="true">
+        <span className="cosmic-luna-network-orb__halo" />
+        <svg viewBox="0 0 120 120" className="cosmic-luna-network-orb__svg" fill="none">
+            <circle cx="60" cy="60" r="41" className="cosmic-luna-network-orb__ring" />
+            <path d="M60 19 88 36 101 62 82 91 49 100 22 80 18 48 39 25 60 19Z" className="cosmic-luna-network-orb__mesh" />
+            <path d="M39 25 49 100M88 36 22 80M18 48 101 62M60 19 82 91M39 25 82 91M88 36 49 100M22 80 60 19M18 48 82 91M39 25 101 62M49 100 18 48" className="cosmic-luna-network-orb__mesh cosmic-luna-network-orb__mesh--soft" />
+            {[[60,19],[88,36],[101,62],[82,91],[49,100],[22,80],[18,48],[39,25],[60,60],[52,46],[73,50],[70,72],[43,70]].map(([cx,cy], index)=><circle key={`${cx}-${cy}-${index}`} cx={cx} cy={cy} r={index===8?4:2.4} className={index===8?'cosmic-luna-network-orb__node cosmic-luna-network-orb__node--core':'cosmic-luna-network-orb__node'} />)}
+            <path d="M60 8v8M60 104v8M8 60h8M104 60h8" className="cosmic-luna-network-orb__spark" />
+        </svg>
+    </div>;
+}
+
+function BlankLunaCanvas({ dark = false }) {
+    return <div className={`cosmic-blank-luna-canvas ${dark ? 'cosmic-blank-luna-canvas--dark' : ''}`}>
+        <div className="cosmic-blank-luna-canvas__chrome" aria-hidden="true">
+            <span className="cosmic-blank-luna-canvas__chrome-pill cosmic-blank-luna-canvas__chrome-pill--wide" />
+            <span className="cosmic-blank-luna-canvas__chrome-dots"><i/><i/><i/><i/></span>
+            <span className="cosmic-blank-luna-canvas__chrome-pill" />
+        </div>
+        <div className="cosmic-blank-luna-canvas__intro">
+            <div className="cosmic-blank-luna-canvas__spark" aria-hidden="true">✦</div>
+            <h4>New Luna Section</h4>
+            <p>Your new section starts as a clean draft.<br/>Tell Luna what you want and preview the tailored Spark here before adding it.</p>
+            <span className="cosmic-blank-luna-canvas__add" aria-hidden="true">＋</span>
+        </div>
+        <div className="cosmic-blank-luna-canvas__skeleton" aria-hidden="true">
+            <div className="cosmic-blank-luna-canvas__cards">
+                {[0,1,2].map((item)=><div key={item} className="cosmic-blank-luna-canvas__card"><span className="cosmic-blank-luna-canvas__image">◇</span><i/><i/><i/></div>)}
+            </div>
+            <div className="cosmic-blank-luna-canvas__wide"><span className="cosmic-blank-luna-canvas__image">◇</span><div><i/><i/><i/></div></div>
+        </div>
+    </div>;
+}
+
+function LunaProcessCard({ status = 'Working…', dark = false }) {
+    const normalized = String(status || '').toLowerCase();
+    const actionLabel = /logo/.test(normalized)
+        ? 'Generating the logo'
+        : /image|photo|upload/.test(normalized)
+            ? 'Generating the visual'
+            : /publish|live/.test(normalized)
+                ? 'Publishing the page'
+                : /section/.test(normalized)
+                    ? 'Building the section'
+                    : /design/.test(normalized)
+                        ? 'Applying the design'
+                        : 'Applying the update';
+    const steps = [
+        'Understanding your request',
+        'Planning the changes',
+        actionLabel,
+        'Verifying the result',
+    ];
+    let activeIndex = 0;
+    if (/plan|designing|structure/.test(normalized)) activeIndex = 1;
+    if (/apply|build|generat|upload|publish|updat|working|creating|adding/.test(normalized)) activeIndex = 2;
+    if (/verif|check|done|100%|ready for crop|editable page is ready/.test(normalized)) activeIndex = 3;
+
+    return <div className={`cosmic-luna-process-card ${dark ? 'cosmic-luna-process-card--dark' : ''}`} role="status" aria-live="polite">
+        <p className="cosmic-luna-process-card__intro">Luna is working on your request.</p>
+        <div className="cosmic-luna-process-card__steps">
+            {steps.map((label, index) => {
+                const state = index < activeIndex ? 'complete' : index === activeIndex ? 'active' : 'pending';
+                return <div key={`${label}-${index}`} className={`cosmic-luna-process-card__step cosmic-luna-process-card__step--${state}`}>
+                    <span className="cosmic-luna-process-card__marker" aria-hidden="true">{state === 'complete' ? '✓' : state === 'pending' ? '•' : ''}</span>
+                    <span>{label}</span>
+                </div>;
+            })}
+        </div>
+        <p className="cosmic-luna-process-card__status">{status || 'Working…'}</p>
+    </div>;
+}
+
 function BuilderToolbarDropdown({ menuKey, label, activeMenu, setActiveMenu, trialMode = false, darkMode = true, align = 'left', tone = 'default', onPrimaryAction = null, primaryDisabled = false, children }) {
     const rootRef = useRef(null);
     const triggerRef = useRef(null);
@@ -269,9 +346,9 @@ function BuilderToolbarDropdown({ menuKey, label, activeMenu, setActiveMenu, tri
     return (
         <div ref={rootRef} className="relative shrink-0">
             {publishTone && onPrimaryAction ? (
-                <div className={`cosmic-toolbar-split-trigger inline-flex h-9 overflow-hidden rounded-lg border ${triggerClass}`}>
-                    <button type="button" onClick={onPrimaryAction} disabled={primaryDisabled} className="px-3 text-xs font-semibold transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60">{label}</button>
-                    <button ref={triggerRef} type="button" aria-label="Open publish options" aria-haspopup="menu" aria-expanded={open} onClick={() => setActiveMenu(open ? null : menuKey)} className="border-l border-white/25 px-2 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200">
+                <div data-cosmic-publish-trigger="true" className={`cosmic-toolbar-split-trigger cosmic-publish-split-trigger inline-flex h-9 overflow-hidden rounded-lg border ${triggerClass}`}>
+                    <button type="button" onClick={onPrimaryAction} disabled={primaryDisabled} className="cosmic-publish-split-primary px-3 text-xs font-semibold text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60">{label}</button>
+                    <button ref={triggerRef} type="button" aria-label="Open publish options" aria-haspopup="menu" aria-expanded={open} onClick={() => setActiveMenu(open ? null : menuKey)} className="cosmic-publish-split-toggle border-l border-white/25 px-2 text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200">
                         <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={`h-3.5 w-3.5 transition ${open ? 'rotate-180' : ''}`}><path d="m5.5 7.5 4.5 4.5 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
                 </div>
@@ -614,6 +691,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [feedbackBusy, setFeedbackBusy] = useState(false);
     const [feedbackError, setFeedbackError] = useState('');
     const lunaMessagesEndRef = useRef(null);
+    const contextualLunaMessagesEndRef = useRef(null);
     const lunaPromptRef = useRef(null);
     const [lunaStatus, setLunaStatus] = useState('Ready');
     const [lunaContextTyping, setLunaContextTyping] = useState(false);
@@ -666,7 +744,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [previewUrl, setPreviewUrl] = useState(initialPreviewUrl);
     const [previewDeployedAt, setPreviewDeployedAt] = useState(initialPreviewDeployment?.deployed_at || null);
     const [previewDeploymentError, setPreviewDeploymentError] = useState(initialPreviewDeployment?.error || '');
-    const [trialPreviewStatus, setTrialPreviewStatus] = useState({ readyPages: 0, pageCount: 0, message: '' });
+    const [trialPreviewStatus, setTrialPreviewStatus] = useState(() => ({
+        readyPages: Number(trialExperience?.bundle_ready_pages || 0),
+        pageCount: Number(trialExperience?.bundle_page_count || 0),
+        progress: Number(trialExperience?.bundle_progress || 0),
+        bundleStatus: String(trialExperience?.bundle_status || 'queued'),
+        pagesComplete: Boolean(trialExperience?.bundle_pages_complete),
+        previewReady: Boolean(trialExperience?.bundle_preview_ready && initialPreviewUrl),
+        currentPageTitle: '',
+        pages: Array.isArray(trialExperience?.bundle_pages) ? trialExperience.bundle_pages : [],
+        message: trialExperience?.bundle_pages_complete
+            ? (initialPreviewUrl ? 'Your complete demo website is ready.' : 'All pages are built. Finalizing your preview.')
+            : '',
+    }));
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
     const themeSessionSnapshotRef = useRef(null);
@@ -762,6 +852,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
     const previewIsStale = Boolean(previewUrl) && (hasUnsavedChanges || pageStatus !== 'published');
+    const trialBundleStatusByPageId = new Map(
+        (Array.isArray(trialPreviewStatus.pages) ? trialPreviewStatus.pages : [])
+            .map((bundlePage) => [Number(bundlePage?.id || 0), String(bundlePage?.status || 'queued')]),
+    );
+    const builderPageTargets = trialMode
+        ? (websitePages || []).map((target) => ({
+            ...target,
+            build_status: trialBundleStatusByPageId.get(Number(target?.id || 0)) || target?.build_status || 'queued',
+        }))
+        : websitePages;
 
     useEffect(() => {
         // Trial email capture is prompted once on the first Builder landing.
@@ -786,7 +886,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     }, [cosmicPricing?.balance, trialExperience?.guest_credits, trialMode, setCreditBalance]);
 
     useEffect(() => {
-        if (!trialMode || !trialToken || previewUrl) return undefined;
+        if (!trialMode || !trialToken || (trialPreviewStatus.previewReady && previewUrl)) return undefined;
 
         let cancelled = false;
         let timer = null;
@@ -803,34 +903,49 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                 if (cancelled) return;
 
+                const readyPages = Number(status?.ready_pages || 0);
+                const pageCount = Number(status?.page_count || 0);
+                const pagesComplete = Boolean(status?.pages_complete);
+                const previewReady = Boolean(status?.preview_ready && status?.preview_url);
+
                 setTrialPreviewStatus({
-                    readyPages: Number(status?.ready_pages || 0),
-                    pageCount: Number(status?.page_count || 0),
+                    readyPages,
+                    pageCount,
+                    progress: Number(status?.progress || 0),
+                    bundleStatus: String(status?.bundle_status || 'building'),
+                    pagesComplete,
+                    previewReady,
+                    currentPageTitle: String(status?.current_page_title || ''),
+                    pages: Array.isArray(status?.pages) ? status.pages : [],
                     message: String(status?.message || ''),
                 });
 
-                if (status?.preview_url) {
+                if (previewReady) {
                     setPreviewUrl(status.preview_url);
                     setPreviewDeployedAt(new Date().toISOString());
                     setPreviewDeploymentError('');
                     return;
                 }
 
+                // Never expose a progressively staged URL in trial mode. The
+                // Preview button unlocks only after every bundle page is ready.
+                if (!pagesComplete) setPreviewUrl(null);
+
                 if (status?.preview_error) {
                     setPreviewDeploymentError(String(status.preview_error));
                 }
                 if (status?.terminal) return;
 
-                const delay = Math.max(2500, Number(status?.poll_after_ms || 3000));
-                if (attempts < 120) timer = window.setTimeout(pollStagingPreview, delay);
+                const delay = Math.max(2500, Number(status?.poll_after_ms || 2500));
+                if (attempts < 180) timer = window.setTimeout(pollStagingPreview, delay);
             } catch (error) {
                 if (cancelled) return;
 
                 // A transient queue/reload race must not permanently strand the
-                // button. Back off, then retry for the duration of a normal build.
+                // build indicator. Back off while staying below the status throttle.
                 const retryAfter = Number(error?.response?.headers?.['retry-after'] || 0);
                 const delay = retryAfter > 0 ? retryAfter * 1000 : Math.min(10000, 2500 + attempts * 250);
-                if (attempts < 120) timer = window.setTimeout(pollStagingPreview, delay);
+                if (attempts < 180) timer = window.setTimeout(pollStagingPreview, delay);
             }
         };
 
@@ -840,7 +955,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             cancelled = true;
             if (timer) window.clearTimeout(timer);
         };
-    }, [previewUrl, trialMode, trialToken]);
+    }, [previewUrl, trialMode, trialToken, trialPreviewStatus.previewReady]);
 
     useEffect(() => {
         const warnBeforeLeaving = (event) => {
@@ -3909,11 +4024,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         } finally { setSavedSparksBusy(false); }
     };
 
-    const openLunaSparksFromAddSection = async () => {
-        setIsModalOpen(false);
-        await openSavedSparks({ filter:'luna', installMode:'customize' });
-    };
-
     const saveBlockToSavedSparks = async (block, index) => {
         if (!block?.type || savedSparksBusy) return;
         setSavedSparksBusy(true);
@@ -4116,6 +4226,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return () => window.cancelAnimationFrame(frame);
     }, [lunaMessages, pageAiBusy, lunaStatus, lunaChatOpen]);
 
+    // Hotfix 2: contextualLunaMessages is declared before any hook dependency uses it.
+    // This avoids the temporal-dead-zone crash that blanked the Builder on load.
+    const contextualLunaMessages = editSession?.open ? lunaMessages.slice(editSessionLunaStartIndex) : [];
+
+    useEffect(() => {
+        if (!editSession?.open) return;
+        const frame = window.requestAnimationFrame(() => {
+            contextualLunaMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [contextualLunaMessages, pageAiBusy, lunaStatus, editSession?.open]);
+
 
     const snapshotBuilderEditState = () => ({
         blocks: cloneBuilderEditValue(data.blocks || []),
@@ -4177,7 +4299,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         // the modal and then rolled back later.
         const original = snapshotBuilderEditState();
 
-        const normalizedBlockIndex = Number.isInteger(Number(blockIndex)) ? Number(blockIndex) : null;
+        const normalizedBlockIndex = blockIndex !== null && blockIndex !== undefined && blockIndex !== '' && Number.isInteger(Number(blockIndex)) && Number(blockIndex) >= 0 ? Number(blockIndex) : null;
         const normalizedScope = scope === 'section'
             ? 'section'
             : target?.scope === 'header'
@@ -4213,6 +4335,31 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaManualOpen(false);
         setPageAiError('');
         setPageAiPrompt('');
+    };
+
+    const beginHeroSliderSlideEdit = (blockIndex, slideIndex) => {
+        const normalizedBlockIndex = Number(blockIndex);
+        const normalizedSlideIndex = Number(slideIndex);
+        const sourceBlock = data.blocks?.[normalizedBlockIndex];
+        const slides = Array.isArray(sourceBlock?.slides) ? sourceBlock.slides : [];
+        if (!Number.isInteger(normalizedBlockIndex) || !Number.isInteger(normalizedSlideIndex) || sourceBlock?.type !== 'hero_slider_fade' || !slides[normalizedSlideIndex]) return;
+        const slide = slides[normalizedSlideIndex];
+        beginEditSession({
+            scope:'slide',
+            blockIndex:normalizedBlockIndex,
+            label:`Hero slide ${normalizedSlideIndex + 1}`,
+            target:{
+                type:'slide',
+                scope:'section',
+                fieldPath:`slides.${normalizedSlideIndex}`,
+                collectionKey:'slides',
+                collectionPath:'slides',
+                itemIndex:normalizedSlideIndex,
+                itemCount:slides.length,
+                currentValue:String(slide.heading || slide.eyebrow || ''),
+                label:`Hero slide ${normalizedSlideIndex + 1}`,
+            },
+        });
     };
 
     const beginNewSectionEdit = (block, meta = {}) => {
@@ -4260,6 +4407,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             creationSource: meta?.creationSource || (block?.ai_flex?.source === 'blank' ? 'blank_luna' : 'spark'),
             aiFlexMode: Boolean(meta?.aiFlexMode || block?.ai_flex?.mode === 'ai_flex'),
             skipSparkMatch: Boolean(meta?.skipSparkMatch || block?.ai_flex?.skip_spark_match),
+            creationSparkKey: String(meta?.spark?.key || block?.type || ''),
+            creationSparkOwned: meta?.ownership ? Boolean(meta.ownership.owned) : Boolean(meta?.spark?.owned ?? true),
+            creationSparkCanInstall: meta?.ownership ? meta.ownership.canInstall !== false : meta?.spark?.can_install !== false,
+            creationSparkCredits: Number(meta?.ownership?.credits ?? meta?.spark?.credits ?? 0),
+            creationSparkTrialLocked: Boolean(meta?.ownership?.trialLocked ?? meta?.spark?.trial_locked),
             globalLunaConversation: cloneBuilderEditValue(Array.isArray(lunaSessionConversationRef.current) ? lunaSessionConversationRef.current : []),
             openedAt: Date.now(),
         });
@@ -4280,6 +4432,74 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const editSessionHasChanges = editSession?.open
         ? !builderEditStateEquals(editSession.original, editSessionDraft || editSession.original)
         : false;
+
+    const isHeroSlideEdit = Boolean(editSession?.open && editSession.scope === 'slide' && Number.isInteger(editSession.blockIndex) && Number.isInteger(Number(editSession.target?.itemIndex)));
+    const heroSlideEditIndex = isHeroSlideEdit ? Number(editSession.target.itemIndex) : null;
+    const heroSlideDraft = isHeroSlideEdit ? editSessionDraft?.blocks?.[editSession.blockIndex]?.slides?.[heroSlideEditIndex] : null;
+    const stageHeroSlideField = (field, value) => {
+        if (!isHeroSlideEdit || !heroSlideDraft) return;
+        const activeBlocks = cloneBuilderEditValue(editSessionDraft?.blocks || editSession.original?.blocks || []);
+        const activeBlock = activeBlocks?.[editSession.blockIndex];
+        if (!activeBlock || !Array.isArray(activeBlock.slides) || !activeBlock.slides[heroSlideEditIndex]) return;
+        activeBlock.slides[heroSlideEditIndex] = { ...activeBlock.slides[heroSlideEditIndex], [field]: value };
+        setPopupDraftBlocks(normalizeRenderKeys(activeBlocks));
+        setLunaElementTarget((current)=>current ? {
+            ...current,
+            currentValue: field === 'heading' ? String(value || '') : current.currentValue,
+        } : current);
+    };
+    const applyHeroSlideImage = (url) => {
+        const cleanUrl = String(url || '').trim();
+        if (!isHeroSlideEdit || !cleanUrl) return false;
+        stageHeroSlideField('image_url', cleanUrl);
+        setLunaElementTarget((current)=>current ? { ...current, attachedMediaUrl:cleanUrl } : current);
+        return true;
+    };
+    const deleteHeroSlideDraft = () => {
+        if (!isHeroSlideEdit) return;
+        const activeBlocks = cloneBuilderEditValue(editSessionDraft?.blocks || editSession.original?.blocks || []);
+        const activeBlock = activeBlocks?.[editSession.blockIndex];
+        if (!activeBlock || !Array.isArray(activeBlock.slides) || activeBlock.slides.length <= 1) return;
+        activeBlock.slides = activeBlock.slides.filter((_, index)=>index !== heroSlideEditIndex);
+        setPopupDraftBlocks(normalizeRenderKeys(activeBlocks));
+        setEditSession((current)=>current?.open ? { ...current, slideDeleted:true } : current);
+    };
+
+    const returnCreateSectionToAllTypes = () => {
+        if (!editSession?.open || editSession.commitMode !== 'create_section') return;
+        const session = editSession;
+        const originalBlocks = Array.isArray(session.original?.blocks) ? session.original.blocks : (data.blocks || []);
+        const position = String(session.insertionPosition || 'bottom');
+        const insertionIndex = Number(session.insertionIndex);
+        let nextInsertTarget = null;
+        if ((position === 'above' || position === 'below') && Number.isInteger(insertionIndex)) {
+            const anchorIndex = position === 'above' ? insertionIndex : insertionIndex - 1;
+            const anchorBlock = originalBlocks?.[anchorIndex];
+            if (anchorBlock) {
+                nextInsertTarget = {
+                    index: position === 'above' ? anchorIndex : anchorIndex + 1,
+                    position,
+                    anchorRenderKey: anchorBlock._renderKey || null,
+                    anchorLabel: session.insertionAnchorLabel || BlockRegistry?.[anchorBlock.type]?.schema?.title || 'current section',
+                };
+            }
+        }
+        // The temporary create-section draft never touched the Builder. Returning
+        // to All Section Types simply discards that draft and restores the exact
+        // insert position so the user can choose another section safely.
+        lunaSessionConversationRef.current = cloneBuilderEditValue(session.globalLunaConversation || []);
+        setEditSessionDraft(null);
+        setEditSession(null);
+        setEditSessionMediaUrl('');
+        setEditSessionLunaPrompt('');
+        setLunaElementTarget(null);
+        setLunaDirectText('');
+        setLunaDirectLink('');
+        setLunaDirectVideoUrl('');
+        setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});
+        setSparkInsertTarget(nextInsertTarget);
+        setIsModalOpen(true);
+    };
 
     const cancelEditSession = () => {
         if (!editSession?.open) return;
@@ -4303,6 +4523,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const label = session.label || 'Selection';
         const draft = cloneBuilderEditValue(editSessionDraft || session.original || snapshotBuilderEditState());
         const creatingSection = session.commitMode === 'create_section';
+        if (creatingSection && session.creationSparkOwned === false) {
+            showCosmicNotification({
+                title: 'Unlock this Spark first',
+                message: 'You can preview this section here, but it must be unlocked before it can be added to the page.',
+                tone: 'warning', mode: 'toast', duration: 3200,
+            });
+            return;
+        }
         if (editSessionHasChanges || creatingSection) {
             setData('blocks', normalizeRenderKeys(draft.blocks || []));
             if (!creatingSection) {
@@ -4376,11 +4604,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [editSession]);
 
-    const contextualLunaMessages = editSession?.open ? lunaMessages.slice(editSessionLunaStartIndex) : [];
 
     const sendContextualLunaRequest = async () => {
         const prompt = String(editSessionLunaPrompt || '').trim();
         if (!editSession?.open || !prompt || pageAiBusy) return;
+        if (editSession.commitMode === 'create_section' && editSession.creationSparkOwned === false) {
+            showCosmicNotification({
+                title: 'Unlock to customize with Luna',
+                message: 'This Spark can be previewed now. Unlock it first to let Luna customize the draft.',
+                tone: 'info', mode: 'toast', duration: 3200,
+            });
+            return;
+        }
         setEditSessionLunaPrompt('');
         // Scope/target were resolved before opening the popup and remain stable
         // while the global Luna control is suppressed. Add the user turn locally
@@ -4388,6 +4623,35 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:editSession.label || lunaScope.label}]);
         checkpointEditSessionState();
         await sendPageAiRequest(prompt, false, null, { assistantSurface:'contextual_popup' });
+    };
+
+    const unlockCreateSectionSpark = async () => {
+        if (!editSession?.open || editSession.commitMode !== 'create_section' || editSession.creationSparkOwned !== false || layoutBusyKey) return;
+        const sparkKey = String(editSession.creationSparkKey || '').trim();
+        if (!sparkKey || editSession.creationSparkCanInstall === false) return;
+        setLayoutBusyKey(sparkKey);
+        try {
+            const endpoint = trialMode && trialToken
+                ? `/trial-assets/${trialToken}/sparks/${sparkKey}/unlock`
+                : `/sparks/${sparkKey}/unlock`;
+            const { data: responseData } = await axios.post(endpoint);
+            setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark));
+            setEditSession((current) => current?.open ? { ...current, creationSparkOwned: true } : current);
+            if (typeof responseData?.credit_balance !== 'undefined') setCreditBalance(responseData.credit_balance);
+            showCosmicNotification({
+                title: Number(editSession.creationSparkCredits || 0) === 0 ? 'Spark unlocked' : 'Spark purchased',
+                message: responseData?.message || 'Luna customization and Add Section are now available in this same editor.',
+                tone: 'success', mode: 'toast', duration: 3200,
+            });
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Could not unlock Spark',
+                message: error?.response?.data?.message || 'Please try again.',
+                tone: 'error', mode: 'toast', duration: 3800,
+            });
+        } finally {
+            setLayoutBusyKey(null);
+        }
     };
 
     const openLunaChat = (scope = { type:'page', blockIndex:null, label:'Whole Page' }) => {
@@ -4610,7 +4874,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         params.delete('luna_open');
         params.delete('luna_prompt');
         const next = `${window.location.pathname}${params.toString()?`?${params.toString()}`:''}${window.location.hash||''}`;
-        window.history.replaceState({}, '', next);
+        window.history.replaceState(window.history.state, '', next);
     }, []);
 
     const undoLastLunaChange = () => {
@@ -5551,7 +5815,11 @@ const blockHasVideoSlot = (value) => {
             const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers:{ Accept:'application/json' } });
             const url = response.data?.url;
             if (!url) throw new Error('No image URL was returned.');
-            if (lunaMediaLibraryPurpose==='section-video-poster' && applyLunaUniversalVideoPoster(url)) {
+            if (lunaMediaLibraryPurpose==='hero-slide-image' && applyHeroSlideImage(url)) {
+                setLunaMediaLibraryPurpose('element');
+                setPageAiPrompt('');
+                setLunaStatus('Done');
+            } else if (lunaMediaLibraryPurpose==='section-video-poster' && applyLunaUniversalVideoPoster(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
                 setLunaStatus('Ready');
@@ -6123,9 +6391,25 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 // changes to sibling blocks from a local popup request.
                 if (editSession?.open && Number.isInteger(editSession.blockIndex)) {
                     const targetIndex=editSession.blockIndex;
-                    const targetResponse=responseBlocks[targetIndex];
+                    let targetResponse=responseBlocks[targetIndex];
                     const popupState=currentPopupEditState();
                     const currentTarget=popupState.blocks?.[targetIndex];
+                    // Hero Slide editor is stricter than the normal section boundary:
+                    // Luna may only mutate the selected repeater item. Sibling slides
+                    // and section-level settings remain exactly as they were in the draft.
+                    if (editSession.scope === 'slide' && Number.isInteger(Number(editSession.target?.itemIndex))) {
+                        const slideIndex=Number(editSession.target.itemIndex);
+                        const currentSlides=Array.isArray(currentTarget?.slides) ? currentTarget.slides : [];
+                        const responseSlides=Array.isArray(targetResponse?.slides) ? targetResponse.slides : [];
+                        if (!responseSlides[slideIndex]) {
+                            restoreLastValidEditSessionState();
+                            throw new Error('Luna did not return the selected slide. Your last valid preview was restored.');
+                        }
+                        targetResponse={
+                            ...currentTarget,
+                            slides:currentSlides.map((slide,index)=>index===slideIndex ? responseSlides[slideIndex] : slide),
+                        };
+                    }
                     if (!isSafeBuilderBlockCandidate(targetResponse,currentTarget)) {
                         restoreLastValidEditSessionState();
                         throw new Error('Luna returned an invalid section mutation. Your last valid preview was restored.');
@@ -6340,6 +6624,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
             onUpdate: (fields) => updateBlockContent(index, fields),
             onOpenCosmicAI: undefined,
+            onEditSlide: block?.type === 'hero_slider_fade' ? (slideIndex) => beginHeroSliderSlideEdit(index, slideIndex) : undefined,
             onSaveCustomSpark: customWebsiteMode && block?.custom_spark_key && block?.custom_spark_saved !== true && !savedCustomSparkKeys.has(block.custom_spark_key) ? () => saveCustomSpark(block) : undefined,
             savingCustomSpark: savingCustomSparkKey === block?.custom_spark_key,
             commerce,
@@ -6544,6 +6829,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-design-system="1"
                     data-cosmic-block-index={index}
                     data-cosmic-block-type={block.type}
+                    data-cosmic-page-style={normalizedPageStyle}
                     data-cosmic-tailwind-schema={hasSparkTailwindSchema(block) ? 'schema_backed' : 'legacy_fallback'}
                     data-cosmic-resolved-theme={resolvedTheme}
                     data-cosmic-card-surface={localCardSurface || undefined}
@@ -6690,14 +6976,21 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
 {customSparkLibraryOpen && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={()=>setCustomSparkLibraryOpen(false)}><div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h3 className="text-lg font-black text-slate-900">Saved Custom Sparks</h3><p className="text-xs text-slate-500">Reusable only inside this Custom Website.</p></div><button type="button" onClick={()=>setCustomSparkLibraryOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100">×</button></div><div className="mt-4 grid max-h-[55vh] gap-3 overflow-auto sm:grid-cols-2">{customSparkLibrary.length?customSparkLibrary.map(spark=><button key={spark.key} type="button" onClick={()=>duplicateSavedCustomSpark(spark)} disabled={customSparkLibraryBusy} className="rounded-xl border border-slate-200 p-4 text-left hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-50"><div className="text-sm font-bold text-slate-900">{spark.name || 'Saved Custom Spark'}</div><div className="mt-1 text-[10px] text-slate-500">Install on this page</div></button>):<div className="col-span-2 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">No saved Custom Sparks yet.</div>}</div></div></div>}
 {savedSparksOpen && <div className="fixed inset-0 z-[10140] flex items-center justify-center p-4" style={{backgroundColor:'rgba(2,6,23,.62)',backdropFilter:'blur(8px)'}} onMouseDown={(e)=>{if(e.target===e.currentTarget)setSavedSparksOpen(false)}}><section role="dialog" aria-modal="true" aria-labelledby="saved-sparks-title" className="w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl"><header className="flex items-start justify-between border-b border-slate-200 px-6 py-5"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-600">Library</p><h2 id="saved-sparks-title" className="mt-1 text-2xl font-black">Saved Sparks</h2><p className="mt-1 text-sm text-slate-500">Reusable sections you saved from the Builder.</p><div className="mt-3 flex gap-2"><button type="button" onClick={()=>setSavedSparksFilter('all')} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${savedSparksFilter==='all'?'border-violet-500 bg-violet-50 text-violet-800':'border-slate-200 bg-white text-slate-600'}`}>All</button><button type="button" onClick={()=>setSavedSparksFilter('luna')} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${savedSparksFilter==='luna'?'border-fuchsia-500 bg-fuchsia-50 text-fuchsia-800':'border-slate-200 bg-white text-slate-600'}`}>Luna Sparks ✦</button></div></div><button type="button" onClick={()=>setSavedSparksOpen(false)} className="h-10 w-10 rounded-xl border border-slate-200 text-xl text-slate-500 hover:bg-slate-100">×</button></header><div className="grid max-h-[65vh] gap-3 overflow-y-auto p-6 sm:grid-cols-2 lg:grid-cols-3">{savedSparks.filter((spark)=>savedSparksFilter!=='luna'||spark.source==='luna').length?savedSparks.filter((spark)=>savedSparksFilter!=='luna'||spark.source==='luna').map(spark=><button key={spark.id} type="button" onClick={()=>installSavedSpark(spark)} className="cosmic-saved-spark-card rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-violet-300 hover:bg-violet-50"><span className="block text-sm font-black text-slate-900">{spark.name}</span><span className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">{spark.source==='luna'?'Luna Spark ✦':String(spark.spark_type||'spark').replaceAll('_',' ')}</span><span className="mt-5 block text-xs font-bold text-violet-700">{savedSparksInstallMode==='customize'?'Customize section →':'Add to page →'}</span></button>):<div className="col-span-full rounded-2xl border border-dashed border-slate-300 px-6 py-14 text-center"><p className="font-bold text-slate-800">{savedSparksFilter==='luna'?'No Luna Sparks yet':'No Saved Sparks yet'}</p><p className="mt-2 text-sm text-slate-500">{savedSparksFilter==='luna'?'Use Start Blank with Luna, generate your section, then Apply.':'Hover a section and use the save icon in its upper-left corner.'}</p></div>}</div></section></div>}
-{editSession?.open && <div className="cosmic-native-text-overlay fixed inset-0 z-[10120] flex items-center justify-center bg-slate-950/70 p-2 sm:p-3" onMouseDown={(event)=>{ if(event.target===event.currentTarget) cancelEditSession(); }}>
-                <div className={`cosmic-edit-session-dialog cosmic-native-text-layer flex w-full flex-col overflow-hidden rounded-3xl border shadow-2xl ${appDark?'border-slate-700 bg-slate-950 text-slate-100':'border-slate-200 bg-white text-slate-800'} ${editSession.scope==='section'?'h-[96dvh] max-w-[1680px]':'max-h-[94dvh] max-w-7xl'}`} onMouseDown={(event)=>event.stopPropagation()}>
-                    <div className={`flex items-start justify-between gap-4 border-b px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
+{editSession?.open && <div className="cosmic-native-text-overlay fixed inset-0 z-[10120] flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-[3px] sm:p-3" onMouseDown={(event)=>{ if(event.target===event.currentTarget) cancelEditSession(); }}>
+                <div className={`cosmic-edit-session-dialog cosmic-native-text-layer ${editSession?.creationSource==='blank_luna'?'cosmic-edit-session-dialog--blank-luna':''} flex w-full flex-col overflow-hidden rounded-3xl border shadow-2xl ${appDark?'border-slate-700 bg-slate-950 text-slate-100':'border-slate-200 bg-white text-slate-800'} ${['section','slide'].includes(editSession.scope)?'h-[94dvh] max-w-[1540px]':'max-h-[94dvh] max-w-7xl'}`} onMouseDown={(event)=>event.stopPropagation()}>
+                    <div className={`cosmic-edit-session-header flex items-start justify-between gap-4 border-b px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
                         <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-violet-600">{editSession.commitMode === 'create_section' ? 'Add · Customize Section' : `Edit · ${editSession.scope === 'section' ? 'Section' : 'Selected element'}`}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-violet-600">{editSession.commitMode === 'create_section' ? 'Add · Customize Section' : `Edit · ${editSession.scope === 'section' ? 'Section' : editSession.scope === 'slide' ? 'Slide' : 'Selected element'}`}</p>
                             <h3 className={`mt-1 truncate text-lg font-semibold ${appDark?'text-white':'text-slate-900'}`}>{editSession.label}</h3>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
+                            {editSession.commitMode === 'create_section' ? <button
+                                type="button"
+                                onClick={returnCreateSectionToAllTypes}
+                                className={`cosmic-edit-session-all-types inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'}`}
+                                aria-label="Back to all section types"
+                                title="Choose a different section type"
+                            ><span aria-hidden="true">←</span><span>All Section Types</span></button> : null}
                             {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) && editSession.commitMode !== 'create_section' ? <>
                                 <button
                                     type="button"
@@ -6714,12 +7007,29 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     className={`cosmic-section-insert-action hidden rounded-xl border px-3 py-2 text-xs font-semibold transition sm:inline-flex ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'} disabled:cursor-not-allowed disabled:opacity-40`}
                                 >+ Add Below</button>
                             </> : null}
-                            <button type="button" onClick={cancelEditSession} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xl ${appDark?'text-slate-400 hover:bg-white/10 hover:text-white':'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`} aria-label="Cancel editing">×</button>
+                            <button type="button" onClick={cancelEditSession} className={`cosmic-edit-session-close grid h-10 w-10 shrink-0 place-items-center rounded-xl border text-xl transition ${appDark?'border-white/10 text-slate-400 hover:border-white/20 hover:bg-white/10 hover:text-white':'border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'}`} aria-label="Cancel editing">×</button>
                         </div>
                     </div>
-                    <div className={`grid min-h-0 flex-1 overflow-y-auto ${editSession.scope==='section'?'lg:grid-cols-[minmax(0,4fr)_minmax(340px,1fr)]':'lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]'}`}>
-                        <div className={`${editSession.scope==='section'?'px-5 py-4 sm:px-7 lg:px-8':'p-5 sm:p-6'} ${appDark?'bg-slate-950':'bg-white'}`}>
-                            <div className={editSession.scope==='section'?'':`rounded-2xl border p-5 ${appDark?'border-slate-800 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                    <div className={`cosmic-edit-session-body grid min-h-0 flex-1 overflow-hidden ${editSession.scope==='section'?'lg:grid-cols-[minmax(0,4fr)_minmax(340px,1fr)]':editSession.scope==='slide'?'lg:grid-cols-[minmax(0,3fr)_minmax(340px,1fr)]':'lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]'}`}>
+                        <div className={`cosmic-edit-session-workspace min-h-0 overflow-y-auto ${['section','slide'].includes(editSession.scope)?'px-5 py-4 sm:px-7 lg:px-8':'p-5 sm:p-6'} ${appDark?'bg-slate-950':'bg-white'}`}>
+                            <div className={(editSession.scope==='section'||editSession.scope==='slide')?'':`rounded-2xl border p-5 ${appDark?'border-slate-800 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                                {isHeroSlideEdit ? <div className="space-y-5">
+                                    <div className={`rounded-2xl border p-4 ${appDark?'border-slate-800 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                                        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-black uppercase tracking-[.14em] text-violet-600">Slide content</p><h4 className={`mt-1 text-base font-bold ${appDark?'text-white':'text-slate-900'}`}>Edit slide {heroSlideEditIndex + 1}</h4><p className="mt-1 text-xs text-slate-500">Manual changes stay in this popup draft until Apply.</p></div></div>
+                                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                            <label className="grid gap-2 text-sm font-semibold sm:col-span-2"><span className={appDark?'text-slate-200':'text-slate-700'}>Eyebrow</span><input value={heroSlideDraft?.eyebrow || ''} onChange={e=>stageHeroSlideField('eyebrow',e.target.value)} className={`rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-950 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label>
+                                            <label className="grid gap-2 text-sm font-semibold sm:col-span-2"><span className={appDark?'text-slate-200':'text-slate-700'}>Heading</span><input value={heroSlideDraft?.heading || ''} onChange={e=>stageHeroSlideField('heading',e.target.value)} className={`rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-950 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label>
+                                            <label className="grid gap-2 text-sm font-semibold sm:col-span-2"><span className={appDark?'text-slate-200':'text-slate-700'}>Content</span><textarea rows={5} value={heroSlideDraft?.description || ''} onChange={e=>stageHeroSlideField('description',e.target.value)} className={`resize-y rounded-xl border px-3 py-2.5 text-sm leading-6 outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-950 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label>
+                                            {[1,2,3,4].map(number=><div key={`slide-cta-${number}`} className={`grid gap-3 rounded-xl border p-3 sm:grid-cols-2 sm:col-span-2 ${appDark?'border-slate-800 bg-slate-950/60':'border-slate-200 bg-white'}`}><label className="grid gap-2 text-xs font-semibold"><span className="text-slate-500">Button {number} label</span><input value={heroSlideDraft?.[`button_${number}_text`] || ''} onChange={e=>stageHeroSlideField(`button_${number}_text`,e.target.value)} className={`rounded-lg border px-3 py-2 text-sm outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-900 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label><label className="grid gap-2 text-xs font-semibold"><span className="text-slate-500">Button {number} URL</span><input value={heroSlideDraft?.[`button_${number}_url`] || ''} onChange={e=>stageHeroSlideField(`button_${number}_url`,e.target.value)} placeholder="# or https://..." className={`rounded-lg border px-3 py-2 text-sm outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-900 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label></div>)}
+                                        </div>
+                                    </div>
+                                    <div className={`rounded-2xl border p-4 ${appDark?'border-slate-800 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                                        <p className="text-[11px] font-black uppercase tracking-[.14em] text-violet-600">Slide image</p>
+                                        {heroSlideDraft?.image_url ? <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white"><img src={heroSlideDraft.image_url} alt="Current slide" className="h-52 w-full object-cover"/></div> : null}
+                                        <label className="mt-3 grid gap-2 text-sm font-semibold"><span className={appDark?'text-slate-200':'text-slate-700'}>Image URL</span><input value={heroSlideDraft?.image_url || ''} onChange={e=>stageHeroSlideField('image_url',e.target.value)} placeholder="https://... or /storage/..." className={`rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-violet-400 ${appDark?'border-slate-700 bg-slate-950 text-white':'border-slate-300 bg-white text-slate-900'}`}/></label>
+                                        <div className="mt-3 flex flex-wrap gap-2">{!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('hero-slide-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${appDark?'border-slate-700 bg-slate-950 text-slate-200 hover:border-violet-500':'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}>Media Library</button> : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('hero-slide-image');lunaImageUploadRef.current?.click?.();}} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Upload</button>}</div>
+                                    </div>
+                                </div> : null}
                                 {['heading','text','label','button'].includes(String(editSession.target?.type||'').toLowerCase()) ? <div className="mt-5 space-y-3">
                                     <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">{String(editSession.target?.type||'').toLowerCase()==='button'?'Button label':'Content'}</label>
                                     {String(editSession.target?.type||'').toLowerCase()==='text' && String(lunaDirectText||'').length>90
@@ -6750,6 +7060,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         });
                                     const layouts=isBlankLunaDraft ? [] : getCompatibleLayouts(activeBlock?.type, activeBlock).sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
                                     const backgroundMedia=findSectionBackgroundImageSlot(activeBlock);
+                                    const showBlankLunaCanvas = isBlankLunaDraft
+                                        && !editSession?.lunaCustomized
+                                        && activeBlock?.type === 'luna_custom_section'
+                                        && activeBlock?.ai_flex?.generated !== true;
                                     return <div className="space-y-3">
                                         {!isBlankLunaDraft && lunaLayoutChoices.length > 1 ? <div className={`rounded-2xl border p-3 ${appDark?'border-violet-400/20 bg-violet-400/[0.06]':'border-violet-200 bg-violet-50/70'}`}>
                                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -6773,12 +7087,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                                 {layouts.map(layout=>{const active=isCurrentLayout(activeBlock,layout);return <button key={`${layout.kind}:${layout.id}`} type="button" onClick={()=>previewSectionSparkLayout(editSession.blockIndex,layout)} aria-pressed={active} className={`shrink-0 rounded-lg border px-3 py-2.5 text-left text-[13px] font-semibold leading-5 transition ${active?'border-violet-600 bg-violet-100 text-violet-900 shadow-sm ring-1 ring-violet-200':'border-slate-300 bg-white text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50'}`} style={{color:active?'#4c1d95':'#1e293b',WebkitTextFillColor:active?'#4c1d95':'#1e293b'}}><span className="block">{layout.title}</span></button>})}
                                                 {!layouts.length && !sparkCatalogLoading ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">No related Spark layouts are registered for this section family yet.</div> : null}
                                             </div>
-                                            {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className={`cosmic-section-layout-toggle inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-300 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'}`}>{sectionSparkLayoutsExpanded?'Show Less':'Show More'}<span aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
+                                            {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className="cosmic-section-layout-toggle inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition"><span>{sectionSparkLayoutsExpanded?'Show Fewer Layouts':'Show More Layouts'}</span><span className="cosmic-section-layout-toggle__icon" aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
                                         </div> : null}
-                                        <div data-popup-section-preview="true" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                                            <div className="bg-white">
+                                        <div data-popup-section-preview="true" data-popup-section-kind={String(activeBlock?.type||'').toLowerCase().includes('hero')?'hero':'section'} className={`cosmic-edit-session-preview overflow-hidden rounded-2xl border shadow-sm ${appDark?'border-white/10 bg-slate-900':'border-slate-200 bg-white'}`}>
+                                            <div className={appDark?'bg-slate-900':'bg-white'}>
                                                 <div className="pointer-events-none min-w-0" aria-label="Section working preview">
-                                                    {activeBlock ? renderBlock(activeBlock, editSession.blockIndex) : null}
+                                                    {showBlankLunaCanvas ? <BlankLunaCanvas dark={appDark} /> : (activeBlock ? renderBlock(activeBlock, editSession.blockIndex) : null)}
                                                 </div>
                                             </div>
                                         </div>
@@ -6787,34 +7101,47 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 {pageAiError ? <div className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{pageAiError}</div> : null}
                             </div>
                         </div>
-                        <aside className={`flex flex-col self-stretch border-t px-5 py-4 sm:px-6 lg:border-l lg:border-t-0 ${appDark?'border-slate-800 bg-slate-950 text-white':'border-slate-200 bg-slate-50 text-slate-900'}`}>
-                            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-violet-300">✦ Luna · Contextual</p>
-                            <h4 className={`mt-1 text-[15px] font-semibold ${appDark?'text-slate-100':'text-slate-900'}`}>{editSession.label}</h4>
-                            <p className={`mt-1 text-xs leading-5 ${appDark?'text-slate-300':'text-slate-600'}`}>{editSession.commitMode === 'create_section' ? 'Customize this new section manually or with Luna. The Builder stays unchanged until you add it.' : 'Luna can only work on this selected target. Her changes stay inside this popup until you Apply.'}</p>
-                            <div className="mt-4 flex flex-1 flex-col justify-end gap-3">
-                                {contextualLunaMessages.length ? contextualLunaMessages.map((message, messageIndex)=><div key={`${messageIndex}-${message.role}`} data-luna-message-role={message.role} className={`cosmic-contextual-luna-message rounded-xl px-3 py-2.5 text-[13px] font-medium leading-5 ${message.role==='user'?'ml-5 bg-violet-600 text-white':(appDark?'mr-3 border border-white/10 bg-white/[0.04] text-slate-100':'mr-3 border border-slate-200 bg-white text-slate-700 shadow-sm')}`}>{message.text || message.content || ''}</div>) : <div className={`rounded-xl border p-3 text-[13px] font-medium leading-5 ${appDark?'border-white/10 bg-white/[0.04] text-slate-200':'border-slate-200 bg-white text-slate-700 shadow-sm'}`}>{editSession.commitMode === 'create_section' ? 'Describe the structure and content you want. Luna builds the layout first, fills it with content, and keeps it as a draft until Add Section.' : 'Ask for a rewrite, image, spacing tweak, border-radius change, or a custom design. Nothing is permanent until Apply.'}</div>}
-                                {pageAiBusy ? <div data-luna-message-role="status" className="cosmic-contextual-luna-message mr-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs text-violet-200">{lunaStatus || 'Luna is working…'}</div> : null}
-                            </div>
-                            {pageAiError ? <div className="mt-3 rounded-xl bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{pageAiError}</div> : null}
-                            <div className={`mt-4 border-t pt-3 ${appDark?'border-white/10':'border-slate-200'}`}>
-                                <textarea value={editSessionLunaPrompt} onChange={e=>setEditSessionLunaPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendContextualLunaRequest();}}} rows={4} placeholder={editSession.scope==='section'?'e.g. Reduce the border radius and make the cards feel more premium.':'e.g. Rewrite this to sound more confident.'} className={`w-full resize-none rounded-xl border px-3 py-2.5 text-xs leading-5 outline-none focus:border-violet-400 ${appDark?'border-white/10 bg-white/[0.05] text-white placeholder:text-slate-600':'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}/>
-                                <div className="mt-2 flex items-center justify-between gap-2">
-                                    <span className={`text-[10px] ${appDark?'text-slate-500':'text-slate-500'}`}>AI/API requests may use credits.</span>
-                                    <button type="button" onClick={sendContextualLunaRequest} disabled={pageAiBusy||!editSessionLunaPrompt.trim()} className="rounded-xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Ask Luna'}</button>
+                        <aside className={`cosmic-contextual-luna-panel cosmic-contextual-luna-premium ${editSession.commitMode === 'create_section' ? 'cosmic-contextual-luna-panel--create' : ''}`} data-appearance={appDark?'dark':'light'}>
+                            <div className="cosmic-contextual-luna-premium__header">
+                                <div className="min-w-0">
+                                    <p className="cosmic-contextual-luna-premium__eyebrow">✦ Luna · Contextual</p>
+                                    <h4 className="cosmic-contextual-luna-premium__title">{editSession.label}</h4>
                                 </div>
+                                <div className="cosmic-contextual-luna-premium__active"><span aria-hidden="true"/>AI Active</div>
+                            </div>
+                            <div className="cosmic-contextual-luna-premium__context">
+                                <div className="cosmic-contextual-luna-premium__context-label"><span aria-hidden="true"/>Context · {editSession.commitMode === 'create_section' ? 'New Section Draft' : editSession.scope === 'section' ? 'Selected Section' : editSession.scope === 'slide' ? 'Selected Slide' : editSession.scope === 'element' ? 'Selected Element' : editSession.scope}</div>
+                            </div>
+                            <div className="cosmic-contextual-luna-scroll cosmic-contextual-luna-premium__chat">
+                                {contextualLunaMessages.length ? contextualLunaMessages.map((message, messageIndex)=><div key={`${messageIndex}-${message.role}`} className={`cosmic-contextual-luna-premium__message-row ${message.role==='user'?'cosmic-contextual-luna-premium__message-row--user':'cosmic-contextual-luna-premium__message-row--assistant'}`}><div data-luna-message-role={message.role} className={`cosmic-contextual-luna-message cosmic-contextual-luna-premium__bubble ${message.role==='user'?'cosmic-contextual-luna-premium__bubble--user':'cosmic-contextual-luna-premium__bubble--assistant'}`}>{message.text || message.content || ''}</div></div>) : <div className="cosmic-contextual-luna-premium__message-row cosmic-contextual-luna-premium__message-row--assistant"><div data-luna-message-role="assistant" className="cosmic-contextual-luna-message cosmic-contextual-luna-premium__bubble cosmic-contextual-luna-premium__bubble--assistant">{editSession.commitMode === 'create_section' ? 'Describe the section you want. I’ll shape the layout and content inside this draft, and nothing is added to the page until you choose Add Section.' : editSession.scope === 'slide' ? 'Tell me what you want to change on this slide. I’ll keep the changes inside this popup until you Apply.' : editSession.scope === 'section' ? 'Tell me how you want this section changed. I can update the copy, layout, spacing, styling, or media while keeping the work inside this draft until Apply.' : 'Tell me what you want changed on this selected item. I’ll keep the update inside this popup until you Apply.'}</div></div>}
+                                {pageAiBusy ? <LunaProcessCard status={lunaStatus || 'Working…'} dark={appDark} /> : null}
+                                <div ref={contextualLunaMessagesEndRef} aria-hidden="true" className="h-px shrink-0" />
+                            </div>
+                            {pageAiError ? <div className="cosmic-contextual-luna-premium__error">{pageAiError}</div> : null}
+                            <div className="cosmic-contextual-luna-composer cosmic-contextual-luna-premium__composer">
+                                {editSession.commitMode === 'create_section' && editSession.creationSparkOwned === false ? <div className="cosmic-contextual-luna-premium__locked">Preview mode · Unlock this Spark to customize it with Luna.</div> : null}
+                                <textarea value={editSessionLunaPrompt} disabled={editSession.commitMode === 'create_section' && editSession.creationSparkOwned === false} onChange={e=>setEditSessionLunaPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendContextualLunaRequest();}}} rows={4} placeholder={editSession.commitMode === 'create_section' ? 'e.g. Create a premium services section with four concise cards.' : (editSession.scope==='section'?'e.g. Reduce the border radius and make this section feel more premium.':editSession.scope==='slide'?'e.g. Make this slide headline stronger and shorten the body copy.':'e.g. Rewrite this to sound more confident.')} className="cosmic-contextual-luna-input cosmic-contextual-luna-premium__textarea"/>
+                                <div className="cosmic-contextual-luna-premium__composer-footer">
+                                    <span className="cosmic-contextual-luna-premium__builder-label"><span aria-hidden="true">✦</span>{editSession.commitMode === 'create_section' ? 'Section Draft' : 'Contextual Builder'}</span>
+                                    <button type="button" onClick={sendContextualLunaRequest} disabled={pageAiBusy||!editSessionLunaPrompt.trim()||(editSession.commitMode === 'create_section' && editSession.creationSparkOwned === false)} className="cosmic-contextual-luna-ask cosmic-contextual-luna-premium__send">{pageAiBusy?<><CosmicLoadingIcon className="h-3.5 w-3.5"/>Working…</>:'Ask Luna'}</button>
+                                </div>
+                                <p className="cosmic-contextual-luna-premium__credit-note">AI/API requests may use credits. Manual edits in this popup do not.</p>
                             </div>
                         </aside>
                     </div>
-                    <div className={`flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <p className="text-xs text-slate-500">{editSession.commitMode === 'create_section' ? 'This is a temporary new-section draft. The Builder is still unchanged.' : (editSessionHasChanges ? 'This popup has changes that are not applied yet.' : 'No changes yet.')}</p>
-                            {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) ? <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1" role="group" aria-label="Section background">
-                                {['primary','white','surface'].map(theme=>{const activeTheme=resolveBlockTheme(editSessionDraft?.blocks?.[editSession.blockIndex] || editSession.original?.blocks?.[editSession.blockIndex] || {}, editSession.blockIndex)===theme;return <button key={theme} type="button" onClick={()=>previewSectionTheme(editSession.blockIndex,theme)} aria-pressed={activeTheme} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${activeTheme?'bg-violet-600 text-white shadow-sm':'bg-transparent text-slate-700 hover:bg-white hover:text-slate-950'}`} style={{color:activeTheme?'#ffffff':'#334155',WebkitTextFillColor:activeTheme?'#ffffff':'#334155'}}>{theme.charAt(0).toUpperCase()+theme.slice(1)}</button>})}
-                            </div> : null}
+                    <div className={`cosmic-edit-session-footer flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="cosmic-edit-session-draft-note flex items-center gap-2.5">
+                                {editSession.commitMode === 'create_section' ? <span className="cosmic-edit-session-draft-note__icon" aria-hidden="true">i</span> : null}
+                                <p className="text-xs leading-5 text-slate-500">{editSession.commitMode === 'create_section' ? <>This is a temporary new-section draft.<br className="hidden sm:block"/> The Builder is still unchanged.</> : (editSessionHasChanges ? 'This popup has changes that are not applied yet.' : 'No changes yet.')}</p>
+                            </div>
+                            {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) ? <div className="flex items-center gap-2"><span className={`text-xs font-semibold ${appDark?'text-slate-400':'text-slate-600'}`}>Theme</span><div className={`cosmic-edit-session-theme flex items-center gap-1 rounded-xl border p-1 ${appDark?'border-white/10 bg-white/[0.04]':'border-slate-200 bg-slate-100'}`} role="group" aria-label="Section background">
+                                {['primary','white','surface'].map(theme=>{const activeTheme=resolveBlockTheme(editSessionDraft?.blocks?.[editSession.blockIndex] || editSession.original?.blocks?.[editSession.blockIndex] || {}, editSession.blockIndex)===theme;return <button key={theme} type="button" onClick={()=>previewSectionTheme(editSession.blockIndex,theme)} aria-pressed={activeTheme} className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${activeTheme?'bg-violet-600 text-white shadow-sm':appDark?'bg-transparent text-slate-300 hover:bg-white/10 hover:text-white':'bg-transparent text-slate-700 hover:bg-white hover:text-slate-950'}`} style={{color:activeTheme?'#ffffff':undefined,WebkitTextFillColor:activeTheme?'#ffffff':undefined}}>{theme.charAt(0).toUpperCase()+theme.slice(1)}</button>})}
+                            </div></div> : null}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={cancelEditSession} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-                            <button type="button" onClick={applyEditSession} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">{editSession.commitMode === 'create_section' ? 'Add Section' : 'Apply'}</button>
+                        <div className="flex items-center gap-2.5">
+                            <button type="button" onClick={cancelEditSession} className={`cosmic-edit-session-cancel rounded-xl border px-5 py-2.5 text-sm font-semibold transition ${appDark?'border-white/10 text-slate-200 hover:bg-white/5':'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>Cancel</button>
+                            {editSession.commitMode === 'create_section' && editSession.creationSparkOwned === false ? <button type="button" onClick={unlockCreateSectionSpark} disabled={layoutBusyKey === editSession.creationSparkKey || editSession.creationSparkCanInstall === false} className="cosmic-edit-session-unlock inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/15 transition hover:-translate-y-px hover:bg-violet-500 disabled:translate-y-0 disabled:opacity-45">{layoutBusyKey === editSession.creationSparkKey ? 'Unlocking…' : Number(editSession.creationSparkCredits || 0) === 0 ? <><span aria-hidden="true">✦</span>Unlock Spark</> : <>Unlock · ⚡ {editSession.creationSparkCredits}</>}</button> : <button type="button" onClick={applyEditSession} className="cosmic-edit-session-apply inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-950/10 transition hover:-translate-y-px hover:bg-slate-800">{editSession.commitMode === 'create_section' ? <><span aria-hidden="true">✦</span>Add Section</> : 'Apply'}</button>}
                         </div>
                     </div>
                 </div>
@@ -6827,32 +7154,45 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
   title="Ask Luna about this website"
 ><span className="text-lg" aria-hidden="true">✦</span> Ask Luna</button>}
 
-{aiOnlyBuilder && lunaChatOpen && !editSession?.open && <div className={`cosmic-native-text-layer fixed bottom-4 right-4 z-[970] flex h-[calc(100dvh-2rem)] max-h-[940px] min-h-[620px] w-[440px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark?'border-violet-300/20 bg-[#111318]/95 text-white':'border-slate-200 bg-white text-slate-900'}`}>
-  <div className={`flex items-start justify-between border-b px-4 py-3 ${appDark?'border-white/10':'border-slate-200'}`}>
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':lunaScope.type==='header'?'Site Header':lunaScope.type==='footer'?'Site Footer':'Whole Page'}</p>
-      <h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{lunaScope.label}</h3>
+{aiOnlyBuilder && lunaChatOpen && !editSession?.open && <div className="cosmic-native-text-layer cosmic-luna-premium" data-appearance={appDark?'dark':'light'}>
+  <div className="cosmic-luna-premium__header">
+    <div className="min-w-0">
+      <p className="cosmic-luna-premium__eyebrow">✦ Luna · {lunaScope.type==='section'?'Selected Section':lunaScope.type==='header'?'Site Header':lunaScope.type==='footer'?'Site Footer':'Whole Page'}</p>
+      <h3 className="cosmic-luna-premium__title">{lunaScope.label || 'Whole Page'}</h3>
     </div>
-    <div className="flex items-center gap-1">
-      <button type="button" onClick={undoLastLunaChange} disabled={!lunaUndoStack.length||pageAiBusy} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30">↶ Undo</button>
-      <button type="button" onClick={()=>{setFeedbackError('');setFeedbackOpen(true);}} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 hover:text-white" title="Report a bug or share feedback">⚑ Feedback</button>
-      <button type="button" onClick={()=>setLunaChatOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
-    </div>
-  </div>
-  <div className="px-4 pt-3">
-    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500">
-      <span className="h-1.5 w-1.5 rounded-full bg-violet-400" aria-hidden="true"/>
-      Context · {lunaScope.label || (lunaScope.type==='page'?'Whole Page':'Selected target')}
+    <div className="cosmic-luna-premium__header-actions">
+      <button type="button" onClick={undoLastLunaChange} disabled={!lunaUndoStack.length||pageAiBusy} className="cosmic-luna-premium__header-action" title="Undo Luna's last applied change">↶ <span>Undo</span></button>
+      <button type="button" onClick={()=>{setFeedbackError('');setFeedbackOpen(true);}} className="cosmic-luna-premium__header-action" title="Report a bug or share feedback">⚑ <span>Feedback</span></button>
+      <button type="button" onClick={()=>setLunaChatOpen(false)} className="cosmic-luna-premium__close" aria-label="Close Luna">×</button>
     </div>
   </div>
-  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
-    {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
-    ?'bg-violet-600 text-white'
-    :(appDark?'border border-white/10 bg-white/[0.05] text-slate-200':'border border-slate-200 bg-slate-50 text-slate-700')}`}>{message.text}</div>{message.role==='user'&&message.referenceAttachment?<div className="mt-1.5 ml-auto w-fit max-w-full overflow-hidden rounded-xl border border-violet-300/20 bg-violet-500/10">{message.referenceAttachment.previewUrl?<img src={message.referenceAttachment.previewUrl} alt={message.referenceAttachment.name || 'Design reference'} className="block max-h-44 w-auto max-w-[280px] object-contain"/>:null}<div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100"><span aria-hidden="true">▧</span><span className="max-w-[220px] truncate">{message.referenceAttachment.name || 'Design reference'}</span><span className="text-violet-300/60">sent</span></div></div>:null}{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referenceReplaceConfirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));sendPageAiRequest(message.referenceReplaceConfirmation.prompt,true,null);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace page</button><button type="button" disabled={pageAiBusy} onClick={()=>{lunaPendingReferenceImageRef.current=null;setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));}} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Cancel</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
-    {(pageAiBusy||lunaContextTyping)?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{lunaStatus}</span></div>:null}
+
+  <div className="cosmic-luna-premium__context">
+    <div className="cosmic-luna-premium__context-label"><span aria-hidden="true"/>Context · {lunaScope.label || (lunaScope.type==='page'?'Whole Page':'Selected target')}</div>
+    <div className="cosmic-luna-premium__active"><span aria-hidden="true"/>AI Active</div>
+  </div>
+
+  <div className="cosmic-luna-premium__chat">
+    {lunaMessages.length ? lunaMessages.slice(-16).map((message,i)=><div key={`${i}-${message.text}`} className={`cosmic-luna-premium__message-row ${message.role==='user'?'cosmic-luna-premium__message-row--user':'cosmic-luna-premium__message-row--assistant'}`}>
+      <div className="cosmic-luna-premium__message-wrap">
+        <div className={`cosmic-luna-premium__bubble ${message.role==='user'?'cosmic-luna-premium__bubble--user':'cosmic-luna-premium__bubble--assistant'}`}>{message.text}</div>
+        {message.role==='assistant'&&message.confirmation?<div className="cosmic-luna-premium__message-actions"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="cosmic-luna-premium__action cosmic-luna-premium__action--primary">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="cosmic-luna-premium__action">Keep content</button></div>:null}
+        {message.role==='assistant'&&message.referenceReplaceConfirmation?<div className="cosmic-luna-premium__message-actions"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));sendPageAiRequest(message.referenceReplaceConfirmation.prompt,true,null);}} className="cosmic-luna-premium__action cosmic-luna-premium__action--primary">Replace page</button><button type="button" disabled={pageAiBusy} onClick={()=>{lunaPendingReferenceImageRef.current=null;setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));}} className="cosmic-luna-premium__action">Cancel</button></div>:null}
+        {message.role==='assistant'&&message.referencePlacement?<div className="cosmic-luna-premium__placement">{message.referencePlacement.selectedTarget==null?<div className="cosmic-luna-premium__placement-targets">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="cosmic-luna-premium__action">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="cosmic-luna-premium__placement-label">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="cosmic-luna-premium__message-actions"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="cosmic-luna-premium__action">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="cosmic-luna-premium__action">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="cosmic-luna-premium__action cosmic-luna-premium__action--primary">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="cosmic-luna-premium__action cosmic-luna-premium__action--quiet">Back</button></div></div>}</div>:null}
+      </div>
+    </div>) : <div className="cosmic-luna-premium__empty"><strong>Hey! What would you like to work on?</strong><span>Ask Luna to build, rewrite, style, or update this page.</span></div>}
+    {pageAiBusy ? <div className="cosmic-luna-premium__message-row cosmic-luna-premium__message-row--assistant"><LunaProcessCard status={lunaStatus} dark={appDark}/></div> : null}
+    {!pageAiBusy && lunaContextTyping ? <div className="cosmic-luna-premium__thinking" role="status" aria-live="polite"><span aria-hidden="true"/>{lunaStatus}</div> : null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
-  <div className="shrink-0 border-t border-white/10 p-4">
+
+  {lunaScope.type==='page' && !lunaElementTarget ? <div className="cosmic-luna-premium__quick-actions" aria-label="Luna suggestions">
+    <button type="button" disabled={pageAiBusy} onClick={()=>{setPageAiPrompt('Generate a premium hero section for this page.');window.requestAnimationFrame(()=>lunaPromptRef.current?.focus());}}>✦ Generate Hero</button>
+    <button type="button" disabled={pageAiBusy} onClick={()=>{setPageAiPrompt('Create a premium services section with concise content.');window.requestAnimationFrame(()=>lunaPromptRef.current?.focus());}}>▦ Create Services</button>
+    <button type="button" disabled={pageAiBusy} onClick={()=>{setPageAiPrompt('Add a premium testimonials section to this page.');window.requestAnimationFrame(()=>lunaPromptRef.current?.focus());}}>❞ Add Testimonials</button>
+  </div> : null}
+
+  <div className="cosmic-luna-premium__composer">
     {lunaElementTarget ? <div className="mb-2 flex items-center justify-between rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-[11px]">
       <span className="font-semibold text-violet-200">Selected {lunaElementTarget.type}{lunaElementTarget.currentValue ? ` · ${lunaElementTarget.currentValue.slice(0,54)}${lunaElementTarget.currentValue.length>54?'…':''}` : ''}</span>
       <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setPageAiPrompt('');}} className="text-slate-500 hover:text-white">×</button>
@@ -6956,13 +7296,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             <span aria-hidden="true">▣</span> Choose from Media Library
           </button>
     ) : null}
-    <div className="mb-2 flex items-center gap-2">
-      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white">
-        <span aria-hidden="true">▧</span><span className="max-w-[210px] truncate">{lunaReferenceImage?.name || 'Attach design reference'}</span>
-        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const file=e.target.files?.[0]||null;if(file&&file.size>8*1024*1024){showCosmicNotification({title:'Reference too large',message:'Use a PNG, JPG, or WebP up to 8 MB.',tone:'error'});e.target.value='';return;}if(lunaReferencePreviewUrl&&typeof URL!=='undefined')URL.revokeObjectURL(lunaReferencePreviewUrl);setLunaReferenceImage(file);setLunaReferencePreviewUrl(file&&typeof URL!=='undefined'&&URL.createObjectURL?URL.createObjectURL(file):null);}}/>
-      </label>
-      {lunaReferenceImage ? <button type="button" onClick={()=>{if(lunaReferencePreviewUrl&&typeof URL!=='undefined')URL.revokeObjectURL(lunaReferencePreviewUrl);setLunaReferencePreviewUrl(null);setLunaReferenceImage(null);}} className="text-[11px] font-semibold text-rose-300 hover:text-rose-200">Remove</button> : null}
-    </div>
     <textarea
       ref={lunaPromptRef}
       value={pageAiPrompt}
@@ -6972,14 +7305,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
       placeholder={lunaElementTarget
         ? `Tell Luna what to change about this ${lunaElementTarget.type}`
         : (lunaScope.type==='section'?'e.g. Change this section into a video hero':'e.g. Make the whole website feel more premium')}
-      className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-6 outline-none focus:border-violet-300/40"
+      className="cosmic-luna-premium__textarea"
     />
     {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
-    <div className="mt-3 flex items-center justify-between">
+    <div className="cosmic-luna-premium__footer">
       {lunaScope.type==='section'
-        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setLunaDirectText('');setLunaDirectLink('');setLunaDirectVideoUrl('');setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
-        : <span className="text-[11px] text-slate-600">AI-only Builder</span>}
-      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Send'}</button>
+        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setLunaDirectText('');setLunaDirectLink('');setLunaDirectVideoUrl('');setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="cosmic-luna-premium__switch">Switch to Whole Page</button>
+        : <span className="cosmic-luna-premium__builder-label"><span aria-hidden="true">✦</span> AI-only Builder</span>}
+      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="cosmic-luna-premium__send">{pageAiBusy?<><CosmicLoadingIcon className="h-4 w-4"/>Working…</>:<>Send <span aria-hidden="true">→</span></>}</button>
     </div>
   </div>
 </div>}
@@ -6998,7 +7331,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
     {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
     <div className="mt-4 flex justify-end gap-2">
       <button type="button" onClick={()=>setPageAiOpen(false)} disabled={pageAiBusy} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 disabled:opacity-40">Cancel</button>
-      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Updating page…':'Apply with Cosmic AI'}</button>
+      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="inline-flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?<><CosmicLoadingIcon className="h-3.5 w-3.5"/>Updating page…</>:'Apply with Cosmic AI'}</button>
     </div>
   </div>
 </div>}
@@ -7058,27 +7391,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 disableLabel="Compact footer"
             />
 
-            {trialMode && (
-                <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-4 py-3 text-center">
-                    <p className="text-sm font-semibold text-slate-900">Love what you created?</p>
-                    <p className="mt-0.5 text-xs text-slate-600">
-                        Buy this website and continue building with Cosmic CMS.{' '}
-                        <button
-                            type="button"
-                            onClick={handleBuyTrialWebsite}
-                            disabled={isSaving || trialEmailSaving || trialPurchasePending}
-                            className="font-bold text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {trialPurchasePending ? 'Saving…' : 'Buy This Website →'}
-                        </button>
-                    </p>
-                </div>
-            )}
             <Head title={`Builder — ${page.title}`} />
             <div className={`cosmic-builder-shell min-h-screen font-manrope ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
-                    <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
-                        <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <div className="mx-auto grid min-h-[64px] max-w-[1760px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 overflow-visible px-4 py-2 sm:px-6">
+                        <div className={`flex min-w-0 items-center gap-3 ${trialMode ? 'flex-nowrap' : 'flex-wrap'}`}>
                             {capabilities.canNavigateAway && (
                                 <Link
                                     href={route('pages.index', website.id)}
@@ -7203,7 +7520,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             )}
                         </div>
 
-                        <div className={`${trialMode ? 'order-2 flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 xl:justify-self-end' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
+                        <div className={`${trialMode ? 'flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
                             <span title={publishError || saveError || undefined} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium ${isPublishing ? 'text-sky-200' : publishError ? 'text-red-200' : pageStatus === 'published' ? 'cosmic-published-status text-emerald-200' : 'text-amber-200'}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
@@ -7215,7 +7532,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
                         </div>
 
-                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'order-3 ml-0 flex w-full flex-wrap rounded-2xl border border-slate-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur xl:col-span-2 xl:flex-nowrap' : ''}`}>
+                        <div className="flex min-w-0 items-center justify-end gap-2">
                             {trialMode ? (
                                 <span title="Guest Cosmic Credits" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-extrabold text-amber-800">
                                     <span aria-hidden="true">⚡</span><span>{effectiveCreditBalance.toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
@@ -7253,19 +7570,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 </div>
                             )}
 
-                            {trialMode && trialToken && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegenerateModal(true)}
-                                    disabled={regenerating}
-                                    className="cosmic-trial-regenerate inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed"
-                                    title={`Regenerate page · ${trialActionCosts.regenerate_page} Cosmic Credits`}
-                                >
-                                    {regenerating ? 'Regenerating…' : 'Regenerate'}
-                                </button>
-                            )}
-
-                            {trialMode && (previewUrl ? (
+                            {trialMode && (trialPreviewStatus.previewReady && previewUrl ? (
                                 <a
                                     href={previewUrl}
                                     target="_blank"
@@ -7277,17 +7582,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 </a>
                             ) : (
                                 <span className="inline-flex h-9 shrink-0 cursor-wait items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500" title={previewDeploymentError || trialPreviewStatus.message || 'The full staging site appears when all trial pages finish building.'}>
-                                    {trialPreviewStatus.pageCount > 0 && trialPreviewStatus.readyPages >= trialPreviewStatus.pageCount
+                                    {trialPreviewStatus.pagesComplete
                                         ? 'Finalizing preview…'
-                                        : 'Preparing preview…'}
-                                    {trialPreviewStatus.pageCount > 0 && trialPreviewStatus.readyPages < trialPreviewStatus.pageCount
+                                        : 'Building demo…'}
+                                    {trialPreviewStatus.pageCount > 0 && !trialPreviewStatus.pagesComplete
                                         ? ` ${trialPreviewStatus.readyPages}/${trialPreviewStatus.pageCount}`
                                         : ''}
                                 </span>
                             ))}
 
                             {capabilities.canSave && (!capabilities.canPublish || trialMode) && (
-                                <form onSubmit={handleSubmit} className={trialMode ? 'xl:ml-auto' : ''}>
+                                <form onSubmit={handleSubmit}>
                                     <button
                                         type="submit"
                                         disabled={isSaving || isPublishing}
@@ -7355,7 +7660,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-1.5 sm:px-6 xl:hidden">
+                    {!trialMode && <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-1.5 sm:px-6 xl:hidden">
                         <div className="flex min-w-0 items-center gap-2 text-[11px]">
                             <span className={publishError ? 'text-red-300' : pageStatus === 'published' ? 'text-emerald-300' : 'text-amber-200'}>
                                 {publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
@@ -7364,13 +7669,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             <span className="text-slate-500">{data.blocks.length} Sparks</span>
                             {hasUnsavedChanges && <span className="hidden text-amber-200 sm:inline">• Unsaved changes</span>}
                         </div>
-                        {!trialMode && (
-                            <CreditBalanceBadge
-                                balance={creditBalance}
-                                className="h-7 shrink-0"
-                            />
-                        )}
-                    </div>
+                        <CreditBalanceBadge
+                            balance={creditBalance}
+                            className="h-7 shrink-0"
+                        />
+                    </div>}
 
                     {(saveError || publishError) && (
                         <div className="border-t border-red-400/10 bg-red-400/[0.04] px-4 py-1.5 sm:px-6">
@@ -7417,10 +7720,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
                             box-sizing: border-box;
                             max-width: 100%;
-                            padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px)) !important;
-                            padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px)) !important;
-                            padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px)) !important;
-                            padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px)) !important;
+                            padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px))) !important;
+                            padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px))) !important;
+                            padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px))) !important;
+                            padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px))) !important;
                         }
                         .cosmic-builder-spark :is(img,video,iframe,svg,canvas) {
                             max-width: 100%;
@@ -7436,7 +7739,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-builder-spark :is(input,select,textarea,button) { max-width: 100%; }
                         /* Tailwind ownership: customer-facing button radius comes only from Spark classes/schema. */
                         .cosmic-luna-hover-trigger {
-                            position:absolute; z-index:85; display:grid; place-items:center; width:34px; height:34px;
+                            position:absolute; z-index:85; display:grid; place-items:center; width:40px; height:40px;
                             border:1px solid rgba(255,255,255,.28); border-radius:9999px !important;
                             background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; box-shadow:0 10px 28px rgba(76,29,149,.32);
                             opacity:0; transform:scale(.92); pointer-events:none; transition:opacity .15s ease,transform .15s ease;
@@ -7448,10 +7751,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
-                            padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px)) !important;
-                            padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px)) !important;
-                            padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px)) !important;
-                            padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px)) !important;
+                            padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px))) !important;
+                            padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px))) !important;
+                            padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px))) !important;
+                            padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px))) !important;
                         }
                         }
                         @media (min-width: 1025px) {
@@ -7459,10 +7762,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
                             .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
                             .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
-                                padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py, 100px)) !important;
-                                padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py, 100px)) !important;
-                                padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px, 28px)) !important;
-                                padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px, 28px)) !important;
+                                padding-top: var(--cosmic-local-section-py-top, var(--cosmic-local-section-py, var(--cosmic-section-py, 100px))) !important;
+                                padding-bottom: var(--cosmic-local-section-py-bottom, var(--cosmic-local-section-py, var(--cosmic-section-py, 100px))) !important;
+                                padding-left: var(--cosmic-local-section-px-left, var(--cosmic-local-section-px, var(--cosmic-section-px, 28px))) !important;
+                                padding-right: var(--cosmic-local-section-px-right, var(--cosmic-local-section-px, var(--cosmic-section-px, 28px))) !important;
                             }
                         }
                         @media (max-width: 639px) {
@@ -7498,7 +7801,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 title="Ask Luna about the site header"
                                 className="absolute right-4 top-3 z-[90] hidden h-9 w-9 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-base font-black text-white shadow-xl shadow-violet-950/30 backdrop-blur transition hover:scale-105 hover:bg-violet-500 group-hover/header-ai:inline-flex">✦</button>
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={openLunaForLogo} onLogoManual={openHeaderLogoManual} onNavAi={openLunaForHeaderNavigation} navManualOpenSignal={headerNavManualOpenSignal} />
+                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={builderPageTargets} onLogoClick={openLunaForLogo} onLogoManual={openHeaderLogoManual} onNavAi={openLunaForHeaderNavigation} navManualOpenSignal={headerNavManualOpenSignal} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
@@ -7509,7 +7812,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     overlayCtaTreatment={overlayCtaTreatment}
                                     onUpdate={updateHeader}
                                     globalTheme={globalSelections}
-                                    pageTargets={websitePages}
+                                    pageTargets={builderPageTargets}
                                     onLogoClick={openLunaForLogo}
                                     onLogoManual={openHeaderLogoManual}
                                     onCtaAi={openLunaForHeaderCta}
@@ -7559,13 +7862,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         if(broadInteractive && !node.getAttribute?.('data-luna-target')){ node=root; tag=''; }
                                     }
                                     const explicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
-                                    // A background image covers the section canvas, so its hover
-                                    // affordance must open the Section editor rather than a competing
-                                    // image editor. Inline/card images remain element-editable.
-                                    if (explicitType === 'background image' || node.getAttribute?.('data-cosmic-background-media') === 'true') {
-                                        node=root;
-                                        tag='';
-                                    }
                                     const normalizedExplicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
                                     const type=preferCard ? 'card' : (node===root ? 'section' : (normalizedExplicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':tag==='video'?'video':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text')));
                                     const imageNode=type.includes('image') ? (tag==='img'?node:node.querySelector?.('img')) : null;
@@ -7580,12 +7876,21 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     const itemCount=itemTarget?Number(itemTarget.count):null;
                                     const collectionKey=String(itemTarget?.collectionKey||'');
                                     const collectionPath=String(itemTarget?.collectionPath||'');
-                                    const rr=root.getBoundingClientRect(); const nr=node.getBoundingClientRect();
-                                    let top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
-                                    let left=Math.max(8,Math.min(root.clientWidth-84,(node===root?root.clientWidth-88:nr.right-rr.left-26)));
-                                    // The upper-left corner is reserved for the section-level
-                                    // Saved Spark control. Keep contextual edit targets clear of it.
-                                    if (top < 66 && left < 70) left = Math.min(root.clientWidth - 42, 72);
+                                    // Keep contextual element editing separate from the fixed section rails.
+                                    // The pen belongs to the hovered element itself, so anchor it to that
+                                    // element's upper-left corner instead of the section's upper-right corner.
+                                    // Coordinates are relative to the Spark root and clamped so the trigger
+                                    // remains reachable even when the target touches an edge of the canvas.
+                                    const rootRect=root.getBoundingClientRect();
+                                    const nodeRect=node.getBoundingClientRect();
+                                    const triggerSize=40;
+                                    const inset=8;
+                                    const rawTop=nodeRect.top-rootRect.top+inset;
+                                    const rawLeft=nodeRect.left-rootRect.left+inset;
+                                    const maxTop=Math.max(inset,root.clientHeight-triggerSize-inset);
+                                    const maxLeft=Math.max(inset,root.clientWidth-triggerSize-inset);
+                                    let top=Math.min(maxTop,Math.max(inset,rawTop));
+                                    let left=Math.min(maxLeft,Math.max(inset,rawLeft));
                                     setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && current.collectionKey===collectionKey && current.collectionPath===collectionPath && current.fieldPath===fieldPath && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,collectionKey,collectionPath,fieldPath,top,left});
                                 }}
                                 onMouseLeave={()=>setLunaHoverTarget((current)=>current?.blockIndex===index?null:current)}
@@ -7597,14 +7902,24 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 data-cosmic-builder-spark="1"
                                 data-cosmic-block-index={index}
                                 data-cosmic-block-type={block.type}
-                                className={`cosmic-builder-spark cursor-default group-hover:ring-2 group-hover:ring-violet-500/20 transition-all duration-500 ${lunaScope.type==='section' && lunaScope.blockIndex===index ? 'ring-2 ring-violet-500/70' : ''} ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}
+                                className={`cosmic-builder-spark cosmic-spark-layout-host cursor-default group-hover:ring-2 group-hover:ring-violet-500/20 transition-all duration-500 ${lunaScope.type==='section' && lunaScope.blockIndex===index ? 'ring-2 ring-violet-500/70' : ''} ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}
                             >
 
                                 {renderBlock(block,index)}
-                                <div className="cosmic-section-control-rail absolute left-4 top-4 z-[72] flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                                    <button type="button" onClick={(event)=>{event.preventDefault();event.stopPropagation();saveBlockToSavedSparks(block,index)}} disabled={savedSparksBusy} title="Save section to Saved Sparks" aria-label="Save section to Saved Sparks" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-violet-300 bg-white text-slate-800 shadow-lg transition hover:border-violet-500 hover:text-violet-700 disabled:opacity-50">▣</button>
+                                <div data-cosmic-no-luna-hover className="cosmic-section-save-rail absolute left-4 top-4 z-[72] flex items-center opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                    <button type="button" onClick={(event)=>{event.preventDefault();event.stopPropagation();saveBlockToSavedSparks(block,index)}} disabled={savedSparksBusy} title="Save section to Saved Sparks" aria-label="Save section to Saved Sparks" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-violet-300 bg-white text-slate-800 shadow-lg transition hover:border-violet-500 hover:text-violet-700 disabled:opacity-50">
+                                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                                    </button>
                                 </div>
-                                {lunaHoverTarget?.blockIndex===index && (
+                                <div data-cosmic-no-luna-hover className="cosmic-section-control-rail absolute right-4 top-4 z-[72] flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                    <button type="button" title="Edit this section" aria-label="Edit this section" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-violet-500 bg-violet-600 text-white shadow-lg shadow-violet-500/20 transition hover:bg-violet-700" onClick={(event)=>{event.preventDefault();event.stopPropagation();setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});}}>
+                                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                    </button>
+                                    <button type="button" title="Delete this section" aria-label="Delete this section" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-300 bg-rose-600 text-white shadow-lg transition hover:bg-rose-700" onClick={async(event)=>{event.preventDefault();event.stopPropagation();const confirmed=await confirmCosmicAction({title:'Delete this section?',message:'This removes the section from the current Builder draft.',confirmLabel:'Delete section',tone:'error'});if(confirmed){removeBlock(index);setLunaHoverTarget(null);}}}>
+                                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                                    </button>
+                                </div>
+                                {lunaHoverTarget?.blockIndex===index && lunaHoverTarget?.type!=='section' && (
                                     <button
                                         type="button"
                                         className="cosmic-luna-hover-trigger"
@@ -7615,13 +7930,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         onClick={(event)=>{ event.preventDefault(); event.stopPropagation(); openLunaHoverTarget(lunaHoverTarget); }}
                                     ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
                                 )}
-                                {lunaHoverTarget?.blockIndex===index && (
-                                    <button type="button" className="cosmic-luna-hover-trigger cosmic-section-delete-trigger" style={{ top:`${lunaHoverTarget.top}px`, left:`${lunaHoverTarget.left + 42}px` }} title="Delete this section" aria-label="Delete this section" onMouseMove={(event)=>event.stopPropagation()} onClick={async(event)=>{event.preventDefault();event.stopPropagation();const confirmed=await confirmCosmicAction({title:'Delete this section?',message:'This removes the section from the current Builder draft.',confirmLabel:'Delete section',tone:'error'});if(confirmed){removeBlock(index);setLunaHoverTarget(null);}}}>
-                                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
-                                    </button>
-                                )}
-
                             </div>
+
+                            {(capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
+                                <button
+                                    type="button"
+                                    onClick={(event)=>{event.preventDefault();event.stopPropagation();setSparkInsertTarget({index:index+1,position:'below',anchorRenderKey:block._renderKey||null,anchorLabel:BlockRegistry?.[block.type]?.schema?.title||'current section'});setIsModalOpen(true);}}
+                                    className="absolute bottom-3 left-1/2 z-[76] inline-flex -translate-x-1/2 translate-y-2 items-center gap-2 rounded-full border border-violet-300/40 bg-slate-950/90 px-4 py-2 text-xs font-bold text-white opacity-0 shadow-xl backdrop-blur transition hover:bg-violet-600 group-hover:translate-y-0 group-hover:opacity-100 focus:translate-y-0 focus:opacity-100"
+                                    aria-label="Add a section below this section"
+                                ><span aria-hidden="true">＋</span>Add Section</button>
+                            )}
 
                         </div>
 
@@ -7632,21 +7950,40 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white/90 px-6 py-8 shadow-sm">
                                 <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">✦</span>
                                 <h2 className="mt-4 text-lg font-semibold text-slate-900">This page is ready to build</h2>
-                                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">Your page, navigation, global header and footer are connected. Ask Luna what you want to build.</p>
+                                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">Your page, navigation, global header and footer are connected. Generate the page with Luna, start from a template, or build section by section.</p>
 
-                                {(
-                                    <div className="mt-6 flex items-center justify-center">
-                                        <button type="button" onClick={()=>openLunaChat({type:'page',blockIndex:null,label:'Whole Page'})} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5">
-                                            <span aria-hidden="true">✦</span> Ask Luna to build this page
+                                <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5" data-cosmic-fresh-start-actions="true">
+                                    {(capabilities.canGenerateAi || trialMode) && (
+                                        <button
+                                            type="button"
+                                            data-cosmic-fresh-start-action="generate-page"
+                                            onClick={() => setIsGeneratePageOpen(true)}
+                                            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 via-violet-600 to-fuchsia-500 px-5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition hover:-translate-y-0.5 hover:shadow-violet-500/30"
+                                        >
+                                            <span aria-hidden="true">✦</span> Generate Page
                                         </button>
-                                    </div>
-                                )}
-
-                                {trialMode && capabilities.canGenerateAi && (
-                                    <button type="button" onClick={() => setIsModalOpen(true)} className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                                        Add your first Spark
-                                    </button>
-                                )}
+                                    )}
+                                    {(capabilities.canGenerateAi || trialMode) && (
+                                        <button
+                                            type="button"
+                                            data-cosmic-fresh-start-action="choose-template"
+                                            onClick={() => setIsTemplatesOpen(true)}
+                                            className="cosmic-fresh-start-template inline-flex h-10 items-center justify-center gap-2 rounded-full border border-emerald-600 bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-500"
+                                        >
+                                            <span aria-hidden="true">▣</span> Choose Template
+                                        </button>
+                                    )}
+                                    {(capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
+                                        <button
+                                            type="button"
+                                            data-cosmic-fresh-start-action="add-section"
+                                            onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
+                                            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+                                        >
+                                            <span aria-hidden="true">＋</span> Add Section
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </section>
                     )}
@@ -7851,7 +8188,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 />
             )}
 
-            {(capabilities.canGenerateAi || trialMode) && (
+            {(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
@@ -7876,8 +8213,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     contextLabel={sparkInsertTarget ? `Insert Section ${sparkInsertTarget.position}` : 'Add Section'}
                     insertionContext={sparkInsertTarget ? { position: sparkInsertTarget.position, anchorLabel: sparkInsertTarget.anchorLabel || editSession?.label || 'current section' } : null}
                     overlayClassName={sparkInsertTarget?.source === 'edit-section' ? 'z-[10240]' : 'z-[900]'}
-                    lunaSparksCount={savedSparks.filter((spark) => spark.source === 'luna').length}
-                    onOpenLunaSparks={trialMode ? null : openLunaSparksFromAddSection}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
@@ -7922,7 +8257,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 />
             )}
 
-            {capabilities.canGenerateAi && (
+            {(capabilities.canGenerateAi || trialMode) && (
                 <GeneratePageModal
                     open={isGeneratePageOpen}
                     onClose={() => setIsGeneratePageOpen(false)}
@@ -8227,6 +8562,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             logoCompanyName || data.global_header?.logo_text || website?.name,
                             {sourceKind:'upload',entryPrompt:false,autoAdaptTheme:false},
                         );
+                        return;
+                    }
+                    if(lunaMediaLibraryPurpose==='hero-slide-image'){
+                        if(!applyHeroSlideImage(asset.url)){
+                            setPageAiError('This hero slide is no longer available.');
+                        }
+                        setLunaMediaLibraryPurpose('element');
                         return;
                     }
                     if(lunaMediaLibraryPurpose==='section-authored-background-image'){

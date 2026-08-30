@@ -11,23 +11,28 @@ import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
 import { createSparkTailwindRuntime } from "../Blocks/Shared/sparkTailwindRuntime";
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 import { useAppearance } from "../../../Appearance/AppearanceContext";
+import CosmicLoadingIcon from "../../../Components/CosmicLoadingIcon";
 
 const SECTION_TYPE_META = {
-    "Hero": { tone: "violet", icon: "sparkles" },
-    "Services": { tone: "blue", icon: "grid" },
-    "Features": { tone: "indigo", icon: "diamond" },
-    "Proof": { tone: "emerald", icon: "shield" },
-    "Testimonials": { tone: "fuchsia", icon: "quote" },
-    "Pricing": { tone: "orange", icon: "tag" },
-    "Team": { tone: "purple", icon: "users" },
-    "FAQ": { tone: "teal", icon: "question" },
-    "Contact": { tone: "sky", icon: "mail" },
-    "Case Studies": { tone: "amber", icon: "folder" },
-    "Posts / Updates": { tone: "rose", icon: "document" },
-    "Events": { tone: "cyan", icon: "calendar" },
-    "Careers": { tone: "lime", icon: "briefcase" },
-    "Mini Heroes": { tone: "violet", icon: "star" },
-    "Other": { tone: "slate", icon: "grid" },
+    "Hero": { tone: "violet", icon: "sparkles", description: "Headers, banners & hero layouts" },
+    "About / Content": { tone: "cyan", icon: "document", description: "Story, content & split sections" },
+    "Services": { tone: "blue", icon: "grid", description: "Service cards, grids & showcases" },
+    "Features": { tone: "indigo", icon: "diamond", description: "Feature grids & product benefits" },
+    "Testimonials": { tone: "fuchsia", icon: "quote", description: "Reviews, quotes & social proof" },
+    "Pricing": { tone: "orange", icon: "tag", description: "Plans, packages & comparisons" },
+    "Process": { tone: "emerald", icon: "route", description: "Steps, timelines & workflows" },
+    "Stats": { tone: "lime", icon: "chart", description: "Metrics, counters & trust numbers" },
+    "Team": { tone: "purple", icon: "users", description: "People, profiles & leadership" },
+    "FAQ": { tone: "teal", icon: "question", description: "Questions & accordion content" },
+    "Contact": { tone: "sky", icon: "mail", description: "Forms, locations & contact details" },
+    "Gallery": { tone: "rose", icon: "image", description: "Image grids & visual showcases" },
+    "CTA": { tone: "amber", icon: "star", description: "Calls to action & conversion bands" },
+    "Case Studies": { tone: "amber", icon: "folder", description: "Projects, work & case studies" },
+    "Posts / Updates": { tone: "rose", icon: "document", description: "Blog, resources & updates" },
+    "Events": { tone: "cyan", icon: "calendar", description: "Events, schedules & listings" },
+    "Careers": { tone: "lime", icon: "briefcase", description: "Jobs, roles & hiring content" },
+    "Ecommerce": { tone: "orange", icon: "bag", description: "Products, collections & commerce" },
+    "Other": { tone: "slate", icon: "grid", description: "More section layouts" },
 };
 
 function SectionTypeIcon({ icon = "sparkles" }) {
@@ -54,6 +59,10 @@ function SectionTypeIcon({ icon = "sparkles" }) {
     if (icon === "calendar") return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 17h2"/></svg>;
     if (icon === "briefcase") return <svg {...common}><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5h6v2M3 12h18M10 12v2h4v-2"/></svg>;
     if (icon === "star") return <svg {...common}><path d="m12 3 2.3 5.3L20 10.5l-5.7 2.2L12 18l-2.3-5.3L4 10.5l5.7-2.2L12 3Z"/></svg>;
+    if (icon === "route") return <svg {...common}><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h4a3 3 0 0 1 3 3v6a3 3 0 0 0 3 3"/></svg>;
+    if (icon === "chart") return <svg {...common}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
+    if (icon === "image") return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5 17 4.5-4.5 3.5 3 2.5-2.5L20 17"/></svg>;
+    if (icon === "bag") return <svg {...common}><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>;
     return <svg {...common}><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z"/><path d="m18.5 15 .9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></svg>;
 }
 
@@ -106,28 +115,74 @@ function LunaAddSectionVisual() {
     );
 }
 
-const categoryFor = (type) => {
-    if (type.startsWith("mini_hero_")) return "Mini Heroes";
-    if (type.startsWith("hero_") || type === "image_cta_banner") return "Hero";
-    if (type.startsWith("services_")) return "Services";
-    if (type.startsWith("feature_")) return "Features";
-    if (type.includes("pricing")) return "Pricing";
-    if (type.includes("testimonial")) return "Testimonials";
-    if (type.includes("team")) return "Team";
-    if (type.includes("faq")) return "FAQ";
-    if (type.includes("contact") || type.includes("location")) return "Contact";
-    if (type.includes("case_stud")) return "Case Studies";
-    if (type.includes("job")) return "Careers";
-    if (type.startsWith("content_")) return "Posts / Updates";
-    if (type.includes("event")) return "Events";
-    if (type.includes("blog") || type.includes("newsletter") || type.includes("resource")) return "Posts / Updates";
-    if (type.includes("stats") || type.includes("process")) return "Proof";
+// Batch 3: Add Section is a production surface, not a raw catalog dump.
+// Only expose Sparks that can be rendered by the same Builder registry used
+// after Apply. A Spark may opt out explicitly while it is being repaired.
+// Spark Audit Batch 3: every registered Builder Spark is eligible for Add Section
+// even when it does not have a hand-authored marketplace preview entry yet.
+// The Builder registry schema/defaults are the source of truth; curated previews
+// still win when present. This removes the old 229/329 visibility ceiling without
+// creating a second rendering contract.
+const createBuilderRegistryFallback = (spark) => {
+    const builderEntry = BuilderBlockRegistry[spark?.key];
+    if (!spark?.key || !builderEntry?.component || !builderEntry?.schema || typeof builderEntry.schema !== "object") return null;
+
+    return {
+        type: spark.key,
+        title: spark.name || spark.key,
+        buttonLabel: `Add ${spark.name || "Section"}`,
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        payload: structuredClone(builderEntry.schema.defaults || {}),
+        builderReady: true,
+        addSectionReady: true,
+        source: "builder_registry_fallback",
+    };
+};
+
+const addSectionSparkEligibility = (spark) => {
+    if (!spark?.key || !spark?.registry) return { ready: false, reason: "missing_catalog_entry" };
+    if (spark.registry.addSectionReady === false || spark.registry.builderReady === false || spark.add_section_ready === false || spark.builder_ready === false) {
+        return { ready: false, reason: "explicitly_disabled" };
+    }
+
+    const builderEntry = BuilderBlockRegistry[spark.key];
+    if (!builderEntry?.component) return { ready: false, reason: "missing_builder_component" };
+    if (!builderEntry?.schema || typeof builderEntry.schema !== "object") return { ready: false, reason: "missing_builder_schema" };
+    if (spark.registry.payload != null && (typeof spark.registry.payload !== "object" || Array.isArray(spark.registry.payload))) {
+        return { ready: false, reason: "invalid_preview_payload" };
+    }
+
+    return { ready: true, reason: "builder_parity_ready" };
+};
+
+const categoryFor = (type, rawCategory = "") => {
+    const key = String(type || "").toLowerCase();
+    const raw = String(rawCategory || "").toLowerCase();
+    const haystack = `${key} ${raw}`;
+    if (key.startsWith("mini_hero_") || key.startsWith("hero_") || key === "image_cta_banner" || raw.includes("hero")) return "Hero";
+    if (key.startsWith("services_") || haystack.includes("service")) return "Services";
+    if (key.startsWith("feature_") || haystack.includes("feature")) return "Features";
+    if (haystack.includes("testimonial") || haystack.includes("review")) return "Testimonials";
+    if (haystack.includes("pricing") || haystack.includes("plan")) return "Pricing";
+    if (haystack.includes("process") || haystack.includes("timeline") || haystack.includes("steps")) return "Process";
+    if (haystack.includes("stats") || haystack.includes("metric") || haystack.includes("counter")) return "Stats";
+    if (haystack.includes("team") || haystack.includes("people")) return "Team";
+    if (haystack.includes("faq") || haystack.includes("question")) return "FAQ";
+    if (haystack.includes("contact") || haystack.includes("location") || haystack.includes("map")) return "Contact";
+    if (haystack.includes("gallery") || haystack.includes("portfolio") || haystack.includes("masonry")) return "Gallery";
+    if (haystack.includes("case_stud") || haystack.includes("case stud") || haystack.includes("project")) return "Case Studies";
+    if (haystack.includes("product") || haystack.includes("commerce") || haystack.includes("shop") || haystack.includes("collection")) return "Ecommerce";
+    if (haystack.includes("job") || haystack.includes("career")) return "Careers";
+    if (haystack.includes("event")) return "Events";
+    if (haystack.includes("blog") || haystack.includes("newsletter") || haystack.includes("resource") || key.startsWith("content_")) return "Posts / Updates";
+    if (haystack.includes("cta") || haystack.includes("call to action")) return "CTA";
+    if (haystack.includes("about") || haystack.includes("content") || haystack.includes("story") || haystack.includes("split")) return "About / Content";
     return "Other";
 };
 
 function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight", payloadOverride = null }) {
     const Preview = spark.registry.preview;
-    return <div className="cosmic-preview-isolation w-full" data-cosmic-site-preview="true"><Preview {...spark.registry.payload} {...(payloadOverride || {})} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>;
+    return <div className="cosmic-preview-isolation cosmic-spark-layout-host w-full" data-cosmic-preview-isolation="true" data-cosmic-site-preview="true"><Preview {...spark.registry.payload} {...(payloadOverride || {})} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>;
 }
 
 
@@ -189,7 +244,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
     if (!Component) {
         return (
             <div
-                className="cosmic-preview-isolation cosmic-spark-preview-content w-full"
+                className="cosmic-preview-isolation cosmic-spark-preview-content cosmic-spark-layout-host w-full"
                 data-cosmic-preview-isolation="true"
                 data-cosmic-site-preview="true"
                 data-cosmic-add-spark-preview="true"
@@ -227,7 +282,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
 
     return (
         <div
-            className="cosmic-preview-isolation cosmic-spark-preview-content w-full"
+            className="cosmic-preview-isolation cosmic-spark-preview-content cosmic-spark-layout-host w-full"
             data-cosmic-preview-isolation="true"
             data-cosmic-site-preview="true"
             data-cosmic-add-spark-preview="true"
@@ -414,8 +469,6 @@ export default function AddSectionModal({
     preloadedCatalogLoaded = false,
     preparedVisibleCount = 0,
     overlayClassName = "z-[900]",
-    lunaSparksCount = 0,
-    onOpenLunaSparks = null,
 }) {
     const { setBalance } = useCreditBalance();
     const { resolvedTheme: appAppearanceTheme } = useAppearance();
@@ -557,16 +610,24 @@ export default function AddSectionModal({
     }, [open, trialMode, trialToken, preloadedCatalogLoaded, preloadedCatalogLoading, catalog.length]);
 
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
-    const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
-    const categories = useMemo(() => ["All", ...new Set(items.map((item) => item.category || categoryFor(item.key)))], [items]);
+    const catalogItems = useMemo(() => catalog
+        .map((spark) => ({
+            ...spark,
+            registry: registry.get(spark.key) || createBuilderRegistryFallback(spark),
+        }))
+        .filter((spark) => spark.registry), [catalog, registry]);
+    const sparkReadiness = useMemo(() => new Map(catalogItems.map((spark) => [spark.key, addSectionSparkEligibility(spark)])), [catalogItems]);
+    const items = useMemo(() => catalogItems.filter((spark) => sparkReadiness.get(spark.key)?.ready), [catalogItems, sparkReadiness]);
+    const hiddenUnsafeSparkCount = catalogItems.length - items.length;
+    const categories = useMemo(() => ["All", ...new Set(items.map((item) => categoryFor(item.key, item.category)))], [items]);
     const categoryCards = useMemo(() => {
         const countsByCategory = new Map();
         items.forEach((item) => {
-            const name = item.category || categoryFor(item.key);
+            const name = categoryFor(item.key, item.category);
             if (!name || name === "All") return;
             countsByCategory.set(name, (countsByCategory.get(name) || 0) + 1);
         });
-        const preferred = ["Hero", "Services", "Features", "Proof", "Testimonials", "Pricing", "Team", "FAQ", "Contact", "Case Studies", "Posts / Updates", "Events", "Careers", "Mini Heroes", "Other"];
+        const preferred = ["Hero", "About / Content", "Services", "Features", "Testimonials", "Pricing", "Process", "Stats", "Team", "FAQ", "Contact", "Gallery", "CTA", "Case Studies", "Posts / Updates", "Events", "Careers", "Ecommerce", "Other"];
         const ordered = [
             ...preferred.filter((name) => countsByCategory.has(name)),
             ...Array.from(countsByCategory.keys()).filter((name) => !preferred.includes(name)).sort((a, b) => a.localeCompare(b)),
@@ -584,7 +645,7 @@ export default function AddSectionModal({
     const filteredItems = useMemo(() => items.filter((item) => {
         if (tab === "owned" && !item.owned) return false;
         if (tab === "favorites" && !item.favorited) return false;
-        if (category !== "All" && item.category !== category) return false;
+        if (category !== "All" && categoryFor(item.key, item.category) !== category) return false;
         if (aiResults && !aiResultMap.has(item.key)) return false;
         if (aiResults) return true;
         const haystack = `${item.name} ${item.description} ${item.category} ${item.collection || ""}`.toLowerCase();
@@ -598,7 +659,7 @@ export default function AddSectionModal({
                 .filter((item) => aiResultMap.has(item.key))
                 .sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999));
         }
-        return items.filter((item) => (item.category || categoryFor(item.key)) === category);
+        return items.filter((item) => (categoryFor(item.key, item.category)) === category);
     }, [items, category, aiResults, aiResultMap]);
 
     const pickerSpark = useMemo(() => {
@@ -664,29 +725,47 @@ export default function AddSectionModal({
     };
 
     const chooseCategory = (name) => {
-        const matches = items.filter((item) => (item.category || categoryFor(item.key)) === name);
+        // `items` is already parity/QA filtered. Never fall back to a raw
+        // catalog Spark here: category cards must open a Builder-safe draft.
+        const matches = items.filter((item) => (categoryFor(item.key, item.category)) === name);
         const initial = matches.find((item) => item.owned && !item.trial_locked) || matches.find((item) => !item.trial_locked) || matches[0] || null;
+        if (!initial) {
+            showCosmicNotification({
+                title: "No ready layouts yet",
+                message: "This section type has no Builder-ready Spark yet. Try Luna or choose another section type.",
+                tone: "info",
+            });
+            return;
+        }
         setCategory(name);
         setPickerSparkKey(initial?.key || null);
         setPreviewVariantIndex(0);
 
-        // Hotfix: when Add Section is connected to Builder's reusable Section
-        // Editor, choosing a category should enter that editor immediately. The
-        // editor already exposes every compatible Spark layout plus contextual
-        // Luna, so this removes the redundant category-specific preview screen.
-        // The new block is still only a popup draft; Builder commits it later
-        // when the user presses Add Section in the Section Editor.
-        if (onCustomize && initial?.owned && !initial?.trial_locked) {
+        // Universal Add Section experience: every category opens the same reusable
+        // Section Editor used by Hero. Ownership is editor state, not a separate
+        // marketplace UI. Locked Sparks can be previewed in the same editor, but
+        // Luna and Add Section stay gated until the Spark is unlocked.
+        if (onCustomize && !initial?.trial_locked) {
             const block = blockForSpark(initial);
             if (block) {
-                onCustomize(block, { spark: initial, insertionContext, category: name });
+                onCustomize(block, {
+                    spark: initial,
+                    insertionContext,
+                    category: name,
+                    creationSource: 'registered_spark',
+                    ownership: {
+                        owned: Boolean(initial?.owned),
+                        canInstall: initial?.can_install !== false,
+                        credits: Number(initial?.credits || 0),
+                        trialLocked: Boolean(initial?.trial_locked),
+                    },
+                });
                 onClose();
                 return;
             }
         }
 
-        // Locked/unowned categories keep the marketplace step so the user can
-        // unlock a Spark before opening the Section Editor.
+        // Trial-locked content cannot enter the editor; retain the library gate.
         setPickerStage("sparks");
         window.requestAnimationFrame(() => marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: "auto" }));
     };
@@ -765,7 +844,7 @@ export default function AddSectionModal({
         const block = blockForSpark(spark);
         if (!block) return;
         if (onCustomize) {
-            onCustomize(block, { spark, insertionContext });
+            onCustomize(block, { spark, insertionContext, creationSource: 'registered_spark' });
             onClose();
             return;
         }
@@ -855,7 +934,7 @@ export default function AddSectionModal({
                             <div className="min-w-0">
                                 <p className="cosmic-add-section-eyebrow text-[10px] font-bold uppercase tracking-[0.22em] text-violet-600">{modalContextLabel}</p>
                                 <h2 className="mt-2 text-[clamp(1.65rem,2vw,2.15rem)] font-semibold tracking-[-0.035em]">Choose a section type</h2>
-                                <p className={`cosmic-add-section-intro mt-2 max-w-3xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type, or start blank with Luna for a brand-new AI Flex section. Blank Luna sections skip the preset picker and open directly in the Section Editor.</p>
+                                <p className={`cosmic-add-section-intro mt-2 max-w-3xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type to browse proven layouts, or describe what you need to Luna. Luna will choose the closest premade Spark and customize it in the Section Editor.</p>
                                 {insertionHint ? <p className={`cosmic-add-section-insertion-hint mt-2 text-xs font-semibold ${appDark ? 'text-violet-300' : 'text-violet-700'}`}>{insertionHint}</p> : null}
                             </div>
                             <div className="cosmic-add-section-heading-art" aria-hidden="true"><span /><span /><span>✦</span></div>
@@ -878,24 +957,7 @@ export default function AddSectionModal({
                                     <div className="cosmic-section-type-card__footer">
                                         <div className="min-w-0">
                                             <div className="cosmic-section-type-title">Start Blank with Luna</div>
-                                            <div className="cosmic-section-type-meta cosmic-section-type-meta--accent">Build a new AI Flex section from scratch</div>
-                                        </div>
-                                        <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onOpenLunaSparks?.()}
-                                    disabled={!onOpenLunaSparks}
-                                    className="group cosmic-section-type-card min-h-40 text-left disabled:cursor-not-allowed disabled:opacity-50"
-                                    data-card-kind="luna-sparks"
-                                    data-tone="fuchsia"
-                                >
-                                    <div className="cosmic-section-type-icon"><SectionTypeIcon icon="diamond" /></div>
-                                    <div className="cosmic-section-type-card__footer">
-                                        <div className="min-w-0">
-                                            <div className="cosmic-section-type-title">Luna Sparks ✦</div>
-                                            <div className="cosmic-section-type-meta">{Number(lunaSparksCount || 0)} saved Luna Spark{Number(lunaSparksCount || 0) === 1 ? '' : 's'}</div>
+                                            <div className="cosmic-section-type-meta cosmic-section-type-meta--accent">Describe it — Luna picks the closest Spark</div>
                                         </div>
                                         <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>
@@ -915,7 +977,7 @@ export default function AddSectionModal({
                                             <div className="cosmic-section-type-card__footer">
                                                 <div className="min-w-0">
                                                     <div className="cosmic-section-type-title">{item.name}</div>
-                                                    <div className="cosmic-section-type-meta">{item.count} Spark{item.count === 1 ? '' : 's'}</div>
+                                                    <div className="cosmic-section-type-meta">{meta.description}</div>
                                                 </div>
                                                 <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                             </div>
@@ -941,7 +1003,7 @@ export default function AddSectionModal({
                                 placeholder="e.g. Add a premium services section with four cards"
                                 className={`cosmic-add-section-luna-input w-full resize-none rounded-2xl border px-4 py-3.5 text-sm outline-none transition ${appDark ? 'border-white/10 bg-black/20 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}
                             />
-                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="cosmic-add-section-luna-button mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>
+                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="cosmic-add-section-luna-button mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{aiSearchBusy ? <><CosmicLoadingIcon/>Searching…</> : <><span aria-hidden="true">✦</span>Ask Luna</>}</button>
                             <div className={`cosmic-add-section-whole-page mt-4 flex items-start gap-3 rounded-2xl border px-3.5 py-3.5 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
                                 <span className="cosmic-add-section-whole-page__icon" aria-hidden="true"><SectionTypeIcon icon="grid" /></span>
                                 <div><b className={appDark ? 'text-slate-200' : 'text-slate-800'}>Whole page?</b><br/>Use the whole-page Luna chat when you want Luna to plan multiple sections together.</div>
@@ -954,7 +1016,15 @@ export default function AddSectionModal({
                     <header className={`shrink-0 border-b px-5 py-4 pr-16 sm:px-7 sm:pr-20 ${appDark ? 'border-white/10 bg-[#111116]' : 'border-slate-200 bg-white'}`}>
                         <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0">
-                                <button type="button" onClick={() => { setPickerStage('categories'); setCategory('All'); setPickerSparkKey(null); clearAiSearch(); }} className={`mb-2 inline-flex items-center gap-1 text-xs font-semibold ${appDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>← Section types</button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setPickerStage('categories'); setCategory('All'); setPickerSparkKey(null); clearAiSearch(); }}
+                                    aria-label="Back to all section types"
+                                    className={`cosmic-add-section-all-types mb-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition ${appDark ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:border-violet-400/40 hover:bg-white/[0.08] hover:text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800'}`}
+                                >
+                                    <span aria-hidden="true">←</span>
+                                    <span>All section types</span>
+                                </button>
                                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500">{modalContextLabel} · {category}</p>
                                 <h2 className="mt-1 truncate text-xl font-semibold">{pickerSpark?.name || `Choose a ${category} Spark`}</h2>
                             </div>

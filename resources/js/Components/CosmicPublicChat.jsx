@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import CosmicLoadingIcon from './CosmicLoadingIcon';
 
 const STORAGE_KEY = 'cosmic.public-chat.v1';
 const CLOSED_KEY = 'cosmic.public-chat.closed';
@@ -325,7 +326,7 @@ export default function CosmicPublicChat() {
 
                         {sending && !aiPaused && (
                             <div className="flex justify-start">
-                                <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-500">Thinking…</div>
+                                <div className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm"><CosmicLoadingIcon/>Thinking…</div>
                             </div>
                         )}
 

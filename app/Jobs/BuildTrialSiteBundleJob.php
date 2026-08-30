@@ -212,9 +212,10 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         });
 
         if ($nextPageId) {
-            $delayMinutes = max(0, (int) config('cosmic.trial_inner_page_delay_minutes', 2));
-            self::dispatch($trialId, $nextPageId)
-                ->delay(now()->addMinutes($delayMinutes));
+            // Build trial inner pages back-to-back. A page schedules exactly one
+            // successor only after it finishes, so API work remains sequential
+            // without the old artificial two-minute gap between pages.
+            self::dispatch($trialId, $nextPageId);
         }
     }
 

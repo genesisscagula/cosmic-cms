@@ -270,6 +270,16 @@ PROMPT;
             if(!is_string($path)||trim($path)===''||!Arr::has($beforeEditable,$path)){
                 return ['ok'=>false,'reason'=>'editable_patch_path_invalid','path'=>$path];
             }
+
+            // Batch 5 guard: collection structure is owned by the finite
+            // structural_actions protocol. Ordinary editable patches may edit
+            // fields inside an existing item (items.0.title), but they may not
+            // replace an entire numeric list and thereby smuggle add/remove/
+            // reorder operations around the structural validator.
+            $currentValue=Arr::get($beforeEditable,$path);
+            if(is_array($currentValue) && array_is_list($currentValue)){
+                return ['ok'=>false,'reason'=>'editable_patch_collection_replace_forbidden','path'=>$path];
+            }
             Arr::set($editable,$path,$value);
         }
 
@@ -480,9 +490,10 @@ PROMPT;
     }
 
     /**
-     * Protect associative schema shape recursively. Numeric lists are editable
-     * collections and may change length/content; associative objects may not
-     * silently gain or lose keys.
+     * Protect the supplied editable schema recursively. Associative objects may
+     * not gain/lose keys. Numeric lists may edit values inside existing items,
+     * but list length/type changes are structural operations and must go through
+     * structural_actions instead of an ordinary/full-schema patch.
      */
     private function shapeMismatch(mixed $before,mixed $after,string $path='editable'): ?string
     {
@@ -490,7 +501,15 @@ PROMPT;
         $beforeIsList=array_is_list($before);
         $afterIsList=array_is_list($after);
         if($beforeIsList!==$afterIsList) return $path;
-        if($beforeIsList) return null;
+
+        if($beforeIsList){
+            if(count($before)!==count($after)) return $path;
+            foreach($before as $index=>$value){
+                $child=$this->shapeMismatch($value,$after[$index]??null,$path.'.'.$index);
+                if($child!==null) return $child;
+            }
+            return null;
+        }
 
         $beforeKeys=array_keys($before); sort($beforeKeys);
         $afterKeys=array_keys($after); sort($afterKeys);
