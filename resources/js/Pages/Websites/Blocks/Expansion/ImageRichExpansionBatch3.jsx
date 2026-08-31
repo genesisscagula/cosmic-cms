@@ -6,9 +6,9 @@ const vars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
     return {
         "--b3-bg":primary?"var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,var(--cosmic-primary,#243447)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#ffffff))",
-        "--b3-surface":primary?"var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E))":"#f7f7f5",
-        "--b3-text":primary?"var(--cosmic-on-primary,#f8fafc)":"var(--cosmic-on-surface,#172033)",
-        "--b3-muted":primary?"var(--cosmic-on-primary-muted,rgba(248,250,252,.76))":"var(--cosmic-on-surface-muted,#64748b)",
+        "--b3-surface":primary?"var(--cosmic-local-bg-primary-surface,var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f7f7f5))",
+        "--b3-text":primary?"var(--cosmic-local-on-primary,var(--cosmic-on-primary,#f8fafc))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--b3-muted":primary?"var(--cosmic-local-on-primary-muted,var(--cosmic-on-primary-muted,rgba(248,250,252,.76)))":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
         "--b3-border":primary?"rgba(248,250,252,.18)":"rgba(15,23,42,.12)",
         "--b3-accent":"var(--cosmic-accent,#60A5FA)",
     };
@@ -37,13 +37,13 @@ const Batch3Section=({block,variant,family})=>{
     </div>
    </div>
    <style>{`
-    .cosmic-b3{background:var(--b3-bg);color:var(--b3-text);padding:7rem 1.75rem}
-    .cosmic-b3 .b3-shell{width:100%;max-width:88rem;margin:0 auto}
+    .cosmic-b3{container-type:inline-size;min-width:0;background:var(--b3-bg);color:var(--b3-text);padding:7rem 1.75rem}
+    .cosmic-b3 .b3-shell{width:100%;min-width:0;max-width:88rem;margin:0 auto}
     .cosmic-b3 .b3-head{max-width:50rem;margin-bottom:3.5rem}
     .cosmic-b3 .b3-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b3-muted)}
     .cosmic-b3 .b3-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.6rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
     .cosmic-b3 .b3-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--b3-muted)}
-    .cosmic-b3 .b3-grid{display:grid;gap:1.25rem}
+    .cosmic-b3 .b3-grid{display:grid;min-width:0;gap:1.25rem}
     .cosmic-b3 .b3-card{position:relative;overflow:hidden;border:1px solid var(--b3-border);background:var(--b3-surface);border-radius:1.75rem}
     .cosmic-b3 .b3-img{overflow:hidden;min-height:15rem}
     .cosmic-b3 .b3-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
@@ -75,8 +75,13 @@ const Batch3Section=({block,variant,family})=>{
     .b3-rail .b3-card{scroll-snap-align:start}.b3-rail .b3-img{aspect-ratio:4/3}
 
         .b3-mosaic .b3-copy,.b3-asymmetric .b3-copy{display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem;background:linear-gradient(to top,color-mix(in srgb,var(--b3-surface,var(--cosmic-bg-primary-surface,#30475E)) 88%,transparent),transparent 78%)}
+        .cosmic-b3 .b3-card,.cosmic-b3 .b3-copy,.cosmic-b3 .b3-img{min-width:0;max-width:100%}.cosmic-b3 .b3-title,.cosmic-b3 .b3-text,.cosmic-b3 .b3-heading{overflow-wrap:anywhere}
+/* Builder/modal parity: respond to the actual Spark canvas, not only the browser viewport. */
+    @container(max-width:1100px){.b3-editorial .b3-grid,.b3-logos .b3-grid,.b3-certifications .b3-grid,.b3-offices .b3-grid,.b3-cards .b3-grid,.b3-directory .b3-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.b3-photo .b3-grid,.b3-proof .b3-grid,.b3-form .b3-grid,.b3-split .b3-grid,.b3-spotlight .b3-grid{grid-template-columns:1fr 1fr}.b3-rail .b3-grid{grid-auto-columns:minmax(16rem,22rem)}}
 @media(max-width:900px){.b3-photo .b3-card:first-child,.b3-proof .b3-card:first-child,.b3-form .b3-card:first-child,.b3-split .b3-card:first-child,.b3-spotlight .b3-card:first-child{grid-row:auto;height:auto}.b3-photo .b3-card:first-child .b3-img,.b3-proof .b3-card:first-child .b3-img,.b3-form .b3-card:first-child .b3-img,.b3-split .b3-card:first-child .b3-img,.b3-spotlight .b3-card:first-child .b3-img{flex:none}.cosmic-b3{padding:5rem 1.25rem}.cosmic-b3 .b3-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b3-mosaic .b3-grid,.b3-asymmetric .b3-grid{grid-auto-rows:auto}.b3-mosaic .b3-card,.b3-asymmetric .b3-card{grid-column:auto;grid-row:auto;min-height:21rem}.b3-rail .b3-grid{display:grid;grid-auto-flow:row;grid-auto-columns:auto}}
+    @container(max-width:900px){.b3-photo .b3-card:first-child,.b3-proof .b3-card:first-child,.b3-form .b3-card:first-child,.b3-split .b3-card:first-child,.b3-spotlight .b3-card:first-child{grid-row:auto;height:auto}.b3-photo .b3-card:first-child .b3-img,.b3-proof .b3-card:first-child .b3-img,.b3-form .b3-card:first-child .b3-img,.b3-split .b3-card:first-child .b3-img,.b3-spotlight .b3-card:first-child .b3-img{flex:none}.cosmic-b3{padding:5rem 1.25rem}.cosmic-b3 .b3-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b3-mosaic .b3-grid,.b3-asymmetric .b3-grid{grid-auto-rows:auto}.b3-mosaic .b3-card,.b3-asymmetric .b3-card{grid-column:auto;grid-row:auto;min-height:21rem}.b3-rail .b3-grid{display:grid;grid-auto-flow:row;grid-auto-columns:auto}}
     @media(max-width:640px){.cosmic-b3{padding:4rem 1rem}.cosmic-b3 .b3-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b3 .b3-grid{grid-template-columns:1fr!important}.b3-panels .b3-card:nth-child(even),.b3-inquiry .b3-card:nth-child(even){margin-top:0}}
+    @container(max-width:640px){.cosmic-b3{padding:4rem 1rem}.cosmic-b3 .b3-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b3 .b3-grid{grid-template-columns:1fr!important}.b3-panels .b3-card:nth-child(even),.b3-inquiry .b3-card:nth-child(even){margin-top:0}}
    
     .b3-card, .b3-copy{min-width:0}`}</style>
  </section>

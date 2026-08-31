@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
+import { CosmicSection } from "../../Components/CosmicSection";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
@@ -118,8 +119,10 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
     };
 
     return (
-        <section
-            className={sparkTw(block, "section", `relative w-full px-6 py-20 sm:px-[8%] sm:py-24 ${theme.bg} overflow-hidden transition-colors duration-500`)}
+        <CosmicSection
+            container="wide"
+            className={sparkTw(block, "section", `relative w-full ${theme.bg} overflow-hidden transition-colors duration-500`)}
+            containerClassName={sparkTw(block, "section_container", "relative z-10")}
         >
 
             {/* Background */}
@@ -198,6 +201,6 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
             </div>
 
-        </section>
+        </CosmicSection>
     );
 }

@@ -6,9 +6,9 @@ const themeVars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
     return {
         "--b4-bg":primary?"var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,var(--cosmic-primary,#243447)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#ffffff))",
-        "--b4-surface":primary?"var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E))":"#f7f7f5",
-        "--b4-text":primary?"var(--cosmic-on-primary,#f8fafc)":"var(--cosmic-on-surface,#172033)",
-        "--b4-muted":primary?"var(--cosmic-on-primary-muted,rgba(248,250,252,.76))":"var(--cosmic-on-surface-muted,#64748b)",
+        "--b4-surface":primary?"var(--cosmic-local-bg-primary-surface,var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f7f7f5))",
+        "--b4-text":primary?"var(--cosmic-local-on-primary,var(--cosmic-on-primary,#f8fafc))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--b4-muted":primary?"var(--cosmic-local-on-primary-muted,var(--cosmic-on-primary-muted,rgba(248,250,252,.76)))":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
         "--b4-border":primary?"rgba(248,250,252,.18)":"rgba(15,23,42,.12)",
         "--b4-accent":"var(--cosmic-accent,#60A5FA)",
     };
@@ -37,7 +37,7 @@ const IndustrySection=({block,variant,family})=>{
       </div>
    </div>
    <style>{`
-    .cosmic-b4{background:var(--b4-bg);color:var(--b4-text);padding:7rem 1.75rem}
+    .cosmic-b4{container-type:inline-size;container-name:cosmic-b4;min-width:0;overflow:hidden;background:var(--b4-bg);color:var(--b4-text);padding:7rem 1.75rem}
     .cosmic-b4 .b4-shell{width:100%;max-width:88rem;margin:0 auto}
     .cosmic-b4 .b4-head{max-width:52rem;margin-bottom:3.5rem}
     .cosmic-b4 .b4-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b4-muted)}
@@ -81,10 +81,31 @@ const IndustrySection=({block,variant,family})=>{
     .b4-gallery .b4-copy,.b4-progress .b4-copy{color:#172033}
     .b4-gallery .b4-label,.b4-progress .b4-label{color:#64748b}
     .b4-gallery .b4-text,.b4-progress .b4-text{color:#475569}
+
+    /* Batch 3 parity repair: these breakpoints key off the actual Spark canvas, not the browser viewport. */
+    @container cosmic-b4 (max-width:1100px){
+      .b4-dishes .b4-grid,.b4-projects .b4-grid,.b4-treatments .b4-grid,.b4-properties .b4-grid,.b4-rooms .b4-grid,.b4-experiences .b4-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .b4-story .b4-grid,.b4-capabilities .b4-grid,.b4-featured .b4-grid,.b4-agent .b4-grid,.b4-destination .b4-grid{grid-template-columns:minmax(0,1.12fr) minmax(16rem,.88fr)}
+      .b4-reservation .b4-grid,.b4-services .b4-grid,.b4-pathways .b4-grid,.b4-facility .b4-grid,.b4-neighborhoods .b4-grid,.b4-itinerary .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @container cosmic-b4 (max-width:900px){
+      .cosmic-b4{padding:5rem 1.25rem}
+      .cosmic-b4 .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      .b4-story .b4-card:first-child,.b4-capabilities .b4-card:first-child,.b4-featured .b4-card:first-child,.b4-agent .b4-card:first-child,.b4-destination .b4-card:first-child{grid-row:auto;height:auto}
+      .b4-story .b4-card:first-child .b4-img,.b4-capabilities .b4-card:first-child .b4-img,.b4-featured .b4-card:first-child .b4-img,.b4-agent .b4-card:first-child .b4-img,.b4-destination .b4-card:first-child .b4-img{flex:none;min-height:22rem}
+      .b4-gallery .b4-grid,.b4-progress .b4-grid{grid-auto-rows:auto}
+      .b4-gallery .b4-card,.b4-progress .b4-card{grid-column:auto;grid-row:auto;min-height:21rem}
+    }
+    @container cosmic-b4 (max-width:640px){
+      .cosmic-b4{padding:4rem 1rem}
+      .cosmic-b4 .b4-heading{font-size:clamp(2.2rem,10cqw,3.4rem);overflow-wrap:anywhere}
+      .cosmic-b4 .b4-grid{grid-template-columns:1fr!important}
+      .b4-story .b4-card:first-child .b4-img,.b4-capabilities .b4-card:first-child .b4-img,.b4-featured .b4-card:first-child .b4-img,.b4-agent .b4-card:first-child .b4-img,.b4-destination .b4-card:first-child .b4-img{min-height:17rem}
+    }
 @media(max-width:900px){.b4-story .b4-card:first-child,.b4-capabilities .b4-card:first-child,.b4-featured .b4-card:first-child,.b4-agent .b4-card:first-child,.b4-destination .b4-card:first-child{grid-row:auto;height:auto}.b4-story .b4-card:first-child .b4-img,.b4-capabilities .b4-card:first-child .b4-img,.b4-featured .b4-card:first-child .b4-img,.b4-agent .b4-card:first-child .b4-img,.b4-destination .b4-card:first-child .b4-img{flex:none}.cosmic-b4{padding:5rem 1.25rem}.cosmic-b4 .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b4-gallery .b4-grid,.b4-progress .b4-grid{grid-auto-rows:auto}.b4-gallery .b4-card,.b4-progress .b4-card{grid-column:auto;grid-row:auto;min-height:21rem}}
     @media(max-width:640px){.cosmic-b4{padding:4rem 1rem}.cosmic-b4 .b4-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b4 .b4-grid{grid-template-columns:1fr!important}}
    
-    .b4-card, .b4-copy{min-width:0}`}</style>
+    .b4-card,.b4-copy,.b4-img,.b4-grid{min-width:0}.b4-title,.b4-text{overflow-wrap:anywhere}`}</style>
  </section>
 };
 

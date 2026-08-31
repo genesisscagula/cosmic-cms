@@ -6637,7 +6637,7 @@ class PageTemplateCatalog
                 'audience' => ['decision makers', 'business owners', 'professional clients'],
                 'style' => ['signature-system', 'editorial', 'structured', 'low-image'],
                 'features' => ['chapter index', 'service orbit', 'process constellation', 'evidence ledger', 'ticket cta'],
-                'sections' => ['hero_split_editorial', 'about_chapter_index_premium', 'services_orbit_map_premium', 'process_constellation_premium', 'trust_evidence_ledger_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_split_editorial', 'about_timeline_story', 'services_bento', 'process_timeline', 'trust_evidence_ledger_premium', 'cta_ticket_premium'],
             ],
             [
                 'key' => 'technology-signal-system', 'name' => 'Technology Signal System', 'price_credits' => 240,
@@ -6649,7 +6649,7 @@ class PageTemplateCatalog
                 'audience' => ['product teams', 'technology buyers', 'startups'],
                 'style' => ['signature-system', 'technical', 'graphic', 'structured'],
                 'features' => ['service orbit', 'process constellation', 'proof staircase', 'decision tree', 'ticket cta'],
-                'sections' => ['hero_grid_pulse_tech_premium', 'services_orbit_map_premium', 'process_constellation_premium', 'proof_metric_staircase_premium', 'faq_decision_tree_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_grid_pulse_tech_premium', 'services_bento', 'process_timeline', 'stats_modern', 'faq_accordion', 'cta_ticket_premium'],
             ],
             [
                 'key' => 'professional-evidence-system', 'name' => 'Professional Evidence System', 'price_credits' => 240,
@@ -6661,7 +6661,7 @@ class PageTemplateCatalog
                 'audience' => ['executives', 'business owners', 'professional clients'],
                 'style' => ['signature-system', 'professional', 'credible', 'minimal'],
                 'features' => ['chapter index', 'evidence ledger', 'proof staircase', 'decision tree', 'contact board'],
-                'sections' => ['hero_headline', 'about_chapter_index_premium', 'trust_evidence_ledger_premium', 'proof_metric_staircase_premium', 'faq_decision_tree_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_headline', 'about_timeline_story', 'trust_evidence_ledger_premium', 'stats_modern', 'faq_accordion', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'restaurant-service-notebook', 'name' => 'Restaurant Service Notebook', 'price_credits' => 240,
@@ -6673,7 +6673,7 @@ class PageTemplateCatalog
                 'audience' => ['diners', 'event planners', 'local guests'],
                 'style' => ['signature-system', 'hospitality', 'editorial', 'warm'],
                 'features' => ['brand chapters', 'service orbit', 'proof staircase', 'guided faq', 'contact routes'],
-                'sections' => ['hero_luxury_fullscreen', 'about_chapter_index_premium', 'services_orbit_map_premium', 'proof_metric_staircase_premium', 'faq_decision_tree_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_luxury_fullscreen', 'about_timeline_story', 'services_bento', 'stats_modern', 'faq_accordion', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'care-navigation-system', 'name' => 'Care Navigation System', 'price_credits' => 240,
@@ -6685,7 +6685,7 @@ class PageTemplateCatalog
                 'audience' => ['patients', 'families', 'care decision makers'],
                 'style' => ['signature-system', 'calm', 'clear', 'reassuring'],
                 'features' => ['care orbit', 'process constellation', 'evidence ledger', 'decision tree', 'contact board'],
-                'sections' => ['hero_split_image', 'services_orbit_map_premium', 'process_constellation_premium', 'trust_evidence_ledger_premium', 'faq_decision_tree_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_split_image', 'services_bento', 'process_timeline', 'trust_evidence_ledger_premium', 'faq_accordion', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'learning-path-system', 'name' => 'Learning Path System', 'price_credits' => 240,
@@ -6697,7 +6697,7 @@ class PageTemplateCatalog
                 'audience' => ['students', 'parents', 'learners'],
                 'style' => ['signature-system', 'educational', 'friendly', 'structured'],
                 'features' => ['chapter index', 'program orbit', 'learning constellation', 'decision tree', 'ticket cta'],
-                'sections' => ['hero_centered_cta', 'about_chapter_index_premium', 'services_orbit_map_premium', 'process_constellation_premium', 'faq_decision_tree_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_centered_cta', 'about_timeline_story', 'services_bento', 'process_timeline', 'faq_accordion', 'cta_ticket_premium'],
             ],
             [
                 'key' => 'creative-constellation-system', 'name' => 'Creative Constellation System', 'price_credits' => 240,
@@ -6709,7 +6709,7 @@ class PageTemplateCatalog
                 'audience' => ['brands', 'creative clients', 'marketing teams'],
                 'style' => ['signature-system', 'creative', 'graphic', 'distinctive'],
                 'features' => ['chapter index', 'service orbit', 'proof staircase', 'evidence ledger', 'ticket cta'],
-                'sections' => ['hero_particle_constellation_premium', 'about_chapter_index_premium', 'services_orbit_map_premium', 'proof_metric_staircase_premium', 'trust_evidence_ledger_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_particle_constellation_premium', 'about_timeline_story', 'services_bento', 'stats_modern', 'trust_evidence_ledger_premium', 'cta_ticket_premium'],
             ],
             [
                 'key' => 'construction-delivery-system', 'name' => 'Construction Delivery System', 'price_credits' => 240,
@@ -6721,7 +6721,7 @@ class PageTemplateCatalog
                 'audience' => ['property owners', 'developers', 'commercial clients'],
                 'style' => ['signature-system', 'industrial', 'structured', 'credible'],
                 'features' => ['capability orbit', 'process constellation', 'proof staircase', 'evidence ledger', 'contact board'],
-                'sections' => ['hero_parallax', 'services_orbit_map_premium', 'process_constellation_premium', 'proof_metric_staircase_premium', 'trust_evidence_ledger_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_parallax', 'services_bento', 'process_timeline', 'stats_modern', 'trust_evidence_ledger_premium', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'hospitality-guest-path', 'name' => 'Hospitality Guest Path', 'price_credits' => 240,
@@ -6733,7 +6733,7 @@ class PageTemplateCatalog
                 'audience' => ['guests', 'travellers', 'event planners'],
                 'style' => ['signature-system', 'hospitality', 'editorial', 'welcoming'],
                 'features' => ['story chapters', 'experience orbit', 'proof staircase', 'decision tree', 'ticket cta'],
-                'sections' => ['hero_editorial_overlay', 'about_chapter_index_premium', 'services_orbit_map_premium', 'proof_metric_staircase_premium', 'faq_decision_tree_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_editorial_overlay', 'about_timeline_story', 'services_bento', 'stats_modern', 'faq_accordion', 'cta_ticket_premium'],
             ],
             [
                 'key' => 'local-service-clarity-system', 'name' => 'Local Service Clarity System', 'price_credits' => 240,
@@ -6745,7 +6745,7 @@ class PageTemplateCatalog
                 'audience' => ['homeowners', 'local customers', 'property managers'],
                 'style' => ['signature-system', 'local', 'clear', 'trust-led'],
                 'features' => ['service orbit', 'process constellation', 'evidence ledger', 'decision tree', 'contact board'],
-                'sections' => ['hero_background_image', 'services_orbit_map_premium', 'process_constellation_premium', 'trust_evidence_ledger_premium', 'faq_decision_tree_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_background_image', 'services_bento', 'process_timeline', 'trust_evidence_ledger_premium', 'faq_accordion', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'legal-confidence-system', 'name' => 'Legal Confidence System', 'price_credits' => 240,
@@ -6757,7 +6757,7 @@ class PageTemplateCatalog
                 'audience' => ['legal clients', 'business owners', 'decision makers'],
                 'style' => ['signature-system', 'legal', 'authoritative', 'restrained'],
                 'features' => ['chapter index', 'evidence ledger', 'process constellation', 'decision tree', 'contact board'],
-                'sections' => ['hero_split_editorial', 'about_chapter_index_premium', 'trust_evidence_ledger_premium', 'process_constellation_premium', 'faq_decision_tree_premium', 'contact_availability_board_premium'],
+                'sections' => ['hero_split_editorial', 'about_timeline_story', 'trust_evidence_ledger_premium', 'process_timeline', 'faq_accordion', 'contact_availability_board_premium'],
             ],
             [
                 'key' => 'universal-signature-system', 'name' => 'Universal Signature System', 'price_credits' => 240,
@@ -6769,7 +6769,7 @@ class PageTemplateCatalog
                 'audience' => ['customers', 'decision makers', 'prospective clients'],
                 'style' => ['signature-system', 'premium', 'graphic', 'balanced'],
                 'features' => ['chapter index', 'service orbit', 'proof staircase', 'decision tree', 'ticket cta'],
-                'sections' => ['hero_floating_glass', 'about_chapter_index_premium', 'services_orbit_map_premium', 'proof_metric_staircase_premium', 'faq_decision_tree_premium', 'cta_ticket_premium'],
+                'sections' => ['hero_floating_glass', 'about_timeline_story', 'services_bento', 'stats_modern', 'faq_accordion', 'cta_ticket_premium'],
             ],
         ];
 

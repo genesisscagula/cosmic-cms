@@ -8,12 +8,15 @@ class BlockPricingRegistry
     {
         return [
             // Distinctive Expansion Batch 6 — low-image signature systems
-            'about_chapter_index_premium' => ['label' => 'Chapter Index', 'category' => 'signature', 'credits' => 135],
-            'services_orbit_map_premium' => ['label' => 'Services Orbit Map', 'category' => 'signature', 'credits' => 140],
-            'process_constellation_premium' => ['label' => 'Process Constellation', 'category' => 'signature', 'credits' => 135],
-            'proof_metric_staircase_premium' => ['label' => 'Proof Staircase', 'category' => 'signature', 'credits' => 135],
+            // Retired entries remain registered for existing-page rendering and
+            // schema compatibility, but SparkCatalog and the frontend marketplace
+            // intentionally exclude them from new purchases/generation.
+            'about_chapter_index_premium' => ['label' => 'Chapter Index', 'category' => 'signature', 'credits' => 135, 'retired' => true],
+            'services_orbit_map_premium' => ['label' => 'Services Orbit Map', 'category' => 'signature', 'credits' => 140, 'retired' => true],
+            'process_constellation_premium' => ['label' => 'Process Constellation', 'category' => 'signature', 'credits' => 135, 'retired' => true],
+            'proof_metric_staircase_premium' => ['label' => 'Proof Staircase', 'category' => 'signature', 'credits' => 135, 'retired' => true],
             'trust_evidence_ledger_premium' => ['label' => 'Evidence Ledger', 'category' => 'signature', 'credits' => 135],
-            'faq_decision_tree_premium' => ['label' => 'FAQ Decision Tree', 'category' => 'signature', 'credits' => 130],
+            'faq_decision_tree_premium' => ['label' => 'FAQ Decision Tree', 'category' => 'signature', 'credits' => 130, 'retired' => true],
             'cta_ticket_premium' => ['label' => 'Ticket CTA', 'category' => 'signature', 'credits' => 130],
             'contact_availability_board_premium' => ['label' => 'Contact Availability Board', 'category' => 'signature', 'credits' => 135],
 

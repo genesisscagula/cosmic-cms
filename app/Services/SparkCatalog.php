@@ -15,6 +15,9 @@ class SparkCatalog
                 if (! is_array($item) || ! is_string($type) || blank($type)) {
                     return null;
                 }
+                if (($item['retired'] ?? false) === true) {
+                    return null;
+                }
 
                 $collection = (string) ($item['category'] ?? 'growth');
                 $override = (array) ($overrides[$type] ?? []);

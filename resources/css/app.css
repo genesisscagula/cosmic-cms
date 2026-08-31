@@ -1458,19 +1458,19 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 /* Spark mini-layouts: retain contrast without looking like solid black slabs. */
-:root[data-theme="light"] .cosmic-add-spark-modal article > div:first-child,
-:root[data-theme="light"] .cosmic-spark-preview-modal article > div:first-child {
+:root[data-theme="light"] .cosmic-add-spark-modal article.cosmic-spark-marketplace-card > div:first-child,
+:root[data-theme="light"] .cosmic-spark-preview-modal article.cosmic-spark-marketplace-card > div:first-child {
     background: linear-gradient(145deg,#182235 0%,#26344b 100%) !important;
     border-bottom-color: #d7e4dd !important;
 }
-:root[data-theme="light"] .cosmic-add-spark-modal article,
-:root[data-theme="light"] .cosmic-spark-preview-modal article {
+:root[data-theme="light"] .cosmic-add-spark-modal article.cosmic-spark-marketplace-card,
+:root[data-theme="light"] .cosmic-spark-preview-modal article.cosmic-spark-marketplace-card {
     border-color: #cfdfd6 !important;
     background: #fbfdfc !important;
     box-shadow: 0 1px 2px rgba(15,23,42,.04) !important;
 }
-:root[data-theme="light"] .cosmic-add-spark-modal article:hover,
-:root[data-theme="light"] .cosmic-spark-preview-modal article:hover {
+:root[data-theme="light"] .cosmic-add-spark-modal article.cosmic-spark-marketplace-card:hover,
+:root[data-theme="light"] .cosmic-spark-preview-modal article.cosmic-spark-marketplace-card:hover {
     border-color: #8fbaa5 !important;
     background: #fff !important;
 }
@@ -1615,8 +1615,8 @@ html[data-theme] .cosmic-app-shell main {
 :root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover { background: #4e866a; }
 
 /* Preserve intentional dark preview artwork and generated-site previews. */
-:root[data-theme="light"] .cosmic-add-spark-modal article > div:first-child,
-:root[data-theme="light"] .cosmic-spark-preview-modal article > div:first-child,
+:root[data-theme="light"] .cosmic-add-spark-modal article.cosmic-spark-marketplace-card > div:first-child,
+:root[data-theme="light"] .cosmic-spark-preview-modal article.cosmic-spark-marketplace-card > div:first-child,
 :root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .cosmic-preview-artwork,
 :root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) iframe {
     color-scheme: normal;
@@ -8602,6 +8602,16 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: currentColor !important;
 }
 
+/* A PRIMARY section may contain a deliberately light card surface. Do not let
+   the section-wide on-primary foreground leak through WebKit text fill into
+   that nested surface. Components opt in with this semantic marker. */
+.cosmic-render-shell:is([data-cosmic-resolved-theme="primary"],[data-cosmic-background-state="primary"])
+    [data-cosmic-card-surface="light"]
+    :is(h1,h2,h3,h4,h5,h6,p,li,span,[data-luna-target="heading"],[data-luna-target="text"],[data-luna-target="label"]) {
+    color: var(--cosmic-color-on-secondary,var(--cosmic-on-secondary,#172033)) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
 /* Mega footer editor: one compact contextual toolbar per column or menu row. */
 .cosmic-mega-footer-section .cosmic-footer-action-bar {
     position: relative;
@@ -9741,7 +9751,7 @@ body:has(#cosmic-dashboard-spark-preview) { overflow: hidden !important; }
 .cosmic-unified-preview-engine {
     box-sizing: border-box;
     width: 100%;
-    padding: clamp(12px, 2vw, 28px);
+    padding: clamp(24px, 3vw, 56px);
     overflow-x: auto;
     background:
         radial-gradient(circle at 50% 0%, rgba(255,255,255,.92), rgba(241,245,249,.94) 48%, rgba(226,232,240,.96));
@@ -9749,7 +9759,8 @@ body:has(#cosmic-dashboard-spark-preview) { overflow: hidden !important; }
 
 .cosmic-unified-preview-frame {
     box-sizing: border-box;
-    width: min(100%, 1440px);
+    width: 100%;
+    max-width: none;
     min-width: 0;
     overflow: hidden;
     border: 1px solid rgba(15,23,42,.10);

@@ -7,6 +7,7 @@ use App\Services\LunaSmartSparkEditingService;
 use App\Services\SparkEditCapabilityRegistry;
 use App\Services\SparkEditCapabilityExecutor;
 use App\Services\SparkEditMutationValidator;
+use App\Services\SparkCatalog;
 use Tests\TestCase;
 
 class SparkEditCapabilityRegistryTest extends TestCase
@@ -48,7 +49,7 @@ class SparkEditCapabilityRegistryTest extends TestCase
         $this->assertArrayNotHasKey('catalog', $payload);
     }
 
-    public function test_structural_request_is_the_only_path_that_loads_full_catalog(): void
+    public function test_structural_request_is_the_only_path_that_loads_the_active_catalog(): void
     {
         $payload = app(SparkEditCapabilityRegistry::class)->payloadForRequest(
             'Add another services section below this one',
@@ -59,7 +60,8 @@ class SparkEditCapabilityRegistryTest extends TestCase
         );
 
         $this->assertSame('structural_catalog', $payload['mode']);
-        $this->assertCount(count(SchemaManager::map()), $payload['catalog']);
+        $this->assertCount(count(SparkCatalog::all()), $payload['catalog']);
+        $this->assertNotContains('about_chapter_index_premium', array_column($payload['catalog'], 'key'));
     }
 
     public function test_validator_rejects_unknown_and_protected_fields(): void

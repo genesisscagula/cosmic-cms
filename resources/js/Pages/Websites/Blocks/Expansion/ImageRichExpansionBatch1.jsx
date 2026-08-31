@@ -6,9 +6,9 @@ const themeVars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
     return {
         "--x-bg":primary?"var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,var(--cosmic-primary,#243447)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#ffffff))",
-        "--x-surface":primary?"var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E))":"#f7f7f5",
-        "--x-text":primary?"var(--cosmic-on-primary,#f8fafc)":"var(--cosmic-on-surface,#172033)",
-        "--x-muted":primary?"var(--cosmic-on-primary-muted,rgba(248,250,252,.76))":"var(--cosmic-on-surface-muted,#64748b)",
+        "--x-surface":primary?"var(--cosmic-local-bg-primary-surface,var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f7f7f5))",
+        "--x-text":primary?"var(--cosmic-local-on-primary,var(--cosmic-on-primary,#f8fafc))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--x-muted":primary?"var(--cosmic-local-on-primary-muted,var(--cosmic-on-primary-muted,rgba(248,250,252,.76)))":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
         "--x-border":primary?"rgba(248,250,252,.18)":"rgba(15,23,42,.12)",
         "--x-accent":"var(--cosmic-accent,#60A5FA)",
     };
@@ -30,16 +30,16 @@ const ExpansionSection=({block,variant})=>{
     {block?.button_label&&<a className={sparkTw(block, "auto_17", "x-cta")} href={block?.button_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.button_label}</a>}
    </div>
    <style>{`
-    .cosmic-image-rich{background:var(--x-bg);color:var(--x-text);padding:7rem 1.75rem}
-    .cosmic-image-rich .x-shell{width:100%;max-width:88rem;margin:0 auto}
+    .cosmic-image-rich{container-type:inline-size;min-width:0;background:var(--x-bg);color:var(--x-text);padding:7rem 1.75rem}
+    .cosmic-image-rich .x-shell{width:100%;min-width:0;max-width:88rem;margin:0 auto}
     .cosmic-image-rich .x-head{max-width:48rem;margin-bottom:3.5rem}
     .cosmic-image-rich .x-eyebrow{display:block;font-size:.75rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--x-muted)}
     .cosmic-image-rich .x-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.75rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
     .cosmic-image-rich .x-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--x-muted)}
-    .cosmic-image-rich .x-grid{display:grid;gap:1.25rem}
+    .cosmic-image-rich .x-grid{display:grid;min-width:0;gap:1.25rem}
     .cosmic-image-rich .x-card{position:relative;overflow:hidden;border:1px solid var(--x-border);background:var(--x-surface);border-radius:1.75rem}
     .cosmic-image-rich .x-img{overflow:hidden;min-height:15rem}
-    .cosmic-image-rich .x-img img{transition:transform .55s ease}
+    .cosmic-image-rich .x-img img{display:block;width:100%;height:100%;max-width:100%;object-fit:cover;transition:transform .55s ease}
     .cosmic-image-rich .x-card:hover .x-img img{transform:scale(1.035)}
     .cosmic-image-rich .x-card-copy{padding:1.5rem}
     .cosmic-image-rich .x-index{display:block;font-size:.72rem;letter-spacing:.2em;color:var(--x-muted);margin-bottom:.75rem}
@@ -58,8 +58,13 @@ const ExpansionSection=({block,variant})=>{
     .x-split .x-grid,.x-showcase .x-grid,.x-manifesto .x-grid,.x-founder .x-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.x-split .x-card:first-child,.x-showcase .x-card:first-child,.x-manifesto .x-card:first-child,.x-founder .x-card:first-child{grid-row:1 / span 2;display:flex;flex-direction:column;height:100%}.x-split .x-card:first-child .x-img,.x-showcase .x-card:first-child .x-img,.x-manifesto .x-card:first-child .x-img,.x-founder .x-card:first-child .x-img{min-height:32rem;flex:1}
     .x-stack .x-grid,.x-panels .x-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.x-stack .x-card:nth-child(even),.x-panels .x-card:nth-child(even){margin-top:1.75rem}
         .x-mosaic .x-copy,.x-asymmetric .x-copy,.x-collage .x-copy{display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem;background:linear-gradient(to top,color-mix(in srgb,var(--x-surface,var(--cosmic-bg-primary-surface,#30475E)) 88%,transparent),transparent 78%)}
+        .cosmic-image-rich .x-card,.cosmic-image-rich .x-card-copy,.cosmic-image-rich .x-img{min-width:0;max-width:100%}.cosmic-image-rich .x-title,.cosmic-image-rich .x-text,.cosmic-image-rich .x-heading{overflow-wrap:anywhere}
+/* Builder/modal parity: respond to the actual Spark canvas, not only the browser viewport. */
+    @container(max-width:1100px){.x-horizontal .x-grid,.x-numbered .x-grid,.x-index .x-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.x-trio .x-grid,.x-spotlight .x-grid,.x-editorial .x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.x-trio .x-card:first-child,.x-spotlight .x-card:first-child{grid-column:auto}.x-rows .x-card,.x-steps .x-card,.x-journey .x-card,.x-rows .x-card:nth-child(even),.x-journey .x-card:nth-child(even){grid-template-columns:minmax(14rem,.72fr) 1.28fr}.x-rows .x-card:nth-child(even),.x-journey .x-card:nth-child(even){grid-template-columns:1.28fr minmax(14rem,.72fr)}}
 @media(max-width:900px){.x-split .x-card:first-child,.x-showcase .x-card:first-child,.x-manifesto .x-card:first-child,.x-founder .x-card:first-child{grid-row:auto;height:auto}.x-split .x-card:first-child .x-img,.x-showcase .x-card:first-child .x-img,.x-manifesto .x-card:first-child .x-img,.x-founder .x-card:first-child .x-img{flex:none}.cosmic-image-rich{padding:5rem 1.25rem}.x-trio .x-grid,.x-spotlight .x-grid,.x-editorial .x-grid,.x-overlay .x-grid,.x-cinematic .x-grid,.x-horizontal .x-grid,.x-numbered .x-grid,.x-index .x-grid,.x-split .x-grid,.x-showcase .x-grid,.x-manifesto .x-grid,.x-founder .x-grid,.x-stack .x-grid,.x-panels .x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.x-trio .x-card:first-child,.x-spotlight .x-card:first-child{grid-column:auto}.x-mosaic .x-grid,.x-asymmetric .x-grid,.x-collage .x-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto}.x-mosaic .x-card,.x-asymmetric .x-card,.x-collage .x-card,.x-mosaic .x-card:nth-child(n),.x-asymmetric .x-card:nth-child(n),.x-collage .x-card:nth-child(n){grid-column:auto;grid-row:auto;min-height:22rem}}
+    @container(max-width:900px){.x-split .x-card:first-child,.x-showcase .x-card:first-child,.x-manifesto .x-card:first-child,.x-founder .x-card:first-child{grid-row:auto;height:auto}.x-split .x-card:first-child .x-img,.x-showcase .x-card:first-child .x-img,.x-manifesto .x-card:first-child .x-img,.x-founder .x-card:first-child .x-img{flex:none}.cosmic-image-rich{padding:5rem 1.25rem}.x-trio .x-grid,.x-spotlight .x-grid,.x-editorial .x-grid,.x-overlay .x-grid,.x-cinematic .x-grid,.x-horizontal .x-grid,.x-numbered .x-grid,.x-index .x-grid,.x-split .x-grid,.x-showcase .x-grid,.x-manifesto .x-grid,.x-founder .x-grid,.x-stack .x-grid,.x-panels .x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.x-trio .x-card:first-child,.x-spotlight .x-card:first-child{grid-column:auto}.x-mosaic .x-grid,.x-asymmetric .x-grid,.x-collage .x-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto}.x-mosaic .x-card,.x-asymmetric .x-card,.x-collage .x-card,.x-mosaic .x-card:nth-child(n),.x-asymmetric .x-card:nth-child(n),.x-collage .x-card:nth-child(n){grid-column:auto;grid-row:auto;min-height:22rem}}
     @media(max-width:640px){.cosmic-image-rich{padding:4rem 1rem}.cosmic-image-rich .x-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-image-rich .x-grid,.x-trio .x-grid,.x-spotlight .x-grid,.x-editorial .x-grid,.x-overlay .x-grid,.x-cinematic .x-grid,.x-horizontal .x-grid,.x-numbered .x-grid,.x-index .x-grid,.x-split .x-grid,.x-showcase .x-grid,.x-manifesto .x-grid,.x-founder .x-grid,.x-stack .x-grid,.x-panels .x-grid,.x-mosaic .x-grid,.x-asymmetric .x-grid,.x-collage .x-grid{grid-template-columns:1fr}.x-rows .x-card,.x-steps .x-card,.x-journey .x-card,.x-rows .x-card:nth-child(even),.x-journey .x-card:nth-child(even){display:block}.x-rows .x-card:nth-child(even) .x-img,.x-journey .x-card:nth-child(even) .x-img{order:initial}.x-stack .x-card:nth-child(even),.x-panels .x-card:nth-child(even){margin-top:0}}
+    @container(max-width:640px){.cosmic-image-rich{padding:4rem 1rem}.cosmic-image-rich .x-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-image-rich .x-grid,.x-trio .x-grid,.x-spotlight .x-grid,.x-editorial .x-grid,.x-overlay .x-grid,.x-cinematic .x-grid,.x-horizontal .x-grid,.x-numbered .x-grid,.x-index .x-grid,.x-split .x-grid,.x-showcase .x-grid,.x-manifesto .x-grid,.x-founder .x-grid,.x-stack .x-grid,.x-panels .x-grid,.x-mosaic .x-grid,.x-asymmetric .x-grid,.x-collage .x-grid{grid-template-columns:1fr}.x-rows .x-card,.x-steps .x-card,.x-journey .x-card,.x-rows .x-card:nth-child(even),.x-journey .x-card:nth-child(even){display:block}.x-rows .x-card:nth-child(even) .x-img,.x-journey .x-card:nth-child(even) .x-img{order:initial}.x-stack .x-card:nth-child(even),.x-panels .x-card:nth-child(even){margin-top:0}}
    
     .x-card, .x-copy{min-width:0}`}</style>
  </section>

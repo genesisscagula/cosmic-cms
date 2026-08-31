@@ -9,7 +9,7 @@ import LunaProcessCard from '../../Components/Luna/LunaProcessCard';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { logoFilterFor } from '@/Branding/logoFilters';
 
-import AddSectionModal, { GlobalSparkPreviewModal } from "./Components/AddSectionModal";
+import AddSectionModal, { GlobalSparkPreviewModal, categoryFor as sparkCategoryForSectionType } from "./Components/AddSectionModal";
 import { BlockRegistry as MarketplaceSparkRegistry } from "./Components/SparkRegistry";
 import PageTemplatesModal from "./Components/PageTemplatesModal";
 import SavePageTemplateModal from "./Components/SavePageTemplateModal";
@@ -810,6 +810,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [layoutApplying, setLayoutApplying] = useState(null);
     const [layoutBusyKey, setLayoutBusyKey] = useState(null);
     const [layoutPreview, setLayoutPreview] = useState(null);
+    const [sparksMarketplaceOpen, setSparksMarketplaceOpen] = useState(false);
+    const [sparksMarketplaceCategory, setSparksMarketplaceCategory] = useState(null);
     const [sparkCatalog, setSparkCatalog] = useState([]);
     const [sparkCatalogLoading, setSparkCatalogLoading] = useState(false);
     const [sparkCatalogLoaded, setSparkCatalogLoaded] = useState(false);
@@ -4115,35 +4117,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         // Only string values are treated as Marketplace category filters.
         const requestedCategory = typeof category === 'string' ? category.trim() : '';
 
-        // Keep the current Builder session intact while users browse/unlock Sparks.
-        // Opening the Marketplace separately avoids discarding unsaved page/theme edits
-        // and lets the Builder refresh ownership the next time its Spark catalog opens.
-        const marketplaceBaseUrl = route('sparks.index');
-        const separator = marketplaceBaseUrl.includes('?') ? '&' : '?';
-        const marketplaceUrl = requestedCategory
-            ? `${marketplaceBaseUrl}${separator}category=${encodeURIComponent(requestedCategory)}`
-            : marketplaceBaseUrl;
-        const marketplaceWindow = window.open(marketplaceUrl, '_blank');
-
-        if (marketplaceWindow) {
-            try { marketplaceWindow.opener = null; } catch (_) {}
-            return;
-        }
-
-        // Popup blockers are uncommon for a direct click, but never navigate away from
-        // dirty Builder work as a fallback. A clean Builder can safely visit in-place.
-        if (hasUnsavedChanges) {
-            showCosmicNotification({
-                title: 'Marketplace blocked by your browser',
-                message: 'Allow popups for Cosmic CMS, or save your Builder changes first and try again.',
-                tone: 'warning',
-                mode: 'toast',
-                duration: 5200,
-            });
-            return;
-        }
-
-        router.visit(marketplaceUrl);
+        // Keep Marketplace browsing inside Builder. The shared Spark picker already
+        // contains the real Spark previews, appearance states, ownership, and unlock
+        // flow, so opening it as a modal preserves unsaved Builder work and avoids a
+        // second Marketplace implementation.
+        setSparksMarketplaceCategory(requestedCategory || null);
+        setSparksMarketplaceOpen(true);
     };
 
     const openSavedSparks = async ({ filter = 'all', installMode = 'append' } = {}) => {
@@ -7200,7 +7179,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     // collection (plus free blog variants/current layout). Discovery belongs in
                                     // the dedicated Sparks Marketplace.
                                     const layouts=compatibleLayouts.filter((layout)=>layout.kind==='blog-variant' || layout.owned || isCurrentLayout(activeBlock,layout));
-                                    const activeLayoutCategory=String(BlockRegistry?.[activeBlock?.type]?.schema?.category || activeBlock?.category || '').trim();
+                                    const activeLayoutCategory=sparkCategoryForSectionType(activeBlock?.type, BlockRegistry?.[activeBlock?.type]?.schema?.category || activeBlock?.category || '');
                                     const backgroundMedia=findSectionBackgroundImageSlot(activeBlock);
                                     const showBlankLunaCanvas = isBlankLunaDraft
                                         && !editSession?.lunaCustomized
@@ -7231,7 +7210,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className="cosmic-section-layout-toggle inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition"><span>{sectionSparkLayoutsExpanded?'Show Fewer Layouts':'Show More Owned Layouts'}</span><span className="cosmic-section-layout-toggle__icon" aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
-                                                {!trialMode ? <button type="button" onClick={()=>openSparksMarketplace(activeLayoutCategory)} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-400 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`} title={activeLayoutCategory ? `Browse more ${activeLayoutCategory} Sparks` : 'Browse more Sparks'}><span aria-hidden="true">◇</span><span>Browse More Sparks</span><span aria-hidden="true" className="opacity-50">↗</span></button> : null}
+                                                {!trialMode ? <button type="button" onClick={()=>openSparksMarketplace(activeLayoutCategory)} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-400 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`} title={`Purchase more ${activeLayoutCategory} Sparks`}><span aria-hidden="true">◇</span><span>Purchase More {activeLayoutCategory} Sparks</span></button> : null}
                                             </div>
                                         </div> : null}
                                         <div data-popup-section-preview="true" data-popup-section-kind={String(activeBlock?.type||'').toLowerCase().includes('hero')?'hero':'section'} className={`cosmic-edit-session-preview overflow-hidden rounded-2xl border shadow-sm ${appDark?'border-white/10 bg-slate-900':'border-slate-200 bg-white'}`}>
@@ -7629,8 +7608,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             <>
                                                 <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
                                                 <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Sparks</div>
-                                                <button type="button" role="menuitem" data-cosmic-build-action="sparks-marketplace" onClick={openSparksMarketplace} title="Open the Sparks Marketplace without leaving your current Builder session" className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
-                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">◇</span> Sparks Marketplace</span><span aria-hidden="true" className="opacity-50">↗</span>
+                                                <button type="button" role="menuitem" data-cosmic-build-action="sparks-marketplace" onClick={openSparksMarketplace} title="Open the Sparks Marketplace" className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">◇</span> Sparks Marketplace</span><span aria-hidden="true" className="opacity-50">›</span>
                                                 </button>
                                                 <button type="button" role="menuitem" data-cosmic-build-action="saved-sparks" onClick={() => { setBuilderToolbarMenu(null); openSavedSparks(); }} disabled={savedSparksBusy} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition disabled:cursor-wait disabled:opacity-40 ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                     <span className="inline-flex items-center gap-2"><span aria-hidden="true">✦</span> Saved Sparks</span><span aria-hidden="true" className="opacity-50">→</span>
@@ -7663,7 +7642,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
                                     <button type="button" role="menuitem" data-cosmic-build-action="build-full-page" onClick={() => { setBuilderToolbarMenu(null); setCustomSparkOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Build Full Page</span><span className="rounded bg-emerald-400/15 px-1.5 py-0.5 text-[9px] text-emerald-300">FREE</span></button>
                                     <button type="button" role="menuitem" data-cosmic-build-action="ask-page" onClick={() => { setBuilderToolbarMenu(null); setPageAiError(''); setPageAiOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Ask Cosmic Page</span><span aria-hidden="true" className="opacity-50">→</span></button>
-                                    {!trialMode && capabilities.canManageBlocks && <button type="button" role="menuitem" data-cosmic-build-action="sparks-marketplace" onClick={openSparksMarketplace} title="Open the Sparks Marketplace without leaving your current Builder session" className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>◇ Sparks Marketplace</span><span aria-hidden="true" className="opacity-50">↗</span></button>}
+                                    {!trialMode && capabilities.canManageBlocks && <button type="button" role="menuitem" data-cosmic-build-action="sparks-marketplace" onClick={openSparksMarketplace} title="Open the Sparks Marketplace" className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>◇ Sparks Marketplace</span><span aria-hidden="true" className="opacity-50">›</span></button>}
                                     <button type="button" role="menuitem" data-cosmic-build-action="saved-sparks" onClick={() => { setBuilderToolbarMenu(null); openSavedSparks(); }} disabled={savedSparksBusy} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-40"><span>▣ Saved Sparks</span><span aria-hidden="true" className="opacity-50">→</span></button>
                                 </BuilderToolbarDropdown>
                             )}
@@ -8372,6 +8351,34 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             ) : null}
                         </div>
                     }
+                />
+            )}
+
+            {!trialMode && capabilities.canManageBlocks && (
+                <AddSectionModal
+                    open={sparksMarketplaceOpen}
+                    onClose={() => { setSparksMarketplaceOpen(false); setSparksMarketplaceCategory(null); }}
+                    onAdd={addBlock}
+                    onCustomize={beginNewSectionEdit}
+                    hasBlocks={(data.blocks?.length ?? 0) > 0}
+                    hasWebsiteContent={hasWebsiteContent}
+                    websiteContext={websiteContext}
+                    websiteId={website?.id}
+                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
+                    trialMode={false}
+                    cosmicPricing={cosmicPricing}
+                    websiteTheme={globalSelections}
+                    commerce={commerce}
+                    contentWorkspace={contentWorkspace}
+                    preloadedCatalog={sparkCatalog}
+                    preloadedCatalogLoading={sparkCatalogLoading}
+                    preloadedCatalogLoaded={sparkCatalogLoaded}
+                    preparedVisibleCount={preparedSparkCount}
+                    ownedOnly={false}
+                    contextLabel="Sparks Marketplace"
+                    initialCategory={sparksMarketplaceCategory}
+                    overlayClassName="z-[10400]"
+                    onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
 

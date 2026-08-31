@@ -6,9 +6,11 @@ const themeVars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
     return {
         "--b5-bg":primary?"var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,var(--cosmic-primary,#243447)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#ffffff))",
-        "--b5-surface":primary?"var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E))":"#f7f7f5",
-        "--b5-text":primary?"var(--cosmic-on-primary,#f8fafc)":"var(--cosmic-on-surface,#172033)",
-        "--b5-muted":primary?"var(--cosmic-on-primary-muted,rgba(248,250,252,.76))":"var(--cosmic-on-surface-muted,#64748b)",
+        "--b5-surface":primary?"var(--cosmic-local-bg-primary-surface,var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f7f7f5))",
+        "--b5-text":primary?"var(--cosmic-local-on-primary,var(--cosmic-on-primary,#f8fafc))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--b5-muted":primary?"var(--cosmic-local-on-primary-muted,var(--cosmic-on-primary-muted,rgba(248,250,252,.76)))":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
+        "--b5-surface-text":primary?"var(--cosmic-color-on-secondary,var(--cosmic-on-secondary,#172033))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--b5-surface-muted":primary?"color-mix(in srgb,var(--cosmic-color-on-secondary,var(--cosmic-on-secondary,#172033)) 68%,transparent)":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
         "--b5-border":primary?"rgba(248,250,252,.18)":"rgba(15,23,42,.12)",
         "--b5-accent":"var(--cosmic-accent,#60A5FA)",
     };
@@ -42,21 +44,21 @@ const Batch5=({block,variant,family})=>{
             </div>
         </div>
         <style>{`
-            .cosmic-b5{background:var(--b5-bg);color:var(--b5-text);padding:7rem 1.75rem}
+            .cosmic-b5{container-type:inline-size;container-name:cosmic-b5;min-width:0;overflow:hidden;background:var(--b5-bg);color:var(--b5-text);padding:7rem 1.75rem}
             .cosmic-b5 .b5-shell{width:100%;max-width:88rem;margin:0 auto}
             .cosmic-b5 .b5-head{max-width:52rem;margin-bottom:3.5rem}
             .cosmic-b5 .b5-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b5-muted)}
             .cosmic-b5 .b5-heading{display:block;margin-top:1rem;font-size:clamp(2.5rem,5vw,4.8rem);line-height:.96;letter-spacing:-.045em;font-weight:700}
             .cosmic-b5 .b5-intro{display:block;margin-top:1.25rem;max-width:44rem;font-size:1.05rem;line-height:1.8;color:var(--b5-muted)}
             .cosmic-b5 .b5-grid{display:grid;gap:1.25rem}
-            .cosmic-b5 .b5-card{position:relative;overflow:hidden;border:1px solid var(--b5-border);background:var(--b5-surface);border-radius:1.75rem}
+            .cosmic-b5 .b5-card{position:relative;overflow:hidden;border:1px solid var(--b5-border);background:var(--b5-surface);color:var(--b5-surface-text)!important;-webkit-text-fill-color:var(--b5-surface-text)!important;border-radius:1.75rem}
             .cosmic-b5 .b5-img{overflow:hidden;min-height:16rem}
             .cosmic-b5 .b5-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
             .cosmic-b5 .b5-card:hover .b5-img img{transform:scale(1.035)}
             .cosmic-b5 .b5-copy{padding:1.5rem}
-            .cosmic-b5 .b5-label{display:block;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--b5-muted);margin-bottom:.75rem}
-            .cosmic-b5 .b5-title{display:block;font-size:1.45rem;line-height:1.12;font-weight:700}
-            .cosmic-b5 .b5-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b5-muted)}
+            .cosmic-b5 .b5-label{display:block;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--b5-surface-muted)!important;-webkit-text-fill-color:var(--b5-surface-muted)!important;margin-bottom:.75rem}
+            .cosmic-b5 .b5-title{display:block;color:var(--b5-surface-text)!important;-webkit-text-fill-color:var(--b5-surface-text)!important;font-size:1.45rem;line-height:1.12;font-weight:700}
+            .cosmic-b5 .b5-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b5-surface-muted)!important;-webkit-text-fill-color:var(--b5-surface-muted)!important}
             .cosmic-b5 .b5-actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:2.25rem}
             .cosmic-b5 .b5-primary,.cosmic-b5 .b5-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;font-weight:700}
             .cosmic-b5 .b5-primary{background:var(--b5-text);color:var(--b5-bg)}
@@ -77,8 +79,8 @@ const Batch5=({block,variant,family})=>{
             .b5-manifesto .b5-card,.b5-quote .b5-card,.b5-fullbleed .b5-card,.b5-case .b5-card{min-height:28rem}
             .b5-manifesto .b5-img,.b5-quote .b5-img,.b5-fullbleed .b5-img,.b5-case .b5-img{position:absolute;inset:0;height:100%}
             .b5-manifesto .b5-card:after,.b5-quote .b5-card:after,.b5-fullbleed .b5-card:after,.b5-case .b5-card:after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.86),rgba(2,6,23,.06))}
-            .b5-manifesto .b5-copy,.b5-quote .b5-copy,.b5-fullbleed .b5-copy,.b5-case .b5-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:white}
-            .b5-manifesto .b5-text,.b5-quote .b5-text,.b5-fullbleed .b5-text,.b5-case .b5-text,.b5-manifesto .b5-label,.b5-quote .b5-label,.b5-fullbleed .b5-label,.b5-case .b5-label{color:rgba(255,255,255,.72)}
+            .b5-manifesto .b5-copy,.b5-quote .b5-copy,.b5-fullbleed .b5-copy,.b5-case .b5-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:white!important;-webkit-text-fill-color:white!important}
+            .b5-manifesto .b5-title,.b5-quote .b5-title,.b5-fullbleed .b5-title,.b5-case .b5-title{color:white!important;-webkit-text-fill-color:white!important}.b5-manifesto .b5-text,.b5-quote .b5-text,.b5-fullbleed .b5-text,.b5-case .b5-text,.b5-manifesto .b5-label,.b5-quote .b5-label,.b5-fullbleed .b5-label,.b5-case .b5-label{color:rgba(255,255,255,.72)!important;-webkit-text-fill-color:rgba(255,255,255,.72)!important}
 
             .b5-overlap .b5-grid,.b5-index .b5-grid,.b5-directory .b5-grid,.b5-metrics .b5-grid,.b5-values .b5-grid,.b5-principles .b5-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
             .b5-overlap .b5-grid{align-items:start}.b5-overlap .b5-card:nth-child(even){margin-top:1.5rem}
@@ -88,6 +90,30 @@ const Batch5=({block,variant,family})=>{
             .b5-accordion .b5-card:not(:first-child) .b5-img{max-height:13rem}
 
                 .b5-asymmetric .b5-copy,.b5-mosaic .b5-copy,.b5-staggered .b5-copy{display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem;background:linear-gradient(to top,color-mix(in srgb,var(--b5-surface,var(--cosmic-bg-primary-surface,#30475E)) 88%,transparent),transparent 78%)}
+
+            /* Batch 3 parity repair: respond to Section Editor / preview canvas width. */
+            @container cosmic-b5 (max-width:1100px){
+                .b5-overlap .b5-grid,.b5-index .b5-grid,.b5-directory .b5-grid,.b5-metrics .b5-grid,.b5-values .b5-grid,.b5-principles .b5-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+                .b5-stack .b5-card,.b5-ledger .b5-card,.b5-stack .b5-card:nth-child(even),.b5-ledger .b5-card:nth-child(even){grid-template-columns:minmax(14rem,.78fr) minmax(0,1.22fr)}
+                .b5-stack .b5-card:nth-child(even),.b5-ledger .b5-card:nth-child(even){grid-template-columns:minmax(0,1.22fr) minmax(14rem,.78fr)}
+                .b5-accordion .b5-card{grid-template-columns:minmax(12rem,.7fr) minmax(0,1.3fr)}
+            }
+            @container cosmic-b5 (max-width:900px){
+                .cosmic-b5{padding:5rem 1.25rem}
+                .cosmic-b5 .b5-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+                .b5-asymmetric .b5-grid,.b5-mosaic .b5-grid,.b5-staggered .b5-grid{grid-auto-rows:auto}
+                .b5-asymmetric .b5-card,.b5-mosaic .b5-card,.b5-staggered .b5-card{grid-column:auto;grid-row:auto;min-height:21rem}
+                .b5-stack .b5-grid,.b5-ledger .b5-grid,.b5-accordion .b5-grid{grid-template-columns:1fr!important}
+                .b5-stack .b5-card,.b5-ledger .b5-card,.b5-stack .b5-card:nth-child(even),.b5-ledger .b5-card:nth-child(even),.b5-accordion .b5-card{grid-template-columns:minmax(12rem,.72fr) minmax(0,1.28fr)}
+                .b5-stack .b5-card:nth-child(even) .b5-img,.b5-ledger .b5-card:nth-child(even) .b5-img{order:initial}
+            }
+            @container cosmic-b5 (max-width:640px){
+                .cosmic-b5{padding:4rem 1rem}
+                .cosmic-b5 .b5-heading{font-size:clamp(2.2rem,10cqw,3.4rem);overflow-wrap:anywhere}
+                .cosmic-b5 .b5-grid{grid-template-columns:1fr!important}
+                .b5-overlap .b5-card:nth-child(even){margin-top:0;transform:none}
+                .b5-stack .b5-card,.b5-ledger .b5-card,.b5-stack .b5-card:nth-child(even),.b5-ledger .b5-card:nth-child(even),.b5-accordion .b5-card{display:block}
+            }
 @media(max-width:900px){
                 .cosmic-b5{padding:5rem 1.25rem}
                 .cosmic-b5 .b5-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -103,7 +129,7 @@ const Batch5=({block,variant,family})=>{
                 .b5-overlap .b5-card:nth-child(even){transform:none}
             }
         
-            .b5-card,.b5-copy{min-width:0;overflow-wrap:anywhere}`}</style>
+            .b5-card,.b5-copy,.b5-img,.b5-grid{min-width:0}.b5-title,.b5-text{overflow-wrap:anywhere}`}</style>
     </section>
 };
 

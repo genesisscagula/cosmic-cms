@@ -6,9 +6,9 @@ const vars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
     return {
         "--b2-bg":primary?"var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,var(--cosmic-primary,#243447)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#ffffff))",
-        "--b2-surface":primary?"var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E))":"#f7f7f5",
-        "--b2-text":primary?"var(--cosmic-on-primary,#f8fafc)":"var(--cosmic-on-surface,#172033)",
-        "--b2-muted":primary?"var(--cosmic-on-primary-muted,rgba(248,250,252,.76))":"var(--cosmic-on-surface-muted,#64748b)",
+        "--b2-surface":primary?"var(--cosmic-local-bg-primary-surface,var(--cosmic-bg-primary-surface,var(--cosmic-surface,#30475E)))":"var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f7f7f5))",
+        "--b2-text":primary?"var(--cosmic-local-on-primary,var(--cosmic-on-primary,#f8fafc))":"var(--cosmic-local-on-surface,var(--cosmic-on-surface,#172033))",
+        "--b2-muted":primary?"var(--cosmic-local-on-primary-muted,var(--cosmic-on-primary-muted,rgba(248,250,252,.76)))":"var(--cosmic-local-on-surface-muted,var(--cosmic-on-surface-muted,#64748b))",
         "--b2-border":primary?"rgba(248,250,252,.18)":"rgba(15,23,42,.12)",
         "--b2-accent":"var(--cosmic-accent,#60A5FA)",
     };
@@ -38,13 +38,13 @@ const Batch2Section=({block,variant,family})=>{
     </div>
    </div>
    <style>{`
-    .cosmic-b2{background:var(--b2-bg);color:var(--b2-text);padding:7rem 1.75rem}
-    .cosmic-b2 .b2-shell{width:100%;max-width:88rem;margin:0 auto}
+    .cosmic-b2{container-type:inline-size;min-width:0;background:var(--b2-bg);color:var(--b2-text);padding:7rem 1.75rem}
+    .cosmic-b2 .b2-shell{width:100%;min-width:0;max-width:88rem;margin:0 auto}
     .cosmic-b2 .b2-head{max-width:50rem;margin-bottom:3.5rem}
     .cosmic-b2 .b2-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b2-muted)}
     .cosmic-b2 .b2-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.6rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
     .cosmic-b2 .b2-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--b2-muted)}
-    .cosmic-b2 .b2-grid{display:grid;gap:1.25rem}
+    .cosmic-b2 .b2-grid{display:grid;min-width:0;gap:1.25rem}
     .cosmic-b2 .b2-card{position:relative;overflow:hidden;border:1px solid var(--b2-border);background:var(--b2-surface);border-radius:1.75rem}
     .cosmic-b2 .b2-img{overflow:hidden;min-height:15rem}
     .cosmic-b2 .b2-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
@@ -89,8 +89,13 @@ const Batch2Section=({block,variant,family})=>{
     .b2-steps .b2-card:nth-child(even) .b2-img,.b2-journey .b2-card:nth-child(even) .b2-img{order:2}
     .b2-panels .b2-grid,.b2-floating .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
     .b2-panels .b2-card:nth-child(even),.b2-floating .b2-card:nth-child(even){margin-top:1.5rem}
-    @media(max-width:900px){.b2-split .b2-card:first-child,.b2-featured .b2-card:first-child,.b2-spotlight .b2-card:first-child{grid-row:auto;height:auto}.b2-split .b2-card:first-child .b2-img,.b2-featured .b2-card:first-child .b2-img,.b2-spotlight .b2-card:first-child .b2-img{flex:none}.cosmic-b2{padding:5rem 1.25rem}.cosmic-b2 .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b2-mosaic .b2-grid{grid-auto-rows:auto}.b2-mosaic .b2-card{grid-column:auto;grid-row:auto;min-height:21rem}.b2-wall .b2-grid{grid-template-columns:1fr!important}.b2-wall .b2-card{grid-template-columns:minmax(11rem,.8fr) minmax(0,1.2fr);min-height:18rem}.b2-wall .b2-img{min-height:18rem}}
+            .cosmic-b2 .b2-card,.cosmic-b2 .b2-copy,.cosmic-b2 .b2-img{min-width:0;max-width:100%}.cosmic-b2 .b2-title,.cosmic-b2 .b2-text,.cosmic-b2 .b2-heading{overflow-wrap:anywhere}
+/* Builder/modal parity: respond to the actual Spark canvas, not only the browser viewport. */
+    @container(max-width:1100px){.b2-grid .b2-grid,.b2-portrait .b2-grid,.b2-editorial .b2-grid,.b2-cards .b2-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.b2-split .b2-grid,.b2-featured .b2-grid,.b2-spotlight .b2-grid{grid-template-columns:1fr 1fr}.b2-steps .b2-card,.b2-timeline .b2-card,.b2-journey .b2-card,.b2-roadmap .b2-card{grid-template-columns:minmax(14rem,.72fr) 1.28fr}.b2-steps .b2-card:nth-child(even),.b2-journey .b2-card:nth-child(even){grid-template-columns:1.28fr minmax(14rem,.72fr)}.b2-wall .b2-card{grid-template-columns:minmax(9rem,.72fr) minmax(0,1.28fr)}}
+@media(max-width:900px){.b2-split .b2-card:first-child,.b2-featured .b2-card:first-child,.b2-spotlight .b2-card:first-child{grid-row:auto;height:auto}.b2-split .b2-card:first-child .b2-img,.b2-featured .b2-card:first-child .b2-img,.b2-spotlight .b2-card:first-child .b2-img{flex:none}.cosmic-b2{padding:5rem 1.25rem}.cosmic-b2 .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b2-mosaic .b2-grid{grid-auto-rows:auto}.b2-mosaic .b2-card{grid-column:auto;grid-row:auto;min-height:21rem}.b2-wall .b2-grid{grid-template-columns:1fr!important}.b2-wall .b2-card{grid-template-columns:minmax(11rem,.8fr) minmax(0,1.2fr);min-height:18rem}.b2-wall .b2-img{min-height:18rem}.b2-steps .b2-grid,.b2-timeline .b2-grid,.b2-journey .b2-grid,.b2-roadmap .b2-grid{grid-template-columns:1fr!important}}
+    @container(max-width:900px){.b2-split .b2-card:first-child,.b2-featured .b2-card:first-child,.b2-spotlight .b2-card:first-child{grid-row:auto;height:auto}.b2-split .b2-card:first-child .b2-img,.b2-featured .b2-card:first-child .b2-img,.b2-spotlight .b2-card:first-child .b2-img{flex:none}.cosmic-b2{padding:5rem 1.25rem}.cosmic-b2 .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b2-mosaic .b2-grid{grid-auto-rows:auto}.b2-mosaic .b2-card{grid-column:auto;grid-row:auto;min-height:21rem}.b2-wall .b2-grid{grid-template-columns:1fr!important}.b2-wall .b2-card{grid-template-columns:minmax(11rem,.8fr) minmax(0,1.2fr);min-height:18rem}.b2-wall .b2-img{min-height:18rem}.b2-steps .b2-grid,.b2-timeline .b2-grid,.b2-journey .b2-grid,.b2-roadmap .b2-grid{grid-template-columns:1fr!important}}
     @media(max-width:640px){.cosmic-b2{padding:4rem 1rem}.cosmic-b2 .b2-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b2 .b2-grid{grid-template-columns:1fr!important}.b2-wall .b2-card{display:block;min-height:0}.b2-wall .b2-img{height:auto;min-height:15rem;aspect-ratio:16/10}.b2-wall .b2-copy{padding:1.5rem}.b2-steps .b2-card,.b2-timeline .b2-card,.b2-journey .b2-card,.b2-roadmap .b2-card,.b2-steps .b2-card:nth-child(even),.b2-journey .b2-card:nth-child(even){display:block}.b2-steps .b2-card:nth-child(even) .b2-img,.b2-journey .b2-card:nth-child(even) .b2-img{order:initial}.b2-panels .b2-card:nth-child(even),.b2-floating .b2-card:nth-child(even){margin-top:0}}
+    @container(max-width:640px){.cosmic-b2{padding:4rem 1rem}.cosmic-b2 .b2-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b2 .b2-grid{grid-template-columns:1fr!important}.b2-wall .b2-card{display:block;min-height:0}.b2-wall .b2-img{height:auto;min-height:15rem;aspect-ratio:16/10}.b2-wall .b2-copy{padding:1.5rem}.b2-steps .b2-card,.b2-timeline .b2-card,.b2-journey .b2-card,.b2-roadmap .b2-card,.b2-steps .b2-card:nth-child(even),.b2-journey .b2-card:nth-child(even){display:block}.b2-steps .b2-card:nth-child(even) .b2-img,.b2-journey .b2-card:nth-child(even) .b2-img{order:initial}.b2-panels .b2-card:nth-child(even),.b2-floating .b2-card:nth-child(even){margin-top:0}}
    `}</style>
  </section>
 };
