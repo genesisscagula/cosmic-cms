@@ -8,12 +8,33 @@ final class IndustryResolver
 {
     public function resolve(string $value, string $fallback = 'default'): string
     {
-        $candidate = $this->extractIndustryLabel($this->stripNegativeDirectives($value));
+        // Read an explicit line before stripping directives. The directive pass
+        // intentionally joins prompt segments, which would otherwise erase the
+        // line boundary required by `Industry: ...` extraction.
+        $candidate = $this->explicitIndustryLabel($value)
+            ?? $this->extractIndustryLabel($this->stripNegativeDirectives($value));
         $normalized = $this->normalize($candidate);
         $catalog = $this->catalog();
 
         if ($normalized === '') {
             return array_key_exists($fallback, $catalog) ? $fallback : 'default';
+        }
+
+        // Prefer exact canonical labels/aliases before considering a phrase
+        // contained in a longer business brief.
+        foreach ($catalog as $folder => $definition) {
+            if ($folder === 'default') {
+                continue;
+            }
+
+            $needles = array_merge([$folder, (string) ($definition['label'] ?? '')], (array) ($definition['aliases'] ?? []));
+
+            foreach ($needles as $needle) {
+                $alias = $this->normalize((string) $needle);
+                if ($alias !== '' && $normalized === $alias) {
+                    return $folder;
+                }
+            }
         }
 
         foreach ($catalog as $folder => $definition) {
@@ -25,7 +46,7 @@ final class IndustryResolver
 
             foreach ($needles as $needle) {
                 $alias = $this->normalize((string) $needle);
-                if ($alias !== '' && ($normalized === $alias || str_contains($normalized, $alias))) {
+                if ($alias !== '' && $this->containsPhrase($normalized, $alias)) {
                     return $folder;
                 }
             }
@@ -76,6 +97,22 @@ final class IndustryResolver
         }
 
         return trim($value);
+    }
+
+    private function explicitIndustryLabel(string $value): ?string
+    {
+        if (preg_match('/^industry:\s*([^\r\n.]+)/mi', $value, $matches) !== 1) {
+            return null;
+        }
+
+        $label = trim($matches[1]);
+
+        return $label !== '' ? $label : null;
+    }
+
+    private function containsPhrase(string $value, string $phrase): bool
+    {
+        return preg_match('/(?:^|\s)'.preg_quote($phrase, '/').'(?=\s|$)/u', $value) === 1;
     }
 
     private function stripNegativeDirectives(string $value): string
