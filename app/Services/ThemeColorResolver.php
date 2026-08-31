@@ -153,6 +153,9 @@ final class ThemeColorResolver
                 'primary' => $resolved['primary'],
                 'background' => $resolved['primary'],
                 'source_color' => $resolved['primary'],
+                'sourceColor' => $resolved['primary'],
+                'button_primary' => $resolved['primary'],
+                'buttonPrimary' => $resolved['primary'],
             ]),
         ], $baseFamily);
     }

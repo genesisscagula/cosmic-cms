@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\AI\Registries\SparkCatalog;
+use App\Services\SparkCatalog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 

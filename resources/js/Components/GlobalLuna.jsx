@@ -343,7 +343,7 @@ useEffect(()=>{
             return;
         }
 
-        const buildIntent=/\b(build|create|generate|design|make|start|launch)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(message);
+        const buildIntent=/\b(build|rebuild|create|recreate|generate|regenerate|design|redesign|make|start|launch)\b.{0,100}\b(website|site|homepage|home page|landing page|page|experience)\b/i.test(message);
         const updateIntent=/\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove)\b/i.test(message);
         const publishIntent=/\b(publish|go live|make .* live)\b/i.test(message);
         const navigateIntent=/\b(open|go to|take me to|navigate to|show me|view)\b/i.test(message);

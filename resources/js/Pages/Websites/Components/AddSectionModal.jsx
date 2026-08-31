@@ -132,6 +132,63 @@ export const categoryFor = (type, rawCategory = "") => {
     return "Other";
 };
 
+// Put the page-building flow first instead of inheriting catalog insertion
+// order (which can start with utility/expansion categories such as Other).
+const sparkCategoryPriority = [
+    "Hero",
+    "Services",
+    "Features",
+    "About / Content",
+    "Process",
+    "Testimonials",
+    "CTA",
+    "Contact",
+    "Gallery",
+    "Team",
+    "Stats",
+    "Pricing",
+    "FAQ",
+    "Case Studies",
+    "Ecommerce",
+    "Posts / Updates",
+    "Careers",
+    "Events",
+    "Other",
+];
+
+const sortSparkCategories = (names) => {
+    const priority = new Map(sparkCategoryPriority.map((name, index) => [name, index]));
+    return [...names].sort((left, right) => {
+        const leftRank = priority.get(left) ?? sparkCategoryPriority.length;
+        const rightRank = priority.get(right) ?? sparkCategoryPriority.length;
+        return leftRank - rightRank || left.localeCompare(right);
+    });
+};
+
+
+function sparkDefaultPreviewVariant(spark) {
+    const registryDefaults = BuilderBlockRegistry[spark?.key]?.schema?.defaults || {};
+    const candidates = [
+        spark?.registry?.payload?.theme,
+        spark?.registry?.payload?.resolvedTheme,
+        registryDefaults?.theme,
+        registryDefaults?.resolvedTheme,
+        spark?.theme,
+        spark?.default_theme,
+    ];
+
+    for (const candidate of candidates) {
+        const value = String(candidate || '').trim().toLowerCase();
+        if (value === 'primary' || value === 'white' || value === 'surface') return value;
+    }
+
+    // AUTO/unspecified Sparks should preview against the site's primary family.
+    // This mirrors the Builder's first resolved state and prevents light-mode
+    // marketplace thumbnails from forcing photographic/media Sparks into a
+    // washed-out White appearance.
+    return 'primary';
+}
+
 function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight", payloadOverride = null }) {
     const Preview = spark.registry.preview;
     return <div className="cosmic-preview-isolation cosmic-spark-layout-host w-full" data-cosmic-preview-isolation="true" data-cosmic-site-preview="true"><Preview {...spark.registry.payload} {...(payloadOverride || {})} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>;
@@ -577,7 +634,10 @@ export default function AddSectionModal({
     }, [open, contextLabel, initialCategory]);
 
     useEffect(() => {
-        if (previewSpark) setPreviewVariantIndex(0);
+        if (!previewSpark) return;
+        const naturalVariant = sparkDefaultPreviewVariant(previewSpark);
+        const naturalIndex = previewVariants.indexOf(naturalVariant);
+        setPreviewVariantIndex(naturalIndex >= 0 ? naturalIndex : 0);
     }, [previewSpark]);
 
 
@@ -680,7 +740,7 @@ export default function AddSectionModal({
         [items, ownedOnly, marketplaceBrowseMode],
     );
     const hiddenUnsafeSparkCount = catalogItems.length - items.length;
-    const categories = useMemo(() => ["All", ...new Set(items.map((item) => categoryFor(item.key, item.category)))], [items]);
+    const categories = useMemo(() => ["All", ...sortSparkCategories(new Set(items.map((item) => categoryFor(item.key, item.category))))], [items]);
     const categoryCards = useMemo(() => {
         const countsByCategory = new Map();
         items.forEach((item) => {
@@ -996,7 +1056,7 @@ export default function AddSectionModal({
                 </div>
                 <div className="mt-6 overflow-x-auto pb-1">
                     <div className="flex min-w-max gap-2">
-                        {categories.map((name) => <button key={name} type="button" onClick={() => setCategory(name)} aria-pressed={category === name} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition ${category === name ? (appDark ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700') : appDark ? 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900'}`}>{name}</button>)}
+                        {categories.map((name) => <button key={name} type="button" onClick={() => setCategory(name)} aria-pressed={category === name} className={`cosmic-spark-category-filter shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition ${category === name ? (appDark ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-emerald-300 bg-emerald-50 text-emerald-800') : appDark ? 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900'}`}>{name}</button>)}
                     </div>
                 </div>
             </header>
@@ -1010,8 +1070,8 @@ export default function AddSectionModal({
                             {visible.map((spark) => (
                                 <article key={spark.key} className={`cosmic-spark-marketplace-card group overflow-hidden rounded-[24px] border p-4 shadow-sm transition ${appDark ? 'border-white/10 bg-white/[0.03] hover:border-violet-300/30' : 'border-slate-200 bg-white hover:border-violet-200 hover:shadow-md'}`}>
                                     <button type="button" onClick={() => setPreviewSpark(spark)} className={`block h-[220px] w-full overflow-hidden rounded-[18px] border text-left ${appDark ? 'border-white/10 bg-[#0b0f19]' : 'border-slate-200 bg-white'}`} aria-label={`Preview ${spark.name}`}>
-                                        <div className="pointer-events-none origin-top-left w-[400%]" style={{ transform: 'scale(.25)' }}>
-                                            <UnifiedSparkPreviewEngine spark={spark} previewVariant="white" websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} />
+                                        <div className="pointer-events-none origin-top-left w-[400%]" data-cosmic-marketplace-preview="true" data-preview-variant={sparkDefaultPreviewVariant(spark)} style={{ transform: 'scale(.25)' }}>
+                                            <UnifiedSparkPreviewEngine spark={spark} previewVariant={sparkDefaultPreviewVariant(spark)} websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} />
                                         </div>
                                     </button>
                                     <div className="px-1 pb-1 pt-4">
@@ -1031,11 +1091,11 @@ export default function AddSectionModal({
                                         <div className="mt-5 grid grid-cols-2 gap-3">
                                             <button type="button" onClick={() => setPreviewSpark(spark)} className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${appDark ? 'border-white/10 text-slate-200 hover:bg-white/5' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>Preview</button>
                                             {spark.trial_locked ? (
-                                                <Link href={trialSignupUrl} className="rounded-2xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500">Sign up</Link>
+                                                <Link href={trialSignupUrl} className="cosmic-spark-marketplace-action rounded-2xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500">Sign up</Link>
                                             ) : spark.owned ? (
-                                                <button type="button" onClick={() => { setSelected(spark); setMode('quick'); setInstruction(''); }} className="rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-bold text-white shadow-sm hover:from-violet-600 hover:to-indigo-600">Install</button>
+                                                <button type="button" onClick={() => { setSelected(spark); setMode('quick'); setInstruction(''); }} className="cosmic-spark-marketplace-action rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700">Install</button>
                                             ) : (
-                                                <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40">{busyKey === spark.key ? 'Buying…' : Number(spark.credits || 0) === 0 ? 'Add Free Spark' : `Buy · ⚡ ${spark.credits}`}</button>
+                                                <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="cosmic-spark-marketplace-action cosmic-spark-buy-action rounded-2xl bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50">{busyKey === spark.key ? 'Buying…' : Number(spark.credits || 0) === 0 ? 'Add Free Spark' : `Buy · ⚡ ${spark.credits}`}</button>
                                             )}
                                         </div>
                                     </div>
@@ -1206,7 +1266,7 @@ export default function AddSectionModal({
                             {trialMode ? (
                                 <Link href={trialSignupUrl} className={`mt-12 shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark ? 'border-violet-300/20 bg-violet-300/10 text-violet-100 hover:bg-violet-300/15' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}>Sign up for more Sparks</Link>
                             ) : !isMarketplaceContext ? (
-                                <button type="button" onClick={() => browseMarketplace(category)} className={`mt-12 shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark ? 'border-violet-300/20 bg-violet-300/10 text-violet-100 hover:bg-violet-300/15' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}>Purchase More {category} Sparks</button>
+                                <button type="button" onClick={() => browseMarketplace(category)} className={`cosmic-purchase-more-sparks mt-12 shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark ? 'border-violet-300/20 bg-violet-300/10 text-violet-100 hover:bg-violet-300/15' : 'border-violet-600 bg-violet-600 text-white hover:bg-violet-700'}`}>Purchase More {category} Sparks</button>
                             ) : null}
                         </div>
                         <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
@@ -1364,13 +1424,13 @@ export default function AddSectionModal({
                         <span className="cosmic-spark-mode-check" aria-hidden="true">✓</span>
                         <span className="cosmic-spark-mode-selected-label">Selected</span>
                         <span className="block text-sm font-bold">Generic Content</span>
-                        <span className={`mt-1 block text-xs font-semibold ${mode === "quick" && !appDark ? 'text-emerald-700' : 'text-emerald-300'}`}>FREE · instant</span>
+                        <span className={`cosmic-spark-mode-detail mt-1 block text-xs font-semibold ${mode === "quick" && !appDark ? 'text-emerald-700' : 'text-emerald-300'}`}>FREE · instant</span>
                     </button>
                     <button type="button" onClick={() => setMode("ai")} aria-pressed={mode === "ai"} className={`cosmic-spark-mode-card relative rounded-2xl border p-5 text-left transition ${mode === "ai" ? "is-selected is-ai border-violet-300 bg-violet-50 text-violet-950 shadow-[0_0_0_1px_rgba(167,139,250,0.10)]" : appDark ? "border-white/10 bg-white/[0.02] text-white hover:border-white/20" : "border-slate-200 bg-slate-50 text-slate-900 hover:border-slate-300"}`}>
                         <span className="cosmic-spark-mode-check" aria-hidden="true">✓</span>
                         <span className="cosmic-spark-mode-selected-label">Selected</span>
                         <span className="block text-sm font-bold">AI Personalize</span>
-                        <span className={`mt-1 block text-xs font-semibold ${mode === "ai" && !appDark ? 'text-violet-700' : 'text-violet-300'}`}>⚡ 20 Credits</span>
+                        <span className={`cosmic-spark-mode-detail mt-1 block text-xs font-semibold ${mode === "ai" && !appDark ? 'text-violet-700' : 'text-violet-300'}`}>⚡ 20 Credits</span>
                     </button>
                 </div>
 

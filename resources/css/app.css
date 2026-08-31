@@ -4144,6 +4144,36 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: #ffffff !important;
 }
 
+/* EditableButton renders as a semantic span while a Spark is being previewed.
+   Match every button representation and repeat the dialog boundary so these
+   authored CTA colors outrank the generic light-dialog compatibility layer. */
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)
+    [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"]
+    :is(a,button,[role="button"],[data-cosmic-luna-display="button"])[class~="bg-white"] {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)
+    [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"]
+    :is(a,button,[role="button"],[data-cosmic-luna-display="button"])[class*="bg-white/1"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)
+    [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"]
+    :is(a,button,[role="button"],[data-cosmic-luna-display="button"])[class*="bg-white/5"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)
+    [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"]
+    :is(a,button,[role="button"],[data-cosmic-luna-display="button"])[class~="bg-white/5"] {
+    background-color: rgb(255 255 255 / .05) !important;
+}
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)
+    [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"]
+    :is(a,button,[role="button"],[data-cosmic-luna-display="button"])[class~="bg-white/10"] {
+    background-color: rgb(255 255 255 / .10) !important;
+}
+
 
 /* ==========================================================================
    PATCH 1.0.133 — FULL 42-BLOCK PREVIEW CONTRAST QA
@@ -10153,32 +10183,32 @@ header.cosmic-header-overlay,
     transform: none !important;
     box-shadow: none !important;
 }
-#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active) {
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active):not(.cosmic-luna-theme-filter) {
     background: #fff !important;
     border-color: #cbd5e1 !important;
     color: #334155 !important;
     -webkit-text-fill-color: #334155 !important;
 }
-#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active):hover {
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active):not(.cosmic-luna-theme-filter):hover {
     background: #f5f3ff !important;
     border-color: #c4b5fd !important;
     color: #4c1d95 !important;
     -webkit-text-fill-color: #4c1d95 !important;
 }
-#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill.is-active {
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill.is-active:not(.cosmic-luna-theme-filter) {
     background: #ede9fe !important;
     border-color: #8b5cf6 !important;
     color: #5b21b6 !important;
     -webkit-text-fill-color: #5b21b6 !important;
     box-shadow: inset 0 0 0 1px rgba(139,92,246,.08) !important;
 }
-#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill:not(.is-active) {
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill:not(.is-active):not(.cosmic-luna-theme-filter) {
     background: rgba(255,255,255,.035) !important;
     border-color: rgba(255,255,255,.15) !important;
     color: #cbd5e1 !important;
     -webkit-text-fill-color: #cbd5e1 !important;
 }
-#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill.is-active {
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill.is-active:not(.cosmic-luna-theme-filter) {
     background: rgba(139,92,246,.18) !important;
     border-color: rgba(167,139,250,.65) !important;
     color: #ddd6fe !important;
@@ -14415,4 +14445,127 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 @media (prefers-reduced-motion: reduce) {
     .cosmic-global-luna-launcher,
     .cosmic-global-luna-status-card__fill { transition: none !important; }
+}
+
+/* ================================================================
+   v1.0.9 hotfix — Sparks Marketplace light-mode color isolation
+   Marketplace card previews are rendered website content, not dialog chrome.
+   Their natural Spark state must drive the thumbnail, while card actions keep
+   their intended high-contrast foreground instead of inheriting the generic
+   light-dialog text-white -> slate remap.
+   ================================================================ */
+:root[data-theme="light"] .cosmic-add-spark-modal [data-cosmic-marketplace-preview="true"] {
+    color-scheme: normal;
+    isolation: isolate;
+}
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-marketplace-action,
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-marketplace-action[class*="text-white"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-marketplace-action * {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-buy-action {
+    background: #7c3aed !important;
+    background-image: none !important;
+    border-color: #7c3aed !important;
+}
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-buy-action:hover:not(:disabled) {
+    background: #6d28d9 !important;
+    background-image: none !important;
+    border-color: #6d28d9 !important;
+}
+
+/* The generic light-dialog button normalizer has higher specificity than the
+   Tailwind text utility. Keep the selected marketplace category readable on
+   its pale emerald surface without changing preview-canvas content. */
+:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-category-filter[aria-pressed="true"] {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+    background: #ecfdf5 !important;
+    border-color: #6ee7b7 !important;
+}
+
+/* Selected mode cards carry bg-* utility tokens, so the broad dialog action
+   rule otherwise paints every child white. Keep only the status pill/check
+   white and restore readable semantic helper text. */
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-quick .cosmic-spark-mode-detail {
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-ai .cosmic-spark-mode-detail {
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+
+/* Explicit CTA ownership: generic light-dialog rules remap violet utility
+   backgrounds and can leave this marketplace link white on pale lavender. */
+:root[data-theme="light"] .cosmic-purchase-more-sparks {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: #7c3aed !important;
+    background-image: none !important;
+    border-color: #7c3aed !important;
+}
+:root[data-theme="light"] .cosmic-purchase-more-sparks:hover {
+    background: #6d28d9 !important;
+    background-image: none !important;
+    border-color: #6d28d9 !important;
+}
+:root[data-theme="light"] .cosmic-purchase-more-sparks * {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+/* Luna Theme filter owns its full interaction state. A broad dialog hover
+   normalizer can otherwise remove the gradient while retaining white text. */
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"],
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"]:hover,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"]:focus-visible,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"][aria-pressed="true"] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    filter: none !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 48%, #c026d3 100%) !important;
+    background-image: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 48%, #c026d3 100%) !important;
+    border-color: transparent !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"]:hover {
+    background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 48%, #a21caf 100%) !important;
+    background-image: linear-gradient(135deg, #6d28d9 0%, #7c3aed 48%, #a21caf 100%) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button[data-luna-theme-filter="true"] > span {
+    opacity: 1 !important;
+    visibility: visible !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+.cosmic-theme-luna-preloader {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    width: fit-content;
+    margin-bottom: .75rem;
+}
+.cosmic-theme-luna-preloader > span {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 9999px;
+    background: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, .12);
+    animation: cosmic-theme-luna-pulse 1.05s ease-in-out infinite;
+}
+.cosmic-theme-luna-preloader > span:nth-child(2) { animation-delay: .14s; }
+.cosmic-theme-luna-preloader > span:nth-child(3) { animation-delay: .28s; }
+@keyframes cosmic-theme-luna-pulse {
+    0%, 70%, 100% { transform: translateY(0) scale(.78); opacity: .38; }
+    35% { transform: translateY(-3px) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-theme-luna-preloader > span { animation: none; opacity: .8; }
 }

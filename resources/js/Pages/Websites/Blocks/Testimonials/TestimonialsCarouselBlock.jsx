@@ -4,7 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 
-import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getSectionSurfaceThemes } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeLast } from "../Shared/RepeatableControls";
 import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
@@ -146,7 +146,8 @@ export function TestimonialsCarouselBlock({
     globalTheme
 }) {
 
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const { section: theme, surface: cardTheme } = getSectionSurfaceThemes(requestedTheme, globalTheme);
 
     const data = {
         ...TestimonialsCarouselSchema.defaults,
@@ -226,9 +227,9 @@ export function TestimonialsCarouselBlock({
                         <div
                             key={index}
                             className={sparkTwItem(block, "testimonials", index, "card", `
-                                ${theme.card}
+                                ${cardTheme.card}
                                 border
-                                ${theme.border}
+                                ${cardTheme.border}
                                 rounded-3xl
                                 p-7
                                 group relative
@@ -260,7 +261,7 @@ export function TestimonialsCarouselBlock({
                                 <EditableText
                                     value={item.quote}
                                     isTextArea={true}
-                                    className={sparkTwItem(block, "testimonials", index, "quote", `block italic leading-8 ${theme.sub}`)}
+                                    className={sparkTwItem(block, "testimonials", index, "quote", `block italic leading-8 ${cardTheme.sub}`)}
                                     onSave={(val) =>
                                         updateTestimonial(
                                             index,
@@ -291,7 +292,7 @@ export function TestimonialsCarouselBlock({
 
                                     <EditableText
                                         value={item.name}
-                                        className={sparkTw(block, "auto_13", `block font-bold ${theme.text}`)}
+                                        className={sparkTw(block, "auto_13", `block font-bold ${cardTheme.text}`)}
                                         onSave={(val) =>
                                             updateTestimonial(index, "name", val)
                                         }
@@ -299,7 +300,7 @@ export function TestimonialsCarouselBlock({
 
                                     <EditableText
                                         value={item.company}
-                                        className={sparkTw(block, "auto_14", `block text-sm ${theme.sub}`)}
+                                        className={sparkTw(block, "auto_14", `block text-sm ${cardTheme.sub}`)}
                                         onSave={(val) =>
                                             updateTestimonial(index, "company", val)
                                         }

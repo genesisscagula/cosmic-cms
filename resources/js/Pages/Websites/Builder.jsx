@@ -6124,7 +6124,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         }]);
 
         const imageIntent = /image|photo|photography|picture|unsplash|background image/i.test(prompt);
-        const buildIntent = /\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(prompt);
+        const buildIntent = /\b(build|rebuild|create|recreate|generate|regenerate|design|redesign|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page|experience)\b/i.test(prompt);
         const updateIntent = /\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|make this|make the|make all)\b/i.test(prompt);
         const publishIntent = /\b(publish|go live|make .* live)\b/i.test(prompt);
         const navigateIntent = /\b(open|go to|take me to|navigate to)\b/i.test(prompt);
@@ -7210,7 +7210,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className="cosmic-section-layout-toggle inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition"><span>{sectionSparkLayoutsExpanded?'Show Fewer Layouts':'Show More Owned Layouts'}</span><span className="cosmic-section-layout-toggle__icon" aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
-                                                {!trialMode ? <button type="button" onClick={()=>openSparksMarketplace(activeLayoutCategory)} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-400 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'}`} title={`Purchase more ${activeLayoutCategory} Sparks`}><span aria-hidden="true">◇</span><span>Purchase More {activeLayoutCategory} Sparks</span></button> : null}
+                                                {!trialMode ? <button type="button" onClick={()=>openSparksMarketplace(activeLayoutCategory)} className={`cosmic-purchase-more-sparks inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-400 hover:text-white':'border-violet-600 bg-violet-600 text-white hover:bg-violet-700'}`} title={`Purchase more ${activeLayoutCategory} Sparks`}><span aria-hidden="true">◇</span><span>Purchase More {activeLayoutCategory} Sparks</span></button> : null}
                                             </div>
                                         </div> : null}
                                         <div data-popup-section-preview="true" data-popup-section-kind={String(activeBlock?.type||'').toLowerCase().includes('hero')?'hero':'section'} className={`cosmic-edit-session-preview overflow-hidden rounded-2xl border shadow-sm ${appDark?'border-white/10 bg-slate-900':'border-slate-200 bg-white'}`}>
@@ -7820,20 +7820,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-overlay-first-spark > .cosmic-builder-spark {
                             position: relative;
                         }
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(4rem, 6vw, 6rem))) !important;
-                        }
-                        @media (max-width: 639px) {
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
-                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 3rem)) !important;
-                            }
-                        }
                         /* Sparks live/export visual contract: keep Builder spacing and overflow
                            aligned with published HTML (50px mobile, 80px tablet+). */
                         .cosmic-builder-spark {
@@ -7905,6 +7891,21 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 max-width: 100%;
                                 overflow-x: auto;
                                 -webkit-overflow-scrolling: touch;
+                            }
+                        }
+                        /* Contextual overlay clearance must come after shared section spacing. */
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(4.5rem, 6vw, 6.5rem))) !important;
+                        }
+                        @media (max-width: 639px) {
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 3.25rem)) !important;
                             }
                         }
                         /* Tailwind ownership: page style never rewrites customer-facing button utilities. */

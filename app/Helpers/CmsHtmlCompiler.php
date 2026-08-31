@@ -2540,11 +2540,11 @@ HTML;
                     .cosmic-static-overlay-first-spark {
                         /* This class is attached to the actual first section, never its
                            outer render shell, so video/image media starts behind header. */
-                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(3.5rem, 5vw, 5.5rem)) !important;
+                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(4.5rem, 6vw, 6.5rem)) !important;
                     }
                     @media (max-width: 639px) {
                         .cosmic-static-overlay-first-spark {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3rem) !important;
+                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3.25rem) !important;
                         }
                     }
                     /* Contrast-aware overlay header. Runtime selects a light or dark

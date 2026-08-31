@@ -14,6 +14,15 @@ const COLOR_FAMILY_SCHEMA = {
     buttonSecondaryText: '#RRGGBB', success: '#RRGGBB', warning: '#RRGGBB', error: '#RRGGBB', onPrimary: '#RRGGBB',
     onDark: '#RRGGBB', gradient: { from: '#RRGGBB', via: '#RRGGBB', to: '#RRGGBB', glow: '#RRGGBB', angle: 125 },
 };
+const COLOR_FAMILY_HEX_KEYS = Object.keys(COLOR_FAMILY_SCHEMA).filter((key) => key !== 'gradient');
+const isCompleteColorFamily = (family) => {
+    if (!family || typeof family !== 'object') return false;
+    const validHex = (value) => /^#[0-9A-F]{6}$/i.test(String(value || ''));
+    const gradient = family.gradient;
+    return COLOR_FAMILY_HEX_KEYS.every((key) => validHex(family[key]))
+        && gradient && ['from', 'via', 'to', 'glow'].every((key) => validHex(gradient[key]))
+        && Number.isFinite(Number(gradient.angle));
+};
 
 export default function ThemeModal({
     open,
@@ -39,6 +48,7 @@ export default function ThemeModal({
     const [lunaPrompt, setLunaPrompt] = useState('');
     const [lunaMessages, setLunaMessages] = useState([]);
     const [generatedThemes, setGeneratedThemes] = useState([]);
+    const [themeRequestBusy, setThemeRequestBusy] = useState(false);
     const { resolvedTheme: appAppearanceTheme } = useAppearance();
     const isDark = appAppearanceTheme === 'dark';
 
@@ -120,7 +130,8 @@ export default function ThemeModal({
 
     const askThemeLuna = async () => {
         const prompt = String(lunaPrompt || '').trim();
-        if (!prompt || lunaBusy) return;
+        if (!prompt || lunaBusy || themeRequestBusy) return;
+        setThemeRequestBusy(true);
         setLunaMessages((current) => [...current, { role: 'user', text: prompt }]);
         setLunaPrompt('');
         try {
@@ -146,7 +157,7 @@ export default function ThemeModal({
                     colorFamilySchema: COLOR_FAMILY_SCHEMA,
                 });
                 const family = generated?.brand_color_family || null;
-                if (!family || typeof family !== 'object' || !family.primary) throw new Error('Luna did not return a valid color family.');
+                if (!isCompleteColorFamily(family)) throw new Error('Luna did not return a complete semantic color family. Please try again.');
 
                 const candidate = {
                     key: `luna-theme-${Date.now()}`,
@@ -155,8 +166,9 @@ export default function ThemeModal({
                     mode: generated?.mode || 'dark',
                     palette: {
                         sourceColor: family.sourceColor || family.source_color || family.primary,
-                        primary: family.primary, primaryHover: family.primaryHover || family.primary_hover, primarySoft: family.primarySoft || family.primary_soft,
-                        secondary: family.secondary, accent: family.accent, background: family.background, surface: family.surface,
+                        primary: family.primary, primaryText: family.primaryText || family.onPrimary, primaryHover: family.primaryHover || family.primary_hover, primarySoft: family.primarySoft || family.primary_soft,
+                        secondary: family.secondary, secondaryText: family.secondaryText || family.onSecondary, accent: family.accent, accentText: family.accentText || family.onAccent,
+                        background: family.background, backgroundText: family.backgroundText || family.onPrimary, surface: family.surface,
                         surfaceMuted: family.surfaceMuted || family.surface_alt, surfaceText: family.surfaceText || family.text || family.body,
                         heading: family.heading || family.primary, text: family.text || family.body, muted: family.muted, border: family.border,
                         buttonPrimary: family.buttonPrimary || family.button_primary || family.primary, buttonText: family.buttonText || family.button_text || family.primaryText || family.onPrimary,
@@ -182,6 +194,8 @@ export default function ThemeModal({
             }]);
         } catch (error) {
             setLunaMessages((current) => [...current, { role: 'assistant', text: error?.response?.data?.message || error?.message || 'Luna could not update the theme.' }]);
+        } finally {
+            setThemeRequestBusy(false);
         }
     };
 
@@ -274,6 +288,8 @@ export default function ThemeModal({
                                 key={item}
                                 type="button"
                                 onClick={() => setCategory(item)}
+                                aria-pressed={category === item}
+                                data-luna-theme-filter={item === 'Luna Theme' ? 'true' : undefined}
                                 className={`cosmic-theme-filter-pill ${item === 'Luna Theme' ? 'cosmic-luna-theme-filter' : ''} rounded-full border px-3.5 py-2 text-xs font-semibold leading-none transition ${
                                     item === 'Luna Theme'
                                         ? (category === item ? 'is-active border-transparent text-white shadow-sm' : 'border-transparent text-white shadow-sm hover:brightness-110')
@@ -372,9 +388,10 @@ export default function ThemeModal({
                                     </div>
                                 </div>
                             )}
-                            {lunaBusy ? (
+                            {(lunaBusy || themeRequestBusy) ? (
                                 <div className="cosmic-theme-luna-premium__message-row is-assistant">
                                     <div className={`cosmic-luna-process-card ${isDark ? 'cosmic-luna-process-card--dark' : ''}`} role="status" aria-live="polite">
+                                        <div className="cosmic-theme-luna-preloader" aria-hidden="true"><span/><span/><span/></div>
                                         <p className="cosmic-luna-process-card__intro">Luna is preparing your theme preview.</p>
                                         <div className="cosmic-luna-process-card__steps">
                                             <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--complete"><span className="cosmic-luna-process-card__marker" aria-hidden="true">✓</span><span>Understanding your theme request</span></div>
@@ -391,7 +408,7 @@ export default function ThemeModal({
                             <textarea value={lunaPrompt} onChange={(event) => setLunaPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); askThemeLuna(); } }} rows={4} placeholder="e.g. Premium navy with warm gold accents" className="cosmic-theme-luna-premium__textarea" />
                             <div className="cosmic-theme-luna-premium__composer-footer">
                                 <span className="cosmic-theme-luna-premium__builder-label"><span aria-hidden="true">✦</span>Theme Preview</span>
-                                <button type="button" disabled={lunaBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="cosmic-theme-luna-premium__send">{lunaBusy ? 'Working…' : 'Ask Luna'}</button>
+                                <button type="button" disabled={lunaBusy || themeRequestBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="cosmic-theme-luna-premium__send">{lunaBusy || themeRequestBusy ? 'Working…' : 'Ask Luna'}</button>
                             </div>
                         </div>
                     </aside>
