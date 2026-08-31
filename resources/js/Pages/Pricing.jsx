@@ -146,7 +146,7 @@ const comparisonRows = [
 ];
 
 function CheckIcon() {
-    return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white shadow-sm">✓</span>;
+    return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white shadow-sm">✓</span>;
 }
 
 export default function Pricing({ trialToken = null }) {
@@ -177,7 +177,7 @@ export default function Pricing({ trialToken = null }) {
                                         role="tab"
                                         aria-selected={family === item}
                                         onClick={() => setFamily(item)}
-                                        className={`min-w-32 rounded-xl px-6 py-3 text-sm font-black capitalize transition ${family === item ? 'bg-emerald-700 text-white shadow-md shadow-emerald-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
+                                        className={`min-w-32 rounded-xl px-6 py-3 text-sm font-bold capitalize transition ${family === item ? 'bg-emerald-700 text-white shadow-md shadow-emerald-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
                                     >
                                         {item}
                                     </button>
@@ -190,16 +190,16 @@ export default function Pricing({ trialToken = null }) {
                         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-3">
                             {plans.map((plan) => (
                                 <article key={plan.key} className={`relative flex h-full flex-col rounded-[28px] border bg-white p-7 shadow-sm ${plan.highlight ? 'border-emerald-400 shadow-[0_24px_70px_-36px_rgba(5,150,105,0.45)] lg:-translate-y-2' : 'border-slate-200'}`}>
-                                    {plan.badge && <span className="absolute right-6 top-6 rounded-full bg-emerald-100 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">{plan.badge}</span>}
-                                    <p className="text-sm font-black uppercase tracking-[0.14em] text-emerald-700">{family === 'personal' ? 'Personal' : 'Agency'}</p>
-                                    <h2 className="mt-3 text-2xl font-black text-slate-950">{plan.name}</h2>
-                                    <div className="mt-5 flex items-end gap-2"><span className="text-5xl font-black tracking-tight text-slate-950">${plan.price}</span><span className="pb-1.5 font-semibold text-slate-500">/month</span></div>
+                                    {plan.badge && <span className="absolute right-6 top-6 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">{plan.badge}</span>}
+                                    <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-700">{family === 'personal' ? 'Personal' : 'Agency'}</p>
+                                    <h2 className="mt-3 text-2xl font-extrabold text-slate-950">{plan.name}</h2>
+                                    <div className="mt-5 flex items-end gap-2"><span className="text-5xl font-bold tracking-tight text-slate-950">${plan.price}</span><span className="pb-1.5 font-semibold text-slate-500">/month</span></div>
                                     <p className="mt-5 min-h-20 leading-7 text-slate-600">{plan.positioning}</p>
-                                    <div className="mt-5 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white shadow-sm">{plan.credits}</div>
+                                    <div className="mt-5 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-sm">{plan.credits}</div>
                                     <ul className="mt-7 flex-1 space-y-3.5">
                                         {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm font-medium leading-6 text-slate-800"><CheckIcon />{feature}</li>)}
                                     </ul>
-                                    <Link href={registrationUrl(plan.key)} onClick={() => trackCosmicEvent('plan_selected', { plan_key: plan.key, plan_family: family, plan_name: plan.name, source: 'pricing_page' })} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
+                                    <Link href={registrationUrl(plan.key)} onClick={() => trackCosmicEvent('plan_selected', { plan_key: plan.key, plan_family: family, plan_name: plan.name, source: 'pricing_page' })} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
                                 </article>
                             ))}
                         </div>
@@ -215,8 +215,8 @@ export default function Pricing({ trialToken = null }) {
                     <section className="border-y border-slate-200 bg-white px-5 py-20 sm:px-6 lg:px-8">
                         <div className="mx-auto max-w-7xl">
                             <div className="max-w-3xl">
-                                <p className="text-sm font-black uppercase tracking-[0.14em] text-emerald-700">Full comparison</p>
-                                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Compare every plan at a glance.</h2>
+                                <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-700">Full comparison</p>
+                                <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Compare every plan at a glance.</h2>
                                 <p className="mt-4 leading-7 text-slate-600">All Cosmic Credits are account-wide. Agency users can share permitted templates and Owned Sparks across their managed websites.</p>
                             </div>
 
@@ -224,13 +224,13 @@ export default function Pricing({ trialToken = null }) {
                                 <table className="min-w-[1100px] w-full border-collapse text-left text-sm">
                                     <thead className="bg-slate-50">
                                         <tr>
-                                            {['Feature', 'Starter', 'Growth', 'Pro', 'Starter Agency', 'Growth Agency', 'Pro Agency'].map((heading) => <th key={heading} className="border-b border-slate-200 px-5 py-4 font-black text-slate-900">{heading}</th>)}
+                                            {['Feature', 'Starter', 'Growth', 'Pro', 'Starter Agency', 'Growth Agency', 'Pro Agency'].map((heading) => <th key={heading} className="border-b border-slate-200 px-5 py-4 font-bold text-slate-900">{heading}</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {comparisonRows.map((row, index) => (
                                             <tr key={row[0]} className={index % 2 ? 'bg-slate-50/50' : 'bg-white'}>
-                                                {row.map((cell, cellIndex) => <td key={`${row[0]}-${cellIndex}`} className={`border-b border-slate-100 px-5 py-4 ${cellIndex === 0 ? 'font-black text-slate-900' : 'text-slate-600'}`}>{cell}</td>)}
+                                                {row.map((cell, cellIndex) => <td key={`${row[0]}-${cellIndex}`} className={`border-b border-slate-100 px-5 py-4 ${cellIndex === 0 ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{cell}</td>)}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -241,11 +241,11 @@ export default function Pricing({ trialToken = null }) {
 
                     <section className="px-5 py-20 text-center sm:px-6 sm:py-24">
                         <div className="mx-auto max-w-4xl rounded-[32px] border border-emerald-200 bg-[linear-gradient(135deg,#f2fbf5_0%,#ffffff_48%,#effcf7_100%)] px-6 py-12 shadow-sm sm:px-12">
-                            <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Not ready to choose yet?</h2>
+                            <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Not ready to choose yet?</h2>
                             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-600">Generate a free website concept first. You can review the direction before selecting a paid Personal or Agency plan.</p>
                             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                                <Link href="/start" className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white transition hover:bg-emerald-800">Generate a free concept</Link>
-                                <Link href="/ai-website-builder" className="rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-black text-slate-800 transition hover:bg-slate-50">Explore AI website builder</Link>
+                                <Link href="/start" className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-bold text-white transition hover:bg-emerald-800">Generate a free concept</Link>
+                                <Link href="/ai-website-builder" className="rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-bold text-slate-800 transition hover:bg-slate-50">Explore AI website builder</Link>
                             </div>
                             <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold text-slate-500">
                                 <Link href="/ai-website-generator" className="hover:text-emerald-700">AI website generator</Link>

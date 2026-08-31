@@ -6,10 +6,9 @@ use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Services\AiPageGenerationService;
 use App\Services\LunaPexelsVideoService;
-use App\Services\TrialStagingPublisherService;
-use App\Jobs\SendTrialBundleReadyJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -17,54 +16,63 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class BuildTrialSiteBundleJob implements ShouldQueue
+final class BuildTrialSiteBundleJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
     public int $timeout = 420;
     public array $backoff = [30, 90, 180];
+    public int $uniqueFor = 1800;
 
     public function __construct(public int $trialId, public int $pageId)
     {
         // Public trial pages are intentionally asynchronous even when a local
         // environment keeps QUEUE_CONNECTION=sync for unrelated jobs.
-        $this->onConnection('database');
+        $this->onConnection((string) config('cosmic-queue.connections.ai_builds', 'database'));
         $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai'));
         $this->afterCommit();
     }
 
-    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos, TrialStagingPublisherService $staging): void
+    public function uniqueId(): string
+    {
+        return $this->trialId.':'.$this->pageId;
+    }
+
+    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos): void
     {
         $trial = TrialGeneration::query()->find($this->trialId);
         if (! $trial || $trial->claimed_at || $trial->status !== 'ready') {
             return;
         }
 
-        $trial->forceFill(['bundle_status' => 'building', 'bundle_error' => null])->save();
         $recipe = collect((array) data_get($trial->bundle_manifest, 'pages', []))
             ->first(fn (array $page) => (int) ($page['page_id'] ?? 0) === $this->pageId);
         if (! is_array($recipe)) {
+            // The bundle may have been explicitly regenerated while an older
+            // job was waiting. That payload is obsolete and must not disturb
+            // the replacement manifest.
             return;
         }
 
         $page = Page::query()->where('website_id', $trial->website_id)->find($this->pageId);
         if (! $page) {
             $this->markPage($trial->id, $this->pageId, 'failed', 'Page record is missing.');
-            $this->refreshBundleStatus($trial->id);
+            if (! self::dispatchNext($trial->id)) $this->refreshBundleStatus($trial->id);
             return;
         }
         if (is_array($page->blocks) && $page->blocks !== []) {
             $this->markPage($trial->id, $page->id, 'ready');
             $status = $this->refreshBundleStatus($trial->id);
             if ($status === 'ready') {
-                try { $staging->publish($trial->fresh()); } catch (Throwable $exception) { report($exception); }
-                SendTrialBundleReadyJob::dispatch($trial->id);
+                FinalizeTrialSiteBundleJob::dispatch($trial->id);
             } else {
-                $this->dispatchNextQueuedPage($trial->id);
+                self::dispatchNext($trial->id);
             }
             return;
         }
+
+        $trial->forceFill(['bundle_status' => 'building', 'bundle_error' => null])->save();
 
         try {
             $this->markPage($trial->id, $page->id, 'building');
@@ -90,17 +98,19 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
             });
         } catch (Throwable $exception) {
             report($exception);
-            $this->markPage($trial->id, $page->id, 'failed', $exception->getMessage());
+            // Keep the page non-terminal while Laravel still owns retries for
+            // this exact job. `failed()` records the final failed state only
+            // after all attempts are exhausted.
+            $this->recordAttemptError($trial->id, $page->id, $exception);
             throw $exception;
         }
 
         $bundleStatus=$this->refreshBundleStatus($trial->id);
         $fresh = TrialGeneration::query()->find($trial->id);
         if ($bundleStatus === 'ready' && $fresh) {
-            try { $staging->publish($fresh); } catch (Throwable $exception) { report($exception); }
-            SendTrialBundleReadyJob::dispatch($trial->id);
+            FinalizeTrialSiteBundleJob::dispatch($trial->id);
         } elseif (in_array($bundleStatus, ['building', 'queued', 'partial'], true)) {
-            $this->dispatchNextQueuedPage($trial->id);
+            self::dispatchNext($trial->id);
         }
         $statuses = collect(data_get($fresh?->bundle_manifest, 'pages', []))->pluck('build_status');
 
@@ -131,22 +141,44 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
 
     private function markPage(int $trialId, int $pageId, string $status, ?string $error = null): void
     {
-        $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
-        if (! $trial) {
-            return;
-        }
+        DB::transaction(function () use ($trialId, $pageId, $status, $error): void {
+            $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+            if (! $trial) return;
 
-        $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
-        $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $page) use ($pageId, $status, $error): array {
-            if ((int) ($page['page_id'] ?? 0) !== $pageId) {
+            $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
+            $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $page) use ($pageId, $status, $error): array {
+                if ((int) ($page['page_id'] ?? 0) !== $pageId) return $page;
+                $page['build_status'] = $status;
+                $page['build_started_at'] = $status === 'building' ? now()->toIso8601String() : ($page['build_started_at'] ?? null);
+                $page['built_at'] = $status === 'ready' ? now()->toIso8601String() : ($page['built_at'] ?? null);
+                $page['build_error'] = $error;
+                if ($status === 'ready') $page['build_attempts'] = max(1, (int) ($page['build_attempts'] ?? 0));
                 return $page;
-            }
-            $page['build_status'] = $status;
-            $page['built_at'] = $status === 'ready' ? now()->toIso8601String() : ($page['built_at'] ?? null);
-            $page['build_error'] = $error;
-            return $page;
-        })->values()->all();
-        $trial->forceFill(['bundle_manifest' => $manifest])->save();
+            })->values()->all();
+            $trial->forceFill(['bundle_manifest' => $manifest])->save();
+        });
+    }
+
+    private function recordAttemptError(int $trialId, int $pageId, Throwable $exception): void
+    {
+        DB::transaction(function () use ($trialId, $pageId, $exception): void {
+            $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+            if (! $trial) return;
+            $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
+            $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $page) use ($pageId, $exception): array {
+                if ((int) ($page['page_id'] ?? 0) !== $pageId) return $page;
+                $page['build_status'] = 'building';
+                $page['build_attempts'] = max((int) ($page['build_attempts'] ?? 0), $this->attempts());
+                $page['last_attempt_failed_at'] = now()->toIso8601String();
+                $page['build_error'] = $exception->getMessage();
+                return $page;
+            })->values()->all();
+            $trial->forceFill([
+                'bundle_manifest' => $manifest,
+                'bundle_status' => 'building',
+                'bundle_error' => 'Page '.$pageId.' attempt '.$this->attempts().' failed: '.$exception->getMessage(),
+            ])->save();
+        });
     }
 
     private function mergeMedia(int $trialId, array $remote): void
@@ -181,9 +213,9 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
     }
 
 
-    private function dispatchNextQueuedPage(int $trialId): void
+    public static function dispatchNext(int $trialId, bool $recoverStale = false): ?int
     {
-        $nextPageId = DB::transaction(function () use ($trialId): ?int {
+        $nextPageId = DB::transaction(function () use ($trialId, $recoverStale): ?int {
             $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
             if (! $trial || $trial->claimed_at) {
                 return null;
@@ -191,18 +223,26 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
 
             $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
             $pages = collect($manifest['pages'] ?? [])->sortBy('sort_order');
-            $next = $pages->first(fn (array $item) => ($item['build_status'] ?? null) === 'queued'
-                && (int) ($item['page_id'] ?? 0) > 0);
+            $staleBefore = now()->subMinutes((int) config('cosmic.trial_bundle_stale_minutes', 15));
+            $next = $pages->first(function (array $item) use ($recoverStale, $staleBefore): bool {
+                if ((int) ($item['page_id'] ?? 0) < 1) return false;
+                $status = (string) ($item['build_status'] ?? 'queued');
+                if ($status === 'queued') return true;
+                if (! $recoverStale || ! in_array($status, ['scheduled', 'building'], true)) return false;
+                $timestamp = $item['build_started_at'] ?? $item['scheduled_at'] ?? null;
+                return ! $timestamp || \Illuminate\Support\Carbon::parse($timestamp)->lte($staleBefore);
+            });
             if (! is_array($next)) {
                 return null;
             }
 
             $pageId = (int) $next['page_id'];
-            $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $item) use ($pageId): array {
+            $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $item) use ($pageId, $recoverStale): array {
                 if ((int) ($item['page_id'] ?? 0) === $pageId) {
                     $item['build_status'] = 'scheduled';
                     $item['scheduled_at'] = now()->toIso8601String();
                     $item['build_error'] = null;
+                    $item['recovered_at'] = $recoverStale ? now()->toIso8601String() : ($item['recovered_at'] ?? null);
                 }
                 return $item;
             })->values()->all();
@@ -215,38 +255,55 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
             // Build trial inner pages back-to-back. A page schedules exactly one
             // successor only after it finishes, so API work remains sequential
             // without the old artificial two-minute gap between pages.
-            self::dispatch($trialId, $nextPageId);
+            try {
+                self::dispatch($trialId, $nextPageId);
+            } catch (Throwable $exception) {
+                // Queue insertion itself can fail. Put the recipe back into a
+                // recoverable state instead of leaving a phantom `scheduled` page.
+                DB::transaction(function () use ($trialId, $nextPageId, $exception): void {
+                    $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+                    if (! $trial) return;
+                    $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
+                    $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $item) use ($nextPageId, $exception): array {
+                        if ((int) ($item['page_id'] ?? 0) !== $nextPageId) return $item;
+                        $item['build_status'] = 'queued';
+                        $item['build_error'] = 'Queue dispatch failed: '.$exception->getMessage();
+                        return $item;
+                    })->values()->all();
+                    $trial->forceFill(['bundle_manifest' => $manifest, 'bundle_status' => 'queued', 'bundle_error' => $exception->getMessage()])->save();
+                });
+                throw $exception;
+            }
         }
+
+        return $nextPageId;
     }
 
     public function failed(?Throwable $exception): void
     {
         $this->markPage($this->trialId, $this->pageId, 'failed', $exception?->getMessage() ?: 'Page generation failed.');
-        $this->refreshBundleStatus($this->trialId);
-        $this->dispatchNextQueuedPage($this->trialId);
+        if (! self::dispatchNext($this->trialId)) {
+            $this->refreshBundleStatus($this->trialId);
+        }
     }
 
     private function refreshBundleStatus(int $trialId): string
     {
-        $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
-        if (! $trial) {
-            return 'missing';
-        }
+        return DB::transaction(function () use ($trialId): string {
+            $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+            if (! $trial) return 'missing';
 
-        $pages = collect(data_get($trial->bundle_manifest, 'pages', []));
-        $statuses = $pages->pluck('build_status');
-        $errors = $pages->pluck('build_error')->filter()->take(5)->implode("\n");
-        $status = match (true) {
-            $statuses->every(fn ($value) => $value === 'ready') => 'ready',
-            $statuses->contains(fn ($value) => in_array($value, ['queued', 'scheduled', 'building'], true)) => 'building',
-            $statuses->contains('ready') => 'partial',
-            default => 'failed',
-        };
-
-        $trial->forceFill([
-            'bundle_status' => $status,
-            'bundle_error' => $errors !== '' ? $errors : null,
-        ])->save();
-        return $status;
+            $pages = collect(data_get($trial->bundle_manifest, 'pages', []));
+            $statuses = $pages->pluck('build_status');
+            $errors = $pages->pluck('build_error')->filter()->take(5)->implode("\n");
+            $status = match (true) {
+                $statuses->every(fn ($value) => $value === 'ready') => 'ready',
+                $statuses->contains(fn ($value) => in_array($value, ['queued', 'scheduled', 'building'], true)) => 'building',
+                $statuses->contains('ready') => 'partial',
+                default => 'failed',
+            };
+            $trial->forceFill(['bundle_status' => $status, 'bundle_error' => $errors !== '' ? $errors : null])->save();
+            return $status;
+        });
     }
 }

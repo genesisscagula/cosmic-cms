@@ -16,6 +16,8 @@ return [
     'trial_website_id' => (int) env('TRIAL_WEBSITE_ID', 1),
 
     // Keep AI-heavy inner-page work off the initial trial request. Home is
-    // completed before Builder hand-off; each remaining page is claimed and
-    // released to the AI queue after this spacing interval.
+    // completed before Builder hand-off; remaining pages run sequentially on
+    // the server-side AI queue. The recovery scheduler may reclaim a manifest
+    // page that remained scheduled/building beyond this threshold.
+    'trial_bundle_stale_minutes' => (int) env('TRIAL_BUNDLE_STALE_MINUTES', 15),
 ];

@@ -480,9 +480,6 @@ class TrialGenerationController extends Controller
                 // built. This keeps the trial CTA deterministic: 100% means the
                 // user can open the entire demo, not a progressively staged subset.
                 $previewUrl = $this->trialStagingPublisher->existingUrl($trial);
-                if (! $previewUrl) {
-                    $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
-                }
             } catch (\Throwable $exception) {
                 Log::warning('[TrialStaging] Complete preview finalization deferred.', [
                     'trial_id' => $trial->id,
@@ -511,6 +508,8 @@ class TrialGenerationController extends Controller
                 'slug' => (string) ($page['slug'] ?? ''),
                 'is_home' => (bool) ($page['is_home'] ?? false),
                 'status' => (string) ($page['build_status'] ?? 'queued'),
+                'attempts' => (int) ($page['build_attempts'] ?? 0),
+                'error' => $page['build_error'] ?? null,
             ])->values()->all(),
             'terminal' => $previewReady || in_array($bundleStatus, ['failed', 'partial'], true),
             'poll_after_ms' => 2500,
@@ -747,19 +746,12 @@ class TrialGenerationController extends Controller
 
             $trial->refresh();
 
-            $firstQueuedBundlePage = collect((array) data_get($trial->bundle_manifest, 'pages', []))
-                ->sortBy('sort_order')
-                ->first(fn (array $bundlePage): bool => ! ($bundlePage['is_home'] ?? false)
-                    && ($bundlePage['build_status'] ?? null) === 'queued'
-                    && (int) ($bundlePage['page_id'] ?? 0) > 0);
-            if (is_array($firstQueuedBundlePage)) {
-                // Regeneration follows the same sequential queue contract as a
-                // fresh demo: start one inner page, then let each completed job
-                // schedule exactly one successor.
-                BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $firstQueuedBundlePage['page_id']);
-            }
+            // Regeneration follows the same database-owned sequential queue
+            // contract as a fresh demo. Dispatch before returning so closing the
+            // HTTP client cannot prevent the first inner page from being queued.
+            BuildTrialSiteBundleJob::dispatchNext($trial->id);
             if($trial->fresh()->bundle_status==='ready'){
-                try{$this->trialStagingPublisher->publish($trial->fresh());}catch(\Throwable $exception){report($exception);}
+                \App\Jobs\FinalizeTrialSiteBundleJob::dispatch($trial->id);
             }
 
             // A full regeneration creates a fresh logo + favicon after the

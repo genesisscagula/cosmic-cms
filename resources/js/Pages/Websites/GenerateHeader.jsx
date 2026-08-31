@@ -28,7 +28,7 @@ function HeaderLogoEditor({ imageUrl, alt, imageStyle, imageClassName="", onManu
         <div data-cosmic-shell-element="logo" data-cosmic-shell-path="header.logo_image_url" className="group/header-logo relative shrink-0">
             <img src={imageUrl} alt={alt} style={imageStyle} className={imageClassName} />
             {onAi && <div className="pointer-events-none absolute -right-2 -top-2 z-[620] flex gap-1 opacity-0 transition group-hover/header-logo:opacity-100 group-focus-within/header-logo:opacity-100">
-                <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg hover:bg-violet-500" aria-label="Ask Luna about this logo">✦</button>
+                <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-bold text-white shadow-lg hover:bg-violet-500" aria-label="Ask Luna about this logo">✦</button>
             </div>}
         </div>
     );
@@ -42,7 +42,7 @@ function HeaderCtaEditor({ block, className="", style, textClass="", onUpdate, o
     return <>
         <div data-cosmic-shell-element="cta" data-cosmic-shell-path="header.cta" className={`group/header-cta-edit relative ${className}`} style={style}>
             <button type="button" onClick={openEditor} className={`block w-full ${textClass}`}>{block.cta_label || 'Get Started'}</button>
-            {onAi && <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="absolute -right-2 -top-2 hidden h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg hover:bg-violet-500 group-hover/header-cta-edit:inline-flex" aria-label="Ask Luna about this CTA">✦</button>}
+            {onAi && <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="absolute -right-2 -top-2 hidden h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-bold text-white shadow-lg hover:bg-violet-500 group-hover/header-cta-edit:inline-flex" aria-label="Ask Luna about this CTA">✦</button>}
         </div>
         {open && <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={()=>setOpen(false)}>
             <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-white shadow-2xl" onMouseDown={(e)=>e.stopPropagation()}>
@@ -375,7 +375,7 @@ function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets =
             </div>}
         </div>
         {onAi&&<div className="pointer-events-none absolute -right-2 -top-8 z-[650] flex gap-1 opacity-0 transition group-hover/header-navigation:opacity-100 group-focus-within/header-navigation:opacity-100">
-            <button type="button" onClick={onAi} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg" aria-label="Ask Luna about navigation">✦</button>
+            <button type="button" onClick={onAi} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about navigation">✦</button>
         </div>}
 
         {managerOpen&&<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={()=>setManagerOpen(false)}>

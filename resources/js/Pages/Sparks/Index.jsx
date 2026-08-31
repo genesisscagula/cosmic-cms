@@ -37,7 +37,11 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
     const [items, setItems] = useState(sparks);
     const [view, setView] = useState("marketplace");
     const [query, setQuery] = useState("");
-    const [category, setCategory] = useState("All");
+    const [category, setCategory] = useState(() => {
+        if (typeof window === 'undefined') return 'All';
+        const requested = new URLSearchParams(window.location.search).get('category');
+        return requested && categories.includes(requested) ? requested : 'All';
+    });
     const [aiResults, setAiResults] = useState(null);
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiSearchBusy, setAiSearchBusy] = useState(false);
@@ -106,6 +110,9 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
             const { data } = await axios.post(`/sparks/${spark.key}/unlock`);
             setItems((current) => current.map((item) => item.key === spark.key ? { ...item, owned: true } : item));
             setBalance(data.credit_balance);
+            try {
+                window.localStorage.setItem('cosmic:spark-ownership-changed', JSON.stringify({ key: spark.key, owned: true, at: Date.now() }));
+            } catch (_) {}
             showCosmicNotification({ title: "Added to My Sparks", message: data.message, tone: "success" });
         } catch (error) {
             showCosmicNotification({ title: "Could not unlock Spark", message: error.response?.data?.message || "Please try again.", tone: "error" });
@@ -118,7 +125,7 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
         <Head title="Sparks Marketplace" />
         <header className="border-b border-white/10 bg-[#0d0d10]/95 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
-                <div className="flex items-center gap-5"><Link href={route("dashboard")} className="text-sm font-semibold text-slate-400 hover:text-white">← Workspace</Link><div className="h-5 w-px bg-white/10"/><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">Cosmic CMS v2.7</p><h1 className="text-lg font-semibold">Sparks Marketplace</h1></div></div>
+                <div className="flex items-center gap-5"><Link href={route("dashboard")} className="text-sm font-semibold text-slate-400 hover:text-white">← Workspace</Link><div className="h-5 w-px bg-white/10"/><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">Cosmic CMS v2.7</p><h1 className="text-lg font-black">Sparks Marketplace</h1></div></div>
                 <CreditBalanceBadge balance={balance}/>
             </div>
         </header>

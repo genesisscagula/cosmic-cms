@@ -321,7 +321,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                             </div>
                             <aside className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[0.07] p-5">
                                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">Selected plan</p>
-                                <div className="mt-3 flex items-end justify-between gap-3"><h3 className="text-2xl font-bold text-white">{selectedPlan.name}</h3><p className="text-2xl font-bold text-white">{selectedPlan.price}<span className="text-sm font-normal text-slate-400">/mo</span></p></div>
+                                <div className="mt-3 flex items-end justify-between gap-3"><h3 className="text-2xl font-semibold text-white">{selectedPlan.name}</h3><p className="text-2xl font-bold text-white">{selectedPlan.price}<span className="text-sm font-normal text-slate-400">/mo</span></p></div>
                                 <ul className="mt-5 space-y-3 text-sm text-slate-300">
                                     <li>✓ {selectedPlan.credits}</li>
                                     <li>✓ {selectedPlan.welcome}</li>

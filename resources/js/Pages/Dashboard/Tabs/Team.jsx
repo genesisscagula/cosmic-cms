@@ -141,13 +141,13 @@ export default function Team({ dashboard = {} }) {
     };
 
     if (!team.enabled) {
-        return <section className="cosmic-team-page"><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Roles & Permissions</h1><div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6"><h2 className="text-lg font-semibold text-white">Team collaboration is locked</h2><p className="mt-2 max-w-2xl text-sm text-slate-400">Starter Agency includes up to 5 team members, Growth Agency up to 10, and Pro Agency unlimited members.</p><a href={route('cosmic-pricing.index')} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">View Agency plans</a></div></section>;
+        return <section className="cosmic-team-page"><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-black text-white">Roles & Permissions</h1><div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6"><h2 className="text-lg font-semibold text-white">Team collaboration is locked</h2><p className="mt-2 max-w-2xl text-sm text-slate-400">Starter Agency includes up to 5 team members, Growth Agency up to 10, and Pro Agency unlimited members.</p><a href={route('cosmic-pricing.index')} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">View Agency plans</a></div></section>;
     }
 
     return (
         <section className="cosmic-team-page">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Roles, Permissions & Websites</h1><p className="mt-2 text-sm text-slate-400">Control each member’s role and the exact client websites they can access.</p></div>
+                <div><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-black tracking-tight text-white">Roles, Permissions & Websites</h1><p className="mt-2 text-sm text-slate-400">Control each member’s role and the exact client websites they can access.</p></div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"><span className="text-slate-500">Seats used</span><strong className="ml-2 text-white">{team.used || 0} / {limitLabel}</strong></div>
             </div>
 

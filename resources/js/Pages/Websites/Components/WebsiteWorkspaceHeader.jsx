@@ -9,7 +9,7 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCoun
                     &larr; Back to Websites
                 </Link>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <h1 className="cosmic-workspace-title text-3xl font-semibold tracking-tight sm:text-4xl">{website.name || "Untitled Website"}</h1>
+                    <h1 className="cosmic-workspace-title text-3xl font-black tracking-tight sm:text-4xl">{website.name || "Untitled Website"}</h1>
                     <span className="cosmic-workspace-pagecount rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                         {pageCount} {pageCount === 1 ? "page" : "pages"}
                     </span>

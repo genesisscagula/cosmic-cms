@@ -27,7 +27,7 @@ export default function AcceptInvitation({ invitation }) {
 
                 <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/30 sm:p-8">
                     <p className="text-sm font-medium text-violet-300">{invitation.workspace}</p>
-                    <h1 className="mt-2 text-3xl font-semibold text-white">You’ve been invited</h1>
+                    <h1 className="mt-2 text-3xl font-black text-white">You’ve been invited</h1>
                     <p className="mt-3 text-sm leading-6 text-slate-400">
                         Accept access to {invitation.website_count} assigned website{invitation.website_count === 1 ? '' : 's'} using <strong className="text-slate-200">{invitation.email}</strong>.
                     </p>

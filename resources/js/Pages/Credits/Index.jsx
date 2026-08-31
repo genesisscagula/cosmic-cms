@@ -307,7 +307,7 @@ export default function CreditsIndex({
                     <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">⚡</span>
-                            <strong className="text-5xl font-black tracking-tight text-white">{currentBalance}</strong>
+                            <strong className="text-5xl font-bold tracking-tight text-white">{currentBalance}</strong>
                             <span className="pb-1 text-slate-400">Cosmic Credits</span>
                         </div>
                         <button
@@ -326,9 +326,9 @@ export default function CreditsIndex({
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{card.label}</p>
-                                    <p className="mt-3 text-3xl font-black tracking-tight text-white">{card.value.toLocaleString()}</p>
+                                    <p className="mt-3 text-3xl font-bold tracking-tight text-white">{card.value.toLocaleString()}</p>
                                 </div>
-                                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/10 font-black text-cyan-200">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/10 font-bold text-cyan-200">
                                     {card.icon}
                                 </span>
                             </div>
@@ -349,7 +349,7 @@ export default function CreditsIndex({
                         {usageRows.map((item) => (
                             <div key={item.key} className="rounded-xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-xs uppercase tracking-wide text-slate-500">{item.label}</p>
-                                <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
+                                <p className="mt-2 text-2xl font-bold text-white">{item.value}</p>
                                 <p className="mt-1 text-xs text-slate-600">credits used this month</p>
                             </div>
                         ))}
@@ -509,7 +509,7 @@ export default function CreditsIndex({
                 <section id="credit-packages" className="mt-8">
                     <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                         <div>
-                            <h1 className="text-xl font-semibold text-white">Buy Credits</h1>
+                            <h1 className="text-xl font-black text-white">Buy Credits</h1>
                             <p className="mt-1 text-sm text-slate-500">
                                 {creditProvider === 'paymongo'
                                     ? 'Philippine checkout uses PHP through PayMongo.'
@@ -533,7 +533,7 @@ export default function CreditsIndex({
                                     className="rounded-2xl border border-white/10 bg-[#141416] p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/30 hover:bg-white/[0.06]"
                                 >
                                     <p className="text-sm font-semibold text-slate-300">{item.label}</p>
-                                    <p className="mt-4 text-2xl font-black text-white">⚡ {item.credits}</p>
+                                    <p className="mt-4 text-2xl font-bold text-white">⚡ {item.credits}</p>
                                     <p className="mt-1 text-sm font-semibold text-cyan-300">
                                         {formatMoney(phpCheckout ? item.price_php : item.price_usd, phpCheckout ? 'PHP' : 'USD')}
                                     </p>
@@ -670,17 +670,17 @@ export default function CreditsIndex({
                                             }`}
                                         >
                                             {isRecommended && (
-                                                <span className="absolute right-4 top-4 rounded-full border border-violet-300/25 bg-violet-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-violet-200">
+                                                <span className="absolute right-4 top-4 rounded-full border border-violet-300/25 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-200">
                                                     Recommended
                                                 </span>
                                             )}
                                             {isCurrent && (
-                                                <span className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-200">
+                                                <span className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">
                                                     Current Plan
                                                 </span>
                                             )}
                                             <p className="font-semibold text-white">{plan.label}</p>
-                                            <p className="mt-3 text-2xl font-black text-white">
+                                            <p className="mt-3 text-2xl font-bold text-white">
                                                 {formatMoney(plan.price_usd, 'USD')}
                                                 <span className="text-sm font-medium text-slate-500">/month</span>
                                             </p>
@@ -782,7 +782,7 @@ export default function CreditsIndex({
                 <section className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-[#141416]">
                     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
                         <div>
-                            <h1 className="text-lg font-semibold text-white">Transaction history</h1>
+                            <h1 className="text-lg font-black text-white">Transaction history</h1>
                             <p className="mt-1 text-sm text-slate-500">Every account-level grant, charge, purchase, and refund appears here.</p>
                         </div>
                         <select value={transactionFilter} onChange={(event) => setTransactionFilter(event.target.value)} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-300 outline-none">
@@ -868,7 +868,7 @@ export default function CreditsIndex({
                             <div className="flex items-center justify-between gap-4">
                                 <div>
                                     <p className="font-semibold text-white">{selectedPackage.label}</p>
-                                    <p className="mt-1 text-2xl font-black text-white">⚡ {selectedPackage.credits}</p>
+                                    <p className="mt-1 text-2xl font-bold text-white">⚡ {selectedPackage.credits}</p>
                                 </div>
                                 <p className="text-xl font-bold text-cyan-300">
                                     {formatMoney(selectedPrice, selectedCurrency)}
@@ -954,7 +954,7 @@ export default function CreditsIndex({
                                         ? `Open ${providerLabel} secure checkout`
                                         : `${providerLabel} sandbox keys are not configured`
                                 }
-                                className="rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
+                                className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
                             >
                                 {purchasing
                                     ? 'Opening checkout…'

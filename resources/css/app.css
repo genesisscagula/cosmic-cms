@@ -3399,6 +3399,17 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: var(--cosmic-brand-button-text, #FFFFFF) !important;
 }
 
+/* A My Brand primary action carries both the brand background and the generic
+   brand text utility. On light sections, `--cosmic-brand-text` is intentionally
+   a dark body color, so using it on the primary fill can produce black-on-black
+   trial CTAs/tabs. The combined state is an action and must use the resolved
+   button/on-primary contrast token instead. */
+.cosmic-brand-bg.cosmic-brand-text,
+.cosmic-brand-bg.cosmic-brand-text * {
+    color: var(--cosmic-brand-button-text, var(--cosmic-color-on-primary, #FFFFFF)) !important;
+    -webkit-text-fill-color: var(--cosmic-brand-button-text, var(--cosmic-color-on-primary, #FFFFFF)) !important;
+}
+
 
 /* ================================================================
    H22 — Form editor visibility + theme-safe icon containers
@@ -13420,4 +13431,977 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     :is(p,[data-cosmic-type="eyebrow"],[data-luna-target="eyebrow"],[data-luna-target="body"]) {
     color: #334155 !important;
     -webkit-text-fill-color: #334155 !important;
+}
+
+
+/* ========================================================================== */
+/* Luna premium surfaces — Batch 3: Theme / Add Section / Templates          */
+/* ========================================================================== */
+
+/* Theme modal: pure Luna chat, no avatar/attachment controls. */
+#cosmic-theme-modal .cosmic-theme-luna-premium {
+    min-width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139,92,246,.07), transparent 28%),
+        #fff !important;
+}
+#cosmic-theme-modal .cosmic-theme-luna-premium[data-appearance="dark"] {
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139,92,246,.12), transparent 30%),
+        #111318 !important;
+}
+.cosmic-theme-luna-premium__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid #eef0f4;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__header {
+    border-color: rgba(255,255,255,.08);
+}
+.cosmic-theme-luna-premium__eyebrow {
+    margin: 0;
+    color: #7c3aed !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: .16em !important;
+    line-height: 1.3 !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__eyebrow {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-theme-luna-premium__title {
+    margin: 4px 0 0;
+    color: #101828 !important;
+    font-size: 15px !important;
+    font-weight: 750 !important;
+    letter-spacing: -.015em !important;
+    -webkit-text-fill-color: #101828 !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__title {
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+.cosmic-theme-luna-premium__active {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e9eaf1;
+    border-radius: 999px;
+    background: #f6f7fa;
+    padding: 6px 9px;
+    color: #475467 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.cosmic-theme-luna-premium__active > span {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #34d399 !important;
+    box-shadow: 0 0 0 3px rgba(52,211,153,.10);
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__active {
+    border-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-theme-luna-premium__context {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-bottom: 1px solid #eef0f4;
+    color: #667085 !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: .13em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-theme-luna-premium__context > span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #8b5cf6 !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__context {
+    border-color: rgba(255,255,255,.08);
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-theme-luna-premium__chat {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 16px 16px 12px;
+}
+.cosmic-theme-luna-premium__message-row { display: flex; width: 100%; }
+.cosmic-theme-luna-premium__message-row.is-user { justify-content: flex-end; }
+.cosmic-theme-luna-premium__message-row.is-assistant { justify-content: flex-start; }
+.cosmic-theme-luna-premium__bubble {
+    max-width: 88%;
+    border-radius: 15px;
+    padding: 10px 11px;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+}
+.cosmic-theme-luna-premium__bubble.is-user {
+    border-radius: 15px 15px 5px 15px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9 62%, #8b5cf6) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 20px rgba(109,40,217,.18);
+    -webkit-text-fill-color: #fff !important;
+}
+.cosmic-theme-luna-premium__bubble.is-assistant {
+    border: 1px solid #e6e8ef;
+    border-radius: 15px 15px 15px 5px;
+    background: #fff !important;
+    color: #344054 !important;
+    box-shadow: 0 7px 22px rgba(15,23,42,.05);
+    -webkit-text-fill-color: #344054 !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__bubble.is-assistant {
+    border-color: rgba(255,255,255,.09);
+    background: rgba(255,255,255,.045) !important;
+    color: #e4e7ec !important;
+    box-shadow: none;
+    -webkit-text-fill-color: #e4e7ec !important;
+}
+.cosmic-theme-luna-premium__composer {
+    flex: 0 0 auto;
+    padding: 12px 16px 16px;
+    border-top: 1px solid #eef0f4;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__composer {
+    border-color: rgba(255,255,255,.08);
+}
+.cosmic-theme-luna-premium__textarea {
+    display: block;
+    width: 100%;
+    min-height: 100px;
+    max-height: 180px;
+    resize: vertical;
+    border: 1px solid #dfe3eb !important;
+    border-radius: 15px !important;
+    outline: none !important;
+    background: #fff !important;
+    padding: 12px 13px !important;
+    color: #1d2939 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 3px 14px rgba(15,23,42,.035);
+    -webkit-text-fill-color: #1d2939 !important;
+}
+.cosmic-theme-luna-premium__textarea::placeholder {
+    color: #98a2b3 !important;
+    opacity: 1;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-theme-luna-premium__textarea:focus {
+    border-color: #b9a7fa !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,.08), 0 5px 18px rgba(15,23,42,.04);
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__textarea {
+    border-color: rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.035) !important;
+    color: #f2f4f7 !important;
+    box-shadow: none;
+    -webkit-text-fill-color: #f2f4f7 !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__textarea::placeholder {
+    color: #667085 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-theme-luna-premium__composer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 9px;
+}
+.cosmic-theme-luna-premium__builder-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #667085 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-theme-luna-premium__builder-label > span {
+    color: #7c3aed !important;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-theme-luna-premium[data-appearance="dark"] .cosmic-theme-luna-premium__builder-label {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-theme-luna-premium__send {
+    display: inline-flex;
+    min-width: 94px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 0 !important;
+    border-radius: 11px !important;
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6 55%, #a855f7) !important;
+    padding: 0 14px !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 8px 19px rgba(109,40,217,.22);
+    -webkit-text-fill-color: #fff !important;
+}
+.cosmic-theme-luna-premium__send:hover:not(:disabled) { transform: translateY(-1px); }
+.cosmic-theme-luna-premium__send:disabled { cursor: not-allowed; opacity: .45; }
+.cosmic-theme-luna-premium .cosmic-luna-process-card { width: 92%; }
+
+/* Add Section: premium pure-chat finder rail. */
+#cosmic-add-section-modal .cosmic-add-section-luna-premium {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 !important;
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139,92,246,.07), transparent 29%),
+        #fbfbfe !important;
+}
+#cosmic-add-section-modal .cosmic-add-section-luna-premium::before { display: none !important; }
+#cosmic-add-section-modal .cosmic-add-section-luna-premium[data-appearance="dark"] {
+    background:
+        radial-gradient(circle at 88% 0%, rgba(139,92,246,.13), transparent 30%),
+        #0d0e13 !important;
+}
+.cosmic-add-section-luna-premium__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 22px 20px 15px;
+    border-bottom: 1px solid #eceef4;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__header {
+    border-color: rgba(255,255,255,.08);
+}
+.cosmic-add-section-luna-premium__eyebrow {
+    margin: 0;
+    color: #7c3aed !important;
+    font-size: 9px !important;
+    font-weight: 850 !important;
+    letter-spacing: .16em !important;
+    line-height: 1.35 !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__eyebrow {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-add-section-luna-premium__title {
+    margin: 5px 0 0;
+    color: #101828 !important;
+    font-size: 16px !important;
+    font-weight: 760 !important;
+    letter-spacing: -.02em !important;
+    -webkit-text-fill-color: #101828 !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__title {
+    color: #f8fafc !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+.cosmic-add-section-luna-premium__active {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e9eaf1;
+    border-radius: 999px;
+    background: #f4f5f8;
+    padding: 6px 8px;
+    color: #475467 !important;
+    font-size: 8px !important;
+    font-weight: 750 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.cosmic-add-section-luna-premium__active > span {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #34d399 !important;
+    box-shadow: 0 0 0 3px rgba(52,211,153,.10);
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__active {
+    border-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05);
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-add-section-luna-premium__context {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 20px;
+    border-bottom: 1px solid #eceef4;
+    color: #667085 !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    letter-spacing: .13em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-add-section-luna-premium__context > span {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #8b5cf6 !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__context {
+    border-color: rgba(255,255,255,.08);
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-add-section-luna-premium__chat {
+    display: flex;
+    min-height: 160px;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 18px 18px 10px;
+}
+.cosmic-add-section-luna-premium__message-row { display: flex; width: 100%; }
+.cosmic-add-section-luna-premium__message-row.is-assistant { justify-content: flex-start; }
+.cosmic-add-section-luna-premium__bubble {
+    max-width: 96%;
+    border: 1px solid #e6e8ef;
+    border-radius: 16px 16px 16px 6px;
+    background: #fff !important;
+    padding: 11px 12px;
+    color: #344054 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 7px 22px rgba(15,23,42,.05);
+    -webkit-text-fill-color: #344054 !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__bubble {
+    border-color: rgba(255,255,255,.09);
+    background: rgba(255,255,255,.045) !important;
+    color: #e4e7ec !important;
+    box-shadow: none;
+    -webkit-text-fill-color: #e4e7ec !important;
+}
+#cosmic-add-section-modal .cosmic-add-section-luna-premium .cosmic-luna-process-card { width: 100%; max-width: none; }
+.cosmic-add-section-luna-premium__composer {
+    flex: 0 0 auto;
+    padding: 12px 18px 14px;
+    border-top: 1px solid #eceef4;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__composer {
+    border-color: rgba(255,255,255,.08);
+}
+.cosmic-add-section-luna-premium__textarea {
+    display: block;
+    width: 100%;
+    min-height: 118px;
+    max-height: 210px;
+    resize: vertical;
+    border: 1px solid #dfe3eb !important;
+    border-radius: 15px !important;
+    outline: 0 !important;
+    background: #fff !important;
+    padding: 12px 13px !important;
+    color: #1d2939 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 3px 14px rgba(15,23,42,.035);
+    -webkit-text-fill-color: #1d2939 !important;
+}
+.cosmic-add-section-luna-premium__textarea::placeholder {
+    color: #98a2b3 !important;
+    opacity: 1;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-add-section-luna-premium__textarea:focus {
+    border-color: #b9a7fa !important;
+    box-shadow: 0 0 0 3px rgba(139,92,246,.08), 0 5px 18px rgba(15,23,42,.04);
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__textarea {
+    border-color: rgba(255,255,255,.10) !important;
+    background: rgba(255,255,255,.035) !important;
+    color: #f2f4f7 !important;
+    box-shadow: none;
+    -webkit-text-fill-color: #f2f4f7 !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__textarea::placeholder {
+    color: #667085 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-add-section-luna-premium__composer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 9px;
+}
+.cosmic-add-section-luna-premium__builder-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #667085 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-add-section-luna-premium__builder-label > span {
+    color: #7c3aed !important;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__builder-label {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-add-section-luna-premium__send {
+    display: inline-flex;
+    min-width: 94px;
+    height: 37px;
+    align-items: center;
+    justify-content: center;
+    border: 0 !important;
+    border-radius: 11px !important;
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6 55%, #a855f7) !important;
+    padding: 0 14px !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    box-shadow: 0 8px 19px rgba(109,40,217,.22);
+    -webkit-text-fill-color: #fff !important;
+}
+.cosmic-add-section-luna-premium__send:hover:not(:disabled) { transform: translateY(-1px); }
+.cosmic-add-section-luna-premium__send:disabled { cursor: not-allowed; opacity: .45; }
+.cosmic-add-section-luna-premium__note {
+    margin: 8px 0 0;
+    color: #98a2b3 !important;
+    font-size: 9px !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-add-section-luna-premium__whole-page {
+    display: grid;
+    gap: 2px;
+    margin: 0 18px 18px;
+    border: 1px solid #e9eaf1;
+    border-radius: 13px;
+    background: rgba(255,255,255,.62) !important;
+    padding: 10px 11px;
+}
+.cosmic-add-section-luna-premium__whole-page b {
+    color: #344054 !important;
+    font-size: 10px !important;
+    -webkit-text-fill-color: #344054 !important;
+}
+.cosmic-add-section-luna-premium__whole-page span {
+    color: #667085 !important;
+    font-size: 9px !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__whole-page {
+    border-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.035) !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__whole-page b {
+    color: #e4e7ec !important;
+    -webkit-text-fill-color: #e4e7ec !important;
+}
+.cosmic-add-section-luna-premium[data-appearance="dark"] .cosmic-add-section-luna-premium__whole-page span {
+    color: #98a2b3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+
+/* AI personalization overlay uses the same Luna process language as chat. */
+.cosmic-luna-action-overlay {
+    background: rgba(15, 23, 42, .72) !important;
+    backdrop-filter: blur(12px);
+}
+.cosmic-luna-action-modal {
+    overflow: hidden;
+    border: 1px solid rgba(196,181,253,.16);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(139,92,246,.17), transparent 31%),
+        #111318 !important;
+    padding: 18px;
+    box-shadow: 0 28px 80px rgba(0,0,0,.48);
+}
+.cosmic-luna-action-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 13px;
+}
+.cosmic-luna-action-modal__eyebrow {
+    margin: 0;
+    color: #c4b5fd !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: .17em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-luna-action-modal__title {
+    margin: 5px 0 0;
+    color: #f8fafc !important;
+    font-size: 18px !important;
+    font-weight: 760 !important;
+    letter-spacing: -.02em !important;
+    -webkit-text-fill-color: #f8fafc !important;
+}
+.cosmic-luna-action-modal__percent {
+    border: 1px solid rgba(196,181,253,.14);
+    border-radius: 999px;
+    background: rgba(139,92,246,.08);
+    padding: 6px 8px;
+    color: #c4b5fd !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-luna-action-modal__progress {
+    height: 5px;
+    overflow: hidden;
+    margin-top: 13px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.07);
+}
+.cosmic-luna-action-modal__progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7c3aed, #a855f7) !important;
+    transition: width .22s ease;
+}
+
+/* Templates: Luna search gets a visible action process and a clean result reply. */
+.cosmic-template-luna-process,
+.cosmic-template-luna-result {
+    border: 1px solid rgba(139,92,246,.18);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(139,92,246,.065), rgba(255,255,255,.72)) !important;
+    padding: 10px 12px;
+    color: #475467 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.dark .cosmic-template-luna-process,
+.dark .cosmic-template-luna-result {
+    border-color: rgba(196,181,253,.14);
+    background: linear-gradient(135deg, rgba(139,92,246,.09), rgba(255,255,255,.03)) !important;
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-template-luna-process__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #7c3aed !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.dark .cosmic-template-luna-process__header {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+.cosmic-template-luna-process__header span:last-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    background: rgba(52,211,153,.09) !important;
+    padding: 4px 7px;
+    color: #047857 !important;
+    font-size: 8px !important;
+    letter-spacing: 0 !important;
+    text-transform: none;
+    -webkit-text-fill-color: #047857 !important;
+}
+.dark .cosmic-template-luna-process__header span:last-child {
+    color: #6ee7b7 !important;
+    -webkit-text-fill-color: #6ee7b7 !important;
+}
+.cosmic-template-luna-process__steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 7px;
+    margin-top: 9px;
+}
+.cosmic-template-luna-process__steps > span {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    color: #98a2b3 !important;
+    font-size: 9px !important;
+    font-weight: 650 !important;
+    line-height: 1.3 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-template-luna-process__steps > span.is-complete,
+.cosmic-template-luna-process__steps > span.is-active {
+    color: #475467 !important;
+    -webkit-text-fill-color: #475467 !important;
+}
+.dark .cosmic-template-luna-process__steps > span.is-complete,
+.dark .cosmic-template-luna-process__steps > span.is-active {
+    color: #d0d5dd !important;
+    -webkit-text-fill-color: #d0d5dd !important;
+}
+.cosmic-template-luna-process__steps i {
+    position: relative;
+    display: grid;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 2px solid #ddd6fe;
+    border-radius: 999px;
+    color: #8b5cf6 !important;
+    font-size: 8px !important;
+    font-style: normal;
+    -webkit-text-fill-color: #8b5cf6 !important;
+}
+.cosmic-template-luna-process__steps .is-complete i {
+    border-color: #7c3aed;
+    background: #7c3aed !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+.cosmic-template-luna-process__steps .is-active i {
+    border-top-color: #7c3aed;
+    animation: cosmic-luna-process-spin .85s linear infinite;
+}
+.cosmic-template-luna-result b {
+    color: #7c3aed !important;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.dark .cosmic-template-luna-result b {
+    color: #c4b5fd !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+}
+
+@media (max-width: 1023px) {
+    #cosmic-theme-modal .cosmic-theme-luna-premium {
+        border-left: 0 !important;
+        border-top: 1px solid #eef0f4 !important;
+        min-height: 440px;
+    }
+    #cosmic-add-section-modal .cosmic-add-section-luna-premium {
+        min-height: 470px;
+    }
+}
+@media (max-width: 767px) {
+    .cosmic-template-luna-process__steps {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+}
+
+/* ========================================================================== */
+/* Luna premium chat — Batch 5: Global Luna parity + final responsive QA      */
+/* ========================================================================== */
+.cosmic-global-luna-launcher {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 980;
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(124, 58, 237, .22) !important;
+    border-radius: 999px !important;
+    outline: 0;
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 52%, #4f46e5 100%) !important;
+    padding: 0 18px !important;
+    color: #fff !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: -.01em !important;
+    box-shadow: 0 16px 36px rgba(76, 29, 149, .26), 0 4px 14px rgba(15, 23, 42, .12) !important;
+    -webkit-text-fill-color: #fff !important;
+    transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.cosmic-global-luna-launcher:hover { transform: translateY(-1px) !important; box-shadow: 0 19px 42px rgba(76,29,149,.31), 0 5px 16px rgba(15,23,42,.14) !important; }
+.cosmic-global-luna-launcher:focus-visible { box-shadow: 0 0 0 4px rgba(139,92,246,.17), 0 16px 36px rgba(76,29,149,.26) !important; }
+
+.cosmic-global-luna-premium {
+    z-index: 990;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: min(440px, calc(100vw - 32px));
+    height: min(760px, calc(100dvh - 32px));
+    min-height: min(520px, calc(100dvh - 32px));
+}
+.cosmic-global-luna-premium.is-welcome {
+    width: min(460px, calc(100vw - 32px));
+    height: min(820px, calc(100dvh - 32px));
+}
+.cosmic-global-luna-premium__meta {
+    max-width: 300px;
+    margin: 5px 0 0 !important;
+    overflow: hidden;
+    color: #98a2b3 !important;
+    font-size: 9px !important;
+    font-weight: 650 !important;
+    line-height: 1.35 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-premium__meta {
+    color: #7f8898 !important;
+    -webkit-text-fill-color: #7f8898 !important;
+}
+.cosmic-global-luna-premium .cosmic-luna-premium__chat {
+    background: radial-gradient(circle at 88% 5%, rgba(139,92,246,.035), transparent 34%);
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-luna-premium__chat {
+    background: radial-gradient(circle at 88% 5%, rgba(139,92,246,.055), transparent 34%);
+}
+
+.cosmic-global-luna-plan-card,
+.cosmic-global-luna-status-card {
+    margin-top: 9px;
+    border: 1px solid #e7e9f0;
+    border-radius: 14px;
+    background: #fff;
+    padding: 12px;
+    box-shadow: 0 6px 18px rgba(15,23,42,.045);
+}
+.cosmic-global-luna-premium[data-appearance="dark"] :is(.cosmic-global-luna-plan-card,.cosmic-global-luna-status-card) {
+    border-color: rgba(255,255,255,.085);
+    background: rgba(255,255,255,.035);
+    box-shadow: none;
+}
+.cosmic-global-luna-plan-card__head,
+.cosmic-global-luna-status-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.cosmic-global-luna-plan-card__eyebrow {
+    margin: 0 !important;
+    color: #7c3aed !important;
+    font-size: 8px !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__eyebrow { color: #c4b5fd !important; -webkit-text-fill-color: #c4b5fd !important; }
+.cosmic-global-luna-plan-card__title,
+.cosmic-global-luna-status-card__head > p {
+    margin: 3px 0 0 !important;
+    color: #1d2939 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    -webkit-text-fill-color: #1d2939 !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] :is(.cosmic-global-luna-plan-card__title,.cosmic-global-luna-status-card__head > p) { color: #f2f4f7 !important; -webkit-text-fill-color: #f2f4f7 !important; }
+.cosmic-global-luna-plan-card__cost {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    color: #b45309 !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+    -webkit-text-fill-color: #b45309 !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__cost { color: #fcd34d !important; -webkit-text-fill-color: #fcd34d !important; }
+.cosmic-global-luna-plan-card__pages {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 9px;
+}
+.cosmic-global-luna-plan-card__page {
+    min-width: 0;
+    border: 1px solid #eef0f4;
+    border-radius: 9px;
+    background: #f9fafb;
+    padding: 7px 8px;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__page { border-color: rgba(255,255,255,.07); background: rgba(0,0,0,.16); }
+.cosmic-global-luna-plan-card__page p {
+    margin: 0 !important;
+    overflow: hidden;
+    color: #344054 !important;
+    font-size: 9px !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-text-fill-color: #344054 !important;
+}
+.cosmic-global-luna-plan-card__page span {
+    display: block;
+    margin-top: 2px;
+    overflow: hidden;
+    color: #98a2b3 !important;
+    font-size: 7px !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    letter-spacing: .06em !important;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__page p { color: #d0d5dd !important; -webkit-text-fill-color: #d0d5dd !important; }
+.cosmic-global-luna-plan-card__note,
+.cosmic-global-luna-plan-card__error {
+    margin: 8px 0 0 !important;
+    color: #667085 !important;
+    font-size: 8px !important;
+    font-weight: 550 !important;
+    line-height: 1.45 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-global-luna-plan-card__error { color: #be123c !important; font-weight: 750 !important; -webkit-text-fill-color: #be123c !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__note { color: #98a2b3 !important; -webkit-text-fill-color: #98a2b3 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-plan-card__error { color: #fda4af !important; -webkit-text-fill-color: #fda4af !important; }
+
+.cosmic-global-luna-status-card__head > span {
+    flex: 0 0 auto;
+    border: 1px solid #d1fae5;
+    border-radius: 999px;
+    background: #ecfdf5;
+    padding: 4px 7px;
+    color: #047857 !important;
+    font-size: 7px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: .05em !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #047857 !important;
+}
+.cosmic-global-luna-status-card__head > span[data-status="failed"] { border-color: #ffe4e6; background: #fff1f2; color: #be123c !important; -webkit-text-fill-color: #be123c !important; }
+.cosmic-global-luna-status-card__head > span[data-status="partial"] { border-color: #fef3c7; background: #fffbeb; color: #b45309 !important; -webkit-text-fill-color: #b45309 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__head > span { border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.09); color: #a7f3d0 !important; -webkit-text-fill-color: #a7f3d0 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__head > span[data-status="failed"] { border-color: rgba(251,113,133,.2); background: rgba(251,113,133,.08); color: #fda4af !important; -webkit-text-fill-color: #fda4af !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__head > span[data-status="partial"] { border-color: rgba(251,191,36,.2); background: rgba(251,191,36,.08); color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
+.cosmic-global-luna-status-card__track { height: 6px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: #ede9fe; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__track { background: rgba(255,255,255,.07); }
+.cosmic-global-luna-status-card__fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#8b5cf6,#6366f1,#34d399); transition: width .25s ease; }
+.cosmic-global-luna-status-card__pages { display: grid; gap: 5px; margin-top: 9px; }
+.cosmic-global-luna-status-card__pages > div { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+.cosmic-global-luna-status-card__pages span {
+    min-width: 0;
+    overflow: hidden;
+    color: #667085 !important;
+    font-size: 8px !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-global-luna-status-card__pages strong {
+    flex: 0 0 auto;
+    color: #7c3aed !important;
+    font-size: 7px !important;
+    font-weight: 850 !important;
+    line-height: 1.25 !important;
+    text-transform: uppercase;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+.cosmic-global-luna-status-card__pages strong[data-status="failed"] { color: #be123c !important; -webkit-text-fill-color: #be123c !important; }
+.cosmic-global-luna-status-card__pages strong[data-status="ready"],
+.cosmic-global-luna-status-card__pages strong[data-status="preserved"] { color: #047857 !important; -webkit-text-fill-color: #047857 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__pages span { color: #98a2b3 !important; -webkit-text-fill-color: #98a2b3 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__pages strong { color: #c4b5fd !important; -webkit-text-fill-color: #c4b5fd !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__pages strong[data-status="failed"] { color: #fda4af !important; -webkit-text-fill-color: #fda4af !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__pages strong[data-status="ready"],
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-status-card__pages strong[data-status="preserved"] { color: #a7f3d0 !important; -webkit-text-fill-color: #a7f3d0 !important; }
+
+.cosmic-global-luna-action--install { border-color: #059669 !important; background: #059669 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.cosmic-global-luna-action--install:hover:not(:disabled) { border-color: #047857 !important; background: #047857 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.cosmic-global-luna-action--confirm { border-color: #7c3aed !important; background: #7c3aed !important; }
+
+.cosmic-global-luna-premium__starter-note {
+    flex: 0 0 auto;
+    padding: 12px 18px 14px;
+    border-top: 1px solid #eff1f5;
+    color: #667085 !important;
+    font-size: 8px !important;
+    font-weight: 550 !important;
+    line-height: 1.5 !important;
+    -webkit-text-fill-color: #667085 !important;
+}
+.cosmic-global-luna-premium__starter-note strong { color: #344054 !important; font-weight: 800 !important; -webkit-text-fill-color: #344054 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-premium__starter-note { border-color: rgba(255,255,255,.075); color: #7f8898 !important; -webkit-text-fill-color: #7f8898 !important; }
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-premium__starter-note strong { color: #d0d5dd !important; -webkit-text-fill-color: #d0d5dd !important; }
+.cosmic-global-luna-premium__composer-note {
+    color: #98a2b3 !important;
+    font-size: 9px !important;
+    font-weight: 650 !important;
+    line-height: 1.25 !important;
+    -webkit-text-fill-color: #98a2b3 !important;
+}
+.cosmic-global-luna-premium[data-appearance="dark"] .cosmic-global-luna-premium__composer-note { color: #7f8898 !important; -webkit-text-fill-color: #7f8898 !important; }
+
+@media (max-width: 640px) {
+    .cosmic-global-luna-launcher {
+        right: max(12px, env(safe-area-inset-right));
+        bottom: max(12px, env(safe-area-inset-bottom));
+        min-height: 44px;
+        padding-inline: 16px !important;
+    }
+    .cosmic-global-luna-premium,
+    .cosmic-global-luna-premium.is-welcome {
+        right: max(8px, env(safe-area-inset-right));
+        bottom: max(8px, env(safe-area-inset-bottom));
+        width: calc(100vw - max(16px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+        height: calc(100dvh - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+        min-height: 0;
+    }
+    .cosmic-global-luna-premium__meta { max-width: 220px; }
+    .cosmic-global-luna-plan-card__pages { grid-template-columns: 1fr; }
+    .cosmic-global-luna-premium .cosmic-luna-premium__footer { align-items: flex-end; }
+    .cosmic-global-luna-premium__composer-note { max-width: 55%; line-height: 1.35 !important; }
+}
+
+@media (max-width: 380px) {
+    .cosmic-global-luna-premium .cosmic-luna-premium__header-actions { gap: 0; }
+    .cosmic-global-luna-premium .cosmic-luna-premium__header-action { padding-inline: 6px; }
+    .cosmic-global-luna-premium__meta { max-width: 175px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-global-luna-launcher,
+    .cosmic-global-luna-status-card__fill { transition: none !important; }
 }

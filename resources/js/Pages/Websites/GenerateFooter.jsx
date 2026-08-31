@@ -66,12 +66,12 @@ function FooterLogo({ block, dark = false, mega = false, forceWhite = false, edi
         {content}
         {editorMode && (onManual || onAi) ? <div className="pointer-events-none absolute -right-2 -top-2 z-[40] flex gap-1 opacity-0 transition group-hover/footer-logo:opacity-100 group-focus-within/footer-logo:opacity-100">
             {onManual ? <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onManual();}} className="pointer-events-auto rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg">Edit</button> : null}
-            {onAi ? <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white shadow-lg" aria-label="Ask Luna about footer logo">✦</button> : null}
+            {onAi ? <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer logo">✦</button> : null}
         </div> : null}
     </div>;
 }
 
-const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <button type="button" onClick={onClick} className={`${inline?'relative':'absolute right-1 top-1'} cosmic-footer-ai-control hidden h-7 w-7 items-center justify-center rounded-md border border-violet-300/40 bg-violet-600 text-xs font-black text-white shadow-sm group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex`} aria-label={label} title={label}>✦</button> : null;
+const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <button type="button" onClick={onClick} className={`${inline?'relative':'absolute right-1 top-1'} cosmic-footer-ai-control hidden h-7 w-7 items-center justify-center rounded-md border border-violet-300/40 bg-violet-600 text-xs font-bold text-white shadow-sm group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex`} aria-label={label} title={label}>✦</button> : null;
 
 export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
     const megaEnabled = Boolean(block.mega_enabled ?? block.mega_footer?.enabled ?? false);
@@ -191,7 +191,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         <div data-cosmic-shell-element="footer" data-cosmic-shell-path="footer" className="group/footer-editor relative w-full">
             {editorMode ? <div className="pointer-events-none absolute right-4 top-3 z-[80] flex gap-1 opacity-0 transition group-hover/footer-editor:opacity-100 group-focus-within/footer-editor:opacity-100">
                 <button type="button" onClick={()=>{const enabled=!megaEnabled;onUpdate({mega_enabled:enabled,mega_footer:{...(block.mega_footer||{}),enabled,theme:requestedMegaTheme}});}} className="pointer-events-auto rounded-full border border-white/15 bg-slate-950/90 px-3 py-1.5 text-[10px] font-semibold text-white shadow-lg">{megaEnabled?'Disable Mega Footer':'Enable Mega Footer'} · 0 credits</button>
-                {onAiTarget ? <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white shadow-lg" aria-label="Ask Luna about footer">✦</button> : null}
+                {onAiTarget ? <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer">✦</button> : null}
             </div> : null}
             {megaEnabled && (
                 <section data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className={`cosmic-mega-footer-section w-full ${customShell ? '' : (megaTheme?.bg || 'bg-slate-800')} ${customShell ? '' : (megaTheme?.text || 'text-white')} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>

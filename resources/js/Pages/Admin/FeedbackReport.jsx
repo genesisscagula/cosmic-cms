@@ -24,7 +24,7 @@ export default function FeedbackReport({ report }) {
             <div>
                 <Link href={route('admin.feedback.index')} className="text-sm font-semibold text-emerald-700 hover:text-emerald-600">← Feedback Inbox</Link>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <h1 className="text-xl font-semibold text-slate-900">Report #{report.id}</h1>
+                    <h1 className="text-xl font-black text-slate-900">Report #{report.id}</h1>
                     <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">{report.category}</span>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">{report.status}</span>
                 </div>

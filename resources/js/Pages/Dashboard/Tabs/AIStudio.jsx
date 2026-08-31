@@ -199,7 +199,7 @@ export default function AIStudio() {
                         </span>
                     </div>
 
-                    <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                    <h1 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
                         AI Studio
                     </h1>
 

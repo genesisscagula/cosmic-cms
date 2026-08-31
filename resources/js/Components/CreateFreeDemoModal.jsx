@@ -2,6 +2,7 @@ import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { handoffToBuilder } from '@/Support/builderHandoff';
 import { trackCosmicEvent } from '@/Analytics/tracking';
+import LunaProcessCard from '@/Components/Luna/LunaProcessCard';
 import '../../css/start.css';
 
 const industryGroups = [
@@ -314,51 +315,61 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
     };
 
     if (busy) {
+        const brief = [`Build ${websiteName || 'my website'}`, finalIndustry].filter(Boolean).join(' · ');
         return (
-            <div className="cosmic-create-demo-modal cosmic-start fixed inset-0 z-[12000] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-md sm:p-8" role="status" aria-live="polite">
-                <div className="relative w-full max-w-3xl">
-                    <div className="pointer-events-none absolute -inset-8 rounded-[3rem] bg-gradient-to-r from-violet-500/25 via-cyan-400/20 to-emerald-400/25 blur-3xl" />
-                    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-200 bg-white/95 p-6 text-slate-900 shadow-2xl shadow-slate-950/25 sm:p-9">
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.035)_1px,transparent_1px)] bg-[size:42px_42px] opacity-60" />
-                        <div className="relative">
-                            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-violet-200 bg-violet-50 shadow-lg shadow-violet-100">
-                                <span className="cosmic-start-spinner block h-8 w-8 rounded-full" aria-hidden="true" />
-                            </div>
-                            <p className="mt-6 text-center text-[10px] font-black uppercase tracking-[.2em] text-emerald-700">Cosmic AI is working</p>
-                            <h3 className="mt-2 text-center text-2xl font-black tracking-[-.035em] text-[#10203b] sm:text-3xl">Building {websiteName || 'your website'}...</h3>
-                            <p className="mt-3 text-center text-sm font-semibold text-slate-600">{loadingStage}</p>
-
-                            <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                {generationSteps.map((step, index) => {
-                                    const isComplete = loadingProgress >= step.threshold;
-                                    const isCurrent = !isComplete && (index === 0 || loadingProgress >= generationSteps[index - 1].threshold);
-
-                                    return (
-                                        <div key={step.label} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${isComplete ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : isCurrent ? 'border-violet-300 bg-violet-50 text-violet-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-violet-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                                                {isComplete ? '✓' : index + 1}
-                                            </span>
-                                            <span className="leading-4">{step.label}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
-                                <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-200" style={{ width: `${loadingProgress}%` }} />
-                            </div>
-                            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-slate-600">
-                                <span>{loadingProgress >= 100 ? 'Ready' : 'Generating...'}</span>
-                                <span>{loadingProgress}%</span>
-                            </div>
-
-                            {loadingNotice && (
-                                <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">{loadingNotice}</p>
-                            )}
-                            <p className="mt-5 text-center text-[11px] font-semibold text-slate-400">Keep this tab open. Your private Builder link is also being sent to {email || 'your email'}.</p>
+            <div className="cosmic-create-demo-modal cosmic-start fixed inset-0 z-[12000] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-3 backdrop-blur-md sm:p-6" role="status" aria-live="polite">
+                <section className="relative flex max-h-[92vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[28px] border border-violet-100 bg-white text-slate-900 shadow-[0_34px_100px_-35px_rgba(76,29,149,.45)]">
+                    <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-violet-600">✦ Luna · Free Demo</p>
+                            <h2 className="mt-1 text-xl font-extrabold tracking-[-.03em] text-[#111827] sm:text-2xl">Building your website</h2>
                         </div>
-                    </section>
-                </div>
+                        <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-[10px] font-bold text-violet-700">
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> AI Active
+                        </span>
+                    </header>
+
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-3 sm:px-7">
+                        <p className="text-[9px] font-bold uppercase tracking-[.18em] text-slate-500"><span className="mr-2 text-violet-500">●</span>Context · New Website</p>
+                        <span className="text-[10px] font-semibold text-slate-400">{loadingProgress}%</span>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_90%_10%,rgba(139,92,246,.06),transparent_34%)] px-5 py-6 sm:px-7 sm:py-7">
+                        <div className="ml-auto max-w-[82%] rounded-[18px_18px_6px_18px] bg-gradient-to-br from-violet-600 to-indigo-600 px-4 py-3 text-sm font-semibold leading-6 text-white shadow-lg shadow-violet-200/60">
+                            {brief}
+                            {additionalPrompt.trim() ? <span className="mt-1 block text-[11px] font-medium leading-5 text-violet-100">{additionalPrompt.trim()}</span> : null}
+                        </div>
+
+                        <div className="mt-5 max-w-[92%]">
+                            <div className="mb-2 w-fit rounded-[18px_18px_18px_6px] border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 shadow-sm">
+                                I’m creating a polished first draft for <strong className="font-bold text-slate-900">{websiteName || 'your business'}</strong>. I’ll take you to the Builder as soon as the first page and starter brand are ready.
+                            </div>
+                            <LunaProcessCard
+                                status={loadingStage}
+                                steps={generationSteps}
+                                progress={loadingProgress}
+                                intro="Luna is building your free demo."
+                                className="!w-full !max-w-[380px]"
+                            />
+                        </div>
+
+                        <div className="mt-5 h-2 overflow-hidden rounded-full bg-violet-100">
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-400 transition-[width] duration-300" style={{ width: `${loadingProgress}%` }} />
+                        </div>
+
+                        {loadingNotice && (
+                            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">{loadingNotice}</p>
+                        )}
+                    </div>
+
+                    <footer className="flex flex-col gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                        <p className="text-[10px] font-semibold leading-5 text-slate-400">Keep this tab open. Your private Builder link is also being sent to {email || 'your email'}.</p>
+                        <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-violet-200">
+                            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true" />
+                            {loadingProgress >= 100 ? 'Opening…' : 'Working…'}
+                        </span>
+                    </footer>
+                </section>
             </div>
         );
     }
@@ -379,10 +390,10 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
             >
                 <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
                     <div>
-                        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-emerald-700">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-emerald-700">
                             <span>✦</span> Free website demo
                         </div>
-                        <h2 id="create-free-demo-title" className="mt-3 text-2xl font-black tracking-[-.03em] text-[#10203b] sm:text-[30px]">
+                        <h2 id="create-free-demo-title" className="mt-3 text-2xl font-extrabold tracking-[-.03em] text-[#10203b] sm:text-[30px]">
                             Create your free demo
                         </h2>
                         <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
@@ -403,7 +414,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                 <form onSubmit={submit} className="px-5 py-5 sm:px-7 sm:py-6">
                     <div className="grid gap-5 sm:grid-cols-2">
                         <label className="block sm:col-span-2">
-                            <span className="text-xs font-black text-slate-700">Website Name</span>
+                            <span className="text-xs font-bold text-slate-700">Website Name</span>
                             <input
                                 type="text"
                                 value={websiteName}
@@ -418,7 +429,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
 
                         <div className="relative sm:col-span-2">
                             <label className="block">
-                                <span className="text-xs font-black text-slate-700">Industry</span>
+                                <span className="text-xs font-bold text-slate-700">Industry</span>
                                 <div className="relative mt-2">
                                     <input
                                         type="search"
@@ -451,7 +462,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                                 <div className="absolute left-0 right-0 top-[76px] z-20 max-h-[310px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15">
                                     {filteredGroups.length ? filteredGroups.map((group) => (
                                         <div key={group.label} className="py-1">
-                                            <p className="px-3 pb-1 pt-2 text-[9px] font-black uppercase tracking-[.16em] text-slate-400">{group.label}</p>
+                                            <p className="px-3 pb-1 pt-2 text-[9px] font-bold uppercase tracking-[.16em] text-slate-400">{group.label}</p>
                                             {group.options.map((option) => (
                                                 <button
                                                     key={option}
@@ -470,7 +481,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                                         <button
                                             type="button"
                                             onClick={() => selectIndustry('Other')}
-                                            className="cosmic-create-demo-industry-option cosmic-create-demo-industry-other block w-full rounded-lg bg-slate-50 px-3 py-2.5 text-left text-sm font-black text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+                                            className="cosmic-create-demo-industry-option cosmic-create-demo-industry-other block w-full rounded-lg bg-slate-50 px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
                                         >
                                             Other — enter my industry
                                         </button>
@@ -481,7 +492,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
 
                         {selectedIndustry === 'Other' && (
                             <label className="block sm:col-span-2">
-                                <span className="text-xs font-black text-slate-700">Enter your industry</span>
+                                <span className="text-xs font-bold text-slate-700">Enter your industry</span>
                                 <input
                                     type="text"
                                     value={customIndustry}
@@ -496,7 +507,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                         )}
 
                         <label className="block sm:col-span-2">
-                            <span className="text-xs font-black text-slate-700">Email</span>
+                            <span className="text-xs font-bold text-slate-700">Email</span>
                             <input
                                 type="email"
                                 value={email}
@@ -511,7 +522,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                         </label>
 
                         <label className="block sm:col-span-2">
-                            <span className="flex items-center justify-between gap-3 text-xs font-black text-slate-700">
+                            <span className="flex items-center justify-between gap-3 text-xs font-bold text-slate-700">
                                 <span>Additional Instructions</span>
                                 <span className="font-bold text-slate-400">Optional</span>
                             </span>
@@ -545,7 +556,7 @@ export default function CreateFreeDemoModal({ open, source = 'home', initialProm
                         <button
                             type="submit"
                             disabled={busy}
-                            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {busy ? 'Creating Demo…' : 'Build My Demo ✦'}
                         </button>

@@ -100,6 +100,22 @@ final class LunaPageActionService
     {
         $style=null;
         foreach(['balanced','clean','premium'] as $candidate) if(preg_match('/\\b'.preg_quote($candidate,'/').'\\b/i',$prompt)){$style=$candidate;break;}
+
+        // Luna can use richer aliases in chat while the Builder maintains only
+        // three actual page-style presets. Explicit core names above take priority.
+        if(!$style){
+            $aliases=[
+                'luxury'=>'premium',
+                'creative'=>'premium',
+                'minimal'=>'clean',
+                'editorial'=>'clean',
+                'bold'=>'balanced',
+                'corporate'=>'balanced',
+            ];
+            foreach($aliases as $alias=>$core){
+                if(preg_match('/\\b'.preg_quote($alias,'/').'\\b/i',$prompt)){$style=$core;break;}
+            }
+        }
         if(!$style || !PageStyleRegistry::exists($style)) return $this->fail('page_layout','Please choose Balanced, Clean, or Premium.');
         $blocks=collect($page->blocks??[])->map(function($block){
             if(!is_array($block)) return $block;

@@ -19,9 +19,16 @@ final class LunaFullPageComposerService
     {
         if ($scope !== 'page') return false;
         $q = Str::lower($prompt);
-        $whole = Str::contains($q, ['full page','whole page','entire page','complete page','from scratch']);
+        $whole = Str::contains($q, ['full page','whole page','entire page','complete page','from scratch'])
+            || (bool) preg_match('/\b(?:full|whole|entire|complete)\b.{0,60}\bpage\b/i', $prompt);
         $custom = Str::contains($q, ['custom','unique','bespoke','specific design','specific layout','redesign','design me','build me']);
-        return $whole && $custom;
+        $premade = Str::contains($q, ['premade','pre-made','page composition','full-page composition','full page composition','template-style composition','page blueprint']);
+        $explicitBuild = Str::contains($q, ['build the entire','build a complete','build the full','rebuild the entire','rebuild a complete','rebuild the full','rebuild this entire','rebuild this complete']);
+
+        // Builder quick actions intentionally ask Luna for a complete premade
+        // composition. Treat those as full-page composer requests too; requiring
+        // the word "custom" made the quick action fall back to generic page logic.
+        return $whole && ($custom || $premade || $explicitBuild);
     }
 
     /** @return array{slots:array<int,array<string,mixed>>,model_department:string,composer:string} */

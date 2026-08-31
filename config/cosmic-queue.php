@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'connections' => [
+        // Trial page generation must never use the sync driver: it has to keep
+        // running after the visitor closes the Builder. Database is the safe
+        // default and Redis/SQS can be selected explicitly in production.
+        'ai_builds' => env('COSMIC_AI_QUEUE_CONNECTION', 'database'),
+    ],
     'queues' => [
         'mail' => env('COSMIC_MAIL_QUEUE', 'mail'),
         'maintenance' => env('COSMIC_MAINTENANCE_QUEUE', 'maintenance'),

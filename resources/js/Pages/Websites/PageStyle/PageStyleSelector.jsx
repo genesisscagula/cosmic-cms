@@ -117,8 +117,8 @@ export default function PageStyleSelector({
                     >
                         <div className={`flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 ${light ? 'border-slate-200' : 'border-white/10'}`}>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-500">Design</p>
-                                <h3 id="cosmic-page-style-title" className={`mt-1 text-lg font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Page Style</h3>
+                                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-500">Design</p>
+                                <h3 id="cosmic-page-style-title" className={`mt-1 text-lg font-semibold ${light ? 'text-slate-950' : 'text-white'}`}>Page Style</h3>
                                 <p className={`mt-1 max-w-xl text-xs leading-5 ${light ? 'text-slate-600' : 'text-slate-400'}`}>Choose the overall page rhythm. Your selection stays in this popup until you click Apply.</p>
                             </div>
                             <button type="button" onClick={closeModal} disabled={Boolean(applying)} className={`h-9 w-9 rounded-xl text-lg transition disabled:opacity-40 ${light ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`} aria-label="Close Page Style">×</button>

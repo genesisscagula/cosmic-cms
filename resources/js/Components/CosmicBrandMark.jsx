@@ -5,7 +5,7 @@ export default function CosmicBrandMark({ className = '', size = 'md', label = '
         <span
             aria-label={label}
             role="img"
-            className={`cosmic-brand-mark inline-flex shrink-0 items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-500 font-black text-white ${sizeClass} ${className}`}
+            className={`cosmic-brand-mark inline-flex shrink-0 items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-500 font-bold text-white ${sizeClass} ${className}`}
         >
             <span aria-hidden="true">✦</span>
         </span>

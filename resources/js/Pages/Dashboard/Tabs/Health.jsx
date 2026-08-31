@@ -95,14 +95,14 @@ export default function Health({ websites = [] }) {
     };
 
     if (!availableWebsites.length) {
-        return <section><p className="text-sm font-medium text-violet-300">Website Health</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Health Center</h1><div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center"><p className="text-lg font-semibold text-white">Create a website first</p><p className="mt-2 text-sm text-slate-400">Health checks are scoped to one website at a time.</p></div></section>;
+        return <section><p className="text-sm font-medium text-violet-300">Website Health</p><h1 className="mt-2 text-3xl font-black tracking-tight text-white">Health Center</h1><div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center"><p className="text-lg font-semibold text-white">Create a website first</p><p className="mt-2 text-sm text-slate-400">Health checks are scoped to one website at a time.</p></div></section>;
     }
 
     return <section id="cosmic-website-health" data-cosmic-health-center>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <p className="text-sm font-medium text-violet-300">Website Health</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Health Center</h1>
+                <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Health Center</h1>
                 <p className="mt-2 max-w-2xl text-sm text-slate-400">Run a read-only pre-launch audit across content, links, SEO, forms, media, commerce and publishing.</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

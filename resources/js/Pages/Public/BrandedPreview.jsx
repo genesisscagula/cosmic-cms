@@ -51,7 +51,7 @@ export default function BrandedPreview({ website, pages = [], branding = {}, lin
 
                 <section className="min-w-0 rounded-2xl border border-white/10 bg-[#141418] p-3 sm:p-4">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
-                        <div><h1 className="font-semibold text-white">{selectedPage?.title || 'Website preview'}</h1><p className="text-xs text-slate-500">{selectedPage ? `Updated ${selectedPage.updated_at}` : 'Select a page to preview'}</p></div>
+                        <div><h1 className="font-black text-white">{selectedPage?.title || 'Website preview'}</h1><p className="text-xs text-slate-500">{selectedPage ? `Updated ${selectedPage.updated_at}` : 'Select a page to preview'}</p></div>
                         <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.06] px-3 py-1 text-xs font-semibold text-cyan-100">Sandboxed preview</span>
                     </div>
                     <div className="overflow-auto rounded-xl bg-[#202026] p-2 sm:p-4">

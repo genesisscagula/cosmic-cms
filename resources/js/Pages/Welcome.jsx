@@ -37,7 +37,7 @@ const plans = [
 ];
 
 function Check({ children }) {
-    return <span className="inline-flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-100 text-[11px] font-black text-emerald-700">✓</span>{children}</span>;
+    return <span className="inline-flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-700">✓</span>{children}</span>;
 }
 
 function BuilderMockup() {
@@ -63,19 +63,19 @@ function BuilderMockup() {
             <div className="grid min-h-[610px] md:grid-cols-[190px_1fr] lg:grid-cols-[220px_1fr]">
                 <aside className="hidden border-r border-slate-200 bg-white p-4 md:flex md:flex-col">
                     <div className="flex items-center gap-2.5 px-1 pb-5">
-                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500 text-sm font-black text-white">✦</span>
+                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500 text-sm font-bold text-white">✦</span>
                         <div>
-                            <p className="text-sm font-black text-[#07132c]">Cosmic CMS</p>
-                            <p className="text-[8px] font-black uppercase tracking-[.18em] text-slate-400">AI website platform</p>
+                            <p className="text-sm font-bold text-[#07132c]">Cosmic CMS</p>
+                            <p className="text-[8px] font-bold uppercase tracking-[.18em] text-slate-400">AI website platform</p>
                         </div>
-                        <span className="ml-auto rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[8px] font-black text-slate-400">CMS</span>
+                        <span className="ml-auto rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[8px] font-bold text-slate-400">CMS</span>
                     </div>
 
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-                        <p className="text-[8px] font-black uppercase tracking-[.2em] text-emerald-700">Cosmic credits</p>
+                        <p className="text-[8px] font-bold uppercase tracking-[.2em] text-emerald-700">Cosmic credits</p>
                         <div className="mt-1 flex items-center justify-between">
                             <span className="text-[9px] text-slate-400">Available balance</span>
-                            <span className="text-sm font-black text-[#07132c]">⚡ 0</span>
+                            <span className="text-sm font-bold text-[#07132c]">⚡ 0</span>
                         </div>
                     </div>
 
@@ -99,7 +99,7 @@ function BuilderMockup() {
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-[10px] font-medium text-emerald-700">Cosmic workspace</p>
-                                <h3 className="mt-1 text-2xl font-black tracking-[-.04em] text-[#07132c] sm:text-3xl">Overview</h3>
+                                <h3 className="mt-1 text-2xl font-semibold tracking-[-.04em] text-[#07132c] sm:text-3xl">Overview</h3>
                                 <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">Your websites, performance, releases, and next steps in one place.</p>
                             </div>
                             <div className="hidden items-center gap-2 sm:flex">
@@ -115,8 +115,8 @@ function BuilderMockup() {
                                 ['Open AI Studio', 'Generate content faster', '✦', 'violet'],
                             ].map(([title, copy, icon, tone]) => (
                                 <div key={title} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4">
-                                    <div className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-black ${tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : tone === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'}`}>{icon}</div>
-                                    <p className={`mt-2 text-[11px] font-black ${tone === 'emerald' ? 'text-emerald-700' : tone === 'blue' ? 'text-blue-600' : 'text-violet-600'}`}>{title}</p>
+                                    <div className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-bold ${tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : tone === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'}`}>{icon}</div>
+                                    <p className={`mt-2 text-[11px] font-bold ${tone === 'emerald' ? 'text-emerald-700' : tone === 'blue' ? 'text-blue-600' : 'text-violet-600'}`}>{title}</p>
                                     <p className="mt-1 text-[9px] text-slate-400">{copy}</p>
                                     <span className="absolute right-4 top-4 text-[10px] text-slate-400">↗</span>
                                 </div>
@@ -125,8 +125,8 @@ function BuilderMockup() {
 
                         <div className="mt-6 flex items-end justify-between">
                             <div>
-                                <p className="text-[8px] font-black uppercase tracking-[.22em] text-emerald-700">Performance</p>
-                                <p className="mt-1 text-sm font-black text-[#07132c]">Your websites at a glance</p>
+                                <p className="text-[8px] font-bold uppercase tracking-[.22em] text-emerald-700">Performance</p>
+                                <p className="mt-1 text-sm font-bold text-[#07132c]">Your websites at a glance</p>
                             </div>
                             <div className="hidden rounded-xl border border-slate-200 bg-white p-1 text-[8px] font-bold text-slate-400 sm:flex">
                                 <span className="px-2 py-1">7 days</span><span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">30 days</span><span className="px-2 py-1">90 days</span>
@@ -137,7 +137,7 @@ function BuilderMockup() {
                             {stats.map(([label, value, copy, icon]) => (
                                 <div key={label} className="rounded-2xl border border-emerald-100 bg-white p-4">
                                     <div className="flex items-start justify-between">
-                                        <div><p className="text-[8px] font-black uppercase tracking-[.14em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-black text-[#07132c]">{value}</p></div>
+                                        <div><p className="text-[8px] font-bold uppercase tracking-[.14em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold text-[#07132c]">{value}</p></div>
                                         <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-xs text-emerald-700">{icon}</span>
                                     </div>
                                     <p className="mt-2 text-[9px] text-slate-400">{copy}</p>
@@ -148,15 +148,15 @@ function BuilderMockup() {
                         <div className="mt-3 grid gap-3 xl:grid-cols-[1.65fr_.85fr]">
                             <div className="rounded-2xl border border-emerald-100 bg-white p-4">
                                 <div className="flex items-start justify-between">
-                                    <div><p className="text-[11px] font-black text-[#07132c]">Website traffic</p><p className="mt-1 text-[9px] text-slate-400">Page views across your tracked websites</p></div>
-                                    <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[8px] font-black text-emerald-700">● Live data</span>
+                                    <div><p className="text-[11px] font-bold text-[#07132c]">Website traffic</p><p className="mt-1 text-[9px] text-slate-400">Page views across your tracked websites</p></div>
+                                    <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[8px] font-bold text-emerald-700">● Live data</span>
                                 </div>
                                 <div className="mt-4 grid h-40 place-items-center rounded-xl border border-dashed border-emerald-100 bg-emerald-50/50">
                                     <div className="text-center"><div className="mx-auto grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700">↗</div><p className="mt-3 text-xs font-bold text-slate-500">Analytics are ready</p><p className="mt-1 text-[9px] text-slate-400">Traffic will appear here as your published websites receive tracked visits.</p></div>
                                 </div>
                             </div>
                             <div className="rounded-2xl border border-emerald-100 bg-white p-4">
-                                <div className="flex items-start justify-between"><div><p className="text-[11px] font-black text-[#07132c]">Top websites</p><p className="mt-1 text-[9px] text-slate-400">Ranked by page views</p></div><span className="text-[9px] font-black text-emerald-700">Insights</span></div>
+                                <div className="flex items-start justify-between"><div><p className="text-[11px] font-bold text-[#07132c]">Top websites</p><p className="mt-1 text-[9px] text-slate-400">Ranked by page views</p></div><span className="text-[9px] font-bold text-emerald-700">Insights</span></div>
                                 <div className="grid h-40 place-items-center text-center"><div><div className="mx-auto text-xl text-emerald-600">◎</div><p className="mt-3 text-[9px] text-slate-400">Top websites appear after traffic is recorded.</p></div></div>
                             </div>
                         </div>
@@ -212,7 +212,7 @@ export default function Welcome() {
                                     <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-4 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-emerald-800 shadow-sm">
                                         <span>✦</span> AI-assisted website creation
                                     </div>
-                                    <h1 className="mt-7 text-[46px] font-extrabold leading-[1.01] tracking-[-.04em] text-[#162238] sm:text-6xl lg:text-[64px]">
+                                    <h1 className="mt-7 text-[46px] font-black leading-[1.01] tracking-[-.04em] text-[#162238] sm:text-6xl lg:text-[64px]">
                                         Build websites
                                         <span className="mt-2 block text-[#21845f]">at launch speed.</span>
                                     </h1>
@@ -220,8 +220,8 @@ export default function Welcome() {
                                         Describe your business and Luna builds the first draft. Refine visually, add content, and publish — all in one connected platform.
                                     </p>
                                     <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                                        <button type="button" onClick={() => openFreeDemo('home_hero')} className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800">Create Free Demo <span className="ml-2">→</span></button>
-                                        <a href="#workflow" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-black text-[#07132c] shadow-sm transition hover:bg-slate-50"><span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-[9px] text-white shadow-sm">▶</span> See how it works</a>
+                                        <button type="button" onClick={() => openFreeDemo('home_hero')} className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800">Create Free Demo <span className="ml-2">→</span></button>
+                                        <a href="#workflow" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-[#07132c] shadow-sm transition hover:bg-slate-50"><span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-[9px] text-white shadow-sm">▶</span> See how it works</a>
                                     </div>
                                     <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-slate-500">
                                         <Check>No code needed</Check><Check>Fully editable</Check><Check>Fast & secure</Check><Check>Responsive output</Check>
@@ -254,16 +254,16 @@ export default function Welcome() {
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="grid gap-8 lg:grid-cols-[.9fr_1.5fr] lg:items-start">
                                 <div>
-                                    <span className="text-[10px] font-black uppercase tracking-[.24em] text-emerald-700">One connected platform</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-[.24em] text-emerald-700">One connected platform</span>
                                     <h2 className="mt-3 text-4xl font-bold leading-[1.12] tracking-[-.025em] text-[#162238] sm:text-[44px]">From the first prompt to the published website.</h2>
                                     <p className="mt-5 max-w-md leading-7 text-slate-600">Cosmic combines AI generation, visual CMS, publishing, analytics, leads, and agency operations in one professional workspace.</p>
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-3">
                                     {featureCards.map(([label, title, description, icon]) => (
                                         <article key={title} className="rounded-2xl border border-slate-200 bg-white p-5">
-                                            <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 font-black text-emerald-700">{icon}</div>
-                                            <p className="mt-5 text-[9px] font-black uppercase tracking-[.20em] text-emerald-700">{label}</p>
-                                            <h3 className="mt-2 text-[17px] font-bold leading-snug text-[#07132c]">{title}</h3>
+                                            <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 font-bold text-emerald-700">{icon}</div>
+                                            <p className="mt-5 text-[9px] font-bold uppercase tracking-[.20em] text-emerald-700">{label}</p>
+                                            <h3 className="mt-2 text-[17px] font-semibold leading-snug text-[#07132c]">{title}</h3>
                                             <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
                                         </article>
                                     ))}
@@ -273,12 +273,12 @@ export default function Welcome() {
                             <div className="mt-6 grid gap-5 lg:grid-cols-[1.35fr_.65fr]">
                                 <div className="relative overflow-hidden rounded-2xl border border-emerald-900/30 bg-gradient-to-r from-[#031a2b] via-[#01352f] to-[#052623] p-7 text-white sm:p-8">
                                     <div className="grid gap-6 lg:grid-cols-[1fr_310px] lg:items-center">
-                                        <div><span className="text-[10px] font-bold uppercase tracking-[.20em] text-emerald-300">Built for agencies too</span><h3 className="mt-3 text-[28px] font-bold leading-[1.08] tracking-[-.025em]">Manage websites, leads, sales, teams, and client access from one dashboard.</h3><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">Save time and deliver excellent results with a platform designed for modern agencies.</p></div>
-                                        <div className="grid grid-cols-3 gap-3 text-center text-xs font-black"><div className="rounded-xl border border-white/10 bg-white/5 p-4">10 Sites</div><div className="rounded-xl border border-white/10 bg-white/5 p-4">3 Team Seats</div><div className="rounded-xl border border-white/10 bg-white/5 p-4">White Label</div></div>
+                                        <div><span className="text-[10px] font-bold uppercase tracking-[.20em] text-emerald-300">Built for agencies too</span><h3 className="mt-3 text-[28px] font-semibold leading-[1.08] tracking-[-.025em]">Manage websites, leads, sales, teams, and client access from one dashboard.</h3><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">Save time and deliver excellent results with a platform designed for modern agencies.</p></div>
+                                        <div className="grid grid-cols-3 gap-3 text-center text-xs font-bold"><div className="rounded-xl border border-white/10 bg-white/5 p-4">10 Sites</div><div className="rounded-xl border border-white/10 bg-white/5 p-4">3 Team Seats</div><div className="rounded-xl border border-white/10 bg-white/5 p-4">White Label</div></div>
                                     </div>
                                 </div>
                                 <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-lime-50 p-7 sm:p-8">
-                                    <span className="text-[9px] font-black uppercase tracking-[.22em] text-emerald-700">Account-wide credits</span><h3 className="mt-3 text-3xl font-black leading-none tracking-[-.035em] text-[#07132c]">One wallet.<br />Every website.</h3><p className="mt-4 text-sm leading-6 text-slate-600">Use credits for AI generation, content, Sparks, premium features, and more.</p>
+                                    <span className="text-[9px] font-bold uppercase tracking-[.22em] text-emerald-700">Account-wide credits</span><h3 className="mt-3 text-3xl font-semibold leading-none tracking-[-.035em] text-[#07132c]">One wallet.<br />Every website.</h3><p className="mt-4 text-sm leading-6 text-slate-600">Use credits for AI generation, content, Sparks, premium features, and more.</p>
                                 </div>
                             </div>
                         </div>
@@ -290,7 +290,7 @@ export default function Welcome() {
                             <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center">
                                 <div><span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-300">How it works</span><h2 className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-[-.025em]">A faster path from idea to live website.</h2><p className="mt-4 max-w-md leading-7 text-slate-300">AI handles the repetitive starting work. You stay in control of the content, design, and final result.</p><button type="button" onClick={() => openFreeDemo('home_workflow')} className="mt-6 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white">Create Free Demo →</button></div>
                                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                                    {workflow.map(([num, title, copy]) => <div key={num} className="border-t border-emerald-400/40 pt-5"><div className="grid h-9 w-9 place-items-center rounded-full border border-emerald-400 bg-emerald-400/10 text-[10px] font-black text-emerald-300">{num}</div><h3 className="mt-4 text-base font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p></div>)}
+                                    {workflow.map(([num, title, copy]) => <div key={num} className="border-t border-emerald-400/40 pt-5"><div className="grid h-9 w-9 place-items-center rounded-full border border-emerald-400 bg-emerald-400/10 text-[10px] font-bold text-emerald-300">{num}</div><h3 className="mt-4 text-base font-semibold">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p></div>)}
                                 </div>
                             </div>
                         </div>
@@ -307,7 +307,7 @@ export default function Welcome() {
                                         className="cosmic-welcome-guide-card group flex min-h-[76px] items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-5 py-4 transition hover:border-emerald-300 hover:bg-emerald-50/40"
                                     >
                                         <span className="flex min-w-0 items-center gap-3">
-                                            <span className="cosmic-welcome-guide-icon grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-base font-black">✦</span>
+                                            <span className="cosmic-welcome-guide-icon grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-base font-bold">✦</span>
                                             <span className="cosmic-welcome-guide-title truncate text-sm font-bold">{title}</span>
                                         </span>
                                         <span className="cosmic-welcome-guide-cta shrink-0 text-xs font-bold">Read guide →</span>
@@ -321,7 +321,7 @@ export default function Welcome() {
                         <div className="mx-auto max-w-[1440px] px-5 pt-12 sm:px-6 lg:px-8">
                             <div className="text-center"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-800">Simple monthly plans</span><h2 className="mt-3 text-4xl font-extrabold leading-tight tracking-[-.025em] text-[#162238] sm:text-[42px]">Start with one website. Scale when you are ready.</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-700">Choose a plan based on how many pages, Sparks, marketing tools, and client websites you need.</p></div>
                             <div className="mx-auto mt-10 grid max-w-6xl gap-5 lg:grid-cols-3">
-                                {plans.map(([name, price, desc, items], index) => <article key={name} className={`relative rounded-2xl border p-7 sm:p-8 ${index === 1 ? 'border-emerald-400 bg-emerald-50/60 shadow-xl shadow-emerald-100' : 'border-slate-200 bg-white shadow-sm'}`}>{index === 1 && <span className="absolute right-4 top-4 rounded-full bg-emerald-600 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.14em] text-white">Most popular</span>}<h3 className="text-base font-black text-[#07132c]">{name}</h3><div className="mt-2 flex items-end gap-1"><span className="text-5xl font-black tracking-[-.05em] text-[#07132c]">{price}</span><span className="pb-1 text-xs text-slate-500">/month</span></div><p className="mt-4 min-h-[52px] text-sm leading-6 text-slate-600">{desc}</p><ul className="mt-6 space-y-2.5 text-sm font-semibold text-slate-700">{items.map((item) => <li key={item} className="flex gap-2"><span className="text-emerald-600">✓</span>{item}</li>)}</ul><Link href="/pricing" className={`mt-7 flex items-center justify-center rounded-lg px-4 py-3.5 text-sm font-black ${index === 1 ? 'bg-emerald-700 text-white' : 'border border-slate-300 text-[#07132c]'}`}>Choose {name}</Link></article>)}
+                                {plans.map(([name, price, desc, items], index) => <article key={name} className={`relative rounded-2xl border p-7 sm:p-8 ${index === 1 ? 'border-emerald-400 bg-emerald-50/60 shadow-xl shadow-emerald-100' : 'border-slate-200 bg-white shadow-sm'}`}>{index === 1 && <span className="absolute right-4 top-4 rounded-full bg-emerald-600 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[.14em] text-white">Most popular</span>}<h3 className="text-base font-semibold text-[#07132c]">{name}</h3><div className="mt-2 flex items-end gap-1"><span className="text-5xl font-bold tracking-[-.05em] text-[#07132c]">{price}</span><span className="pb-1 text-xs text-slate-500">/month</span></div><p className="mt-4 min-h-[52px] text-sm leading-6 text-slate-600">{desc}</p><ul className="mt-6 space-y-2.5 text-sm font-semibold text-slate-700">{items.map((item) => <li key={item} className="flex gap-2"><span className="text-emerald-600">✓</span>{item}</li>)}</ul><Link href="/pricing" className={`mt-7 flex items-center justify-center rounded-lg px-4 py-3.5 text-sm font-bold ${index === 1 ? 'bg-emerald-700 text-white' : 'border border-slate-300 text-[#07132c]'}`}>Choose {name}</Link></article>)}
                             </div>
                         </div>
                     </section>
@@ -337,10 +337,10 @@ export default function Welcome() {
 
                 <footer className="bg-[#03112a] text-slate-300">
                     <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
-                        <div><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 font-black text-white">✦</span><div><p className="font-black text-white">Cosmic CMS</p><p className="text-[10px] uppercase tracking-[.18em] text-slate-500">AI website platform</p></div></div><p className="mt-4 max-w-xs text-xs leading-5 text-slate-500">AI-powered website creation for businesses and agencies.</p></div>
-                        <div><p className="text-xs font-black text-white">Product</p><div className="mt-3 space-y-2 text-xs text-slate-500"><a href="#features">Features</a><br/><a href="#workflow">Workflow</a><br/><Link href="/pricing">Pricing</Link></div></div>
-                        <div><p className="text-xs font-black text-white">Resources</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/ai-website-builder">Guides</Link><br/><Link href="/privacy">Privacy</Link><br/><Link href="/terms">Terms</Link></div></div>
-                        <div><p className="text-xs font-black text-white">Company</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/login">Log in</Link><br/><Link href="/pricing">Get started</Link><br/><span>© {new Date().getFullYear()} Cosmic CMS</span></div></div>
+                        <div><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 font-bold text-white">✦</span><div><p className="font-bold text-white">Cosmic CMS</p><p className="text-[10px] uppercase tracking-[.18em] text-slate-500">AI website platform</p></div></div><p className="mt-4 max-w-xs text-xs leading-5 text-slate-500">AI-powered website creation for businesses and agencies.</p></div>
+                        <div><p className="text-xs font-bold text-white">Product</p><div className="mt-3 space-y-2 text-xs text-slate-500"><a href="#features">Features</a><br/><a href="#workflow">Workflow</a><br/><Link href="/pricing">Pricing</Link></div></div>
+                        <div><p className="text-xs font-bold text-white">Resources</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/ai-website-builder">Guides</Link><br/><Link href="/privacy">Privacy</Link><br/><Link href="/terms">Terms</Link></div></div>
+                        <div><p className="text-xs font-bold text-white">Company</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/login">Log in</Link><br/><Link href="/pricing">Get started</Link><br/><span>© {new Date().getFullYear()} Cosmic CMS</span></div></div>
                     </div>
                 </footer>
             </div>

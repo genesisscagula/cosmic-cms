@@ -514,7 +514,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                     {/* INPUT FORM PANEL */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">Create New Dynamic Page</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">Create New Dynamic Page</h3>
                         <p className="text-xs text-gray-500 mb-4">Enter a page name, such as Home or About Us, to create its page route.</p>
                         
                         <form onSubmit={handleSubmit} className="flex gap-4 items-end max-w-xl">
@@ -544,7 +544,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                     {/* PAGES ARCHITECTURE LIST */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Website Pages Architecture</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Website Pages Architecture</h3>
                         
                         {!pages || pages.length === 0 ? (
                             <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">

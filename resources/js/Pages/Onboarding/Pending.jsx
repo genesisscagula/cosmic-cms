@@ -227,7 +227,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                                     type="button"
                                     onClick={continueToPayPal}
                                     disabled={loading}
-                                    className="cosmic-paypal-cta inline-flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 px-6 text-sm font-black !text-white shadow-[0_16px_38px_rgba(5,150,105,0.28)] transition hover:-translate-y-0.5 hover:from-emerald-800 hover:to-green-800 disabled:cursor-not-allowed disabled:opacity-70"
+                                    className="cosmic-paypal-cta inline-flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 px-6 text-sm font-bold !text-white shadow-[0_16px_38px_rgba(5,150,105,0.28)] transition hover:-translate-y-0.5 hover:from-emerald-800 hover:to-green-800 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {loading
                                         ? 'Redirecting to PayPal…'
@@ -288,7 +288,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                     <div className="cosmic-selected-plan-header relative overflow-hidden bg-emerald-950 px-6 py-7 !text-white">
                         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" /><p className="relative text-xs font-bold uppercase tracking-[0.18em] !text-emerald-200">Selected plan</p>
                         <div className="mt-3 flex items-end justify-between gap-4">
-                            <p className="cosmic-selected-plan-name relative text-3xl font-black !text-white">{onboarding.plan_name}</p>
+                            <p className="cosmic-selected-plan-name relative text-3xl font-bold !text-white">{onboarding.plan_name}</p>
                             <p className="cosmic-selected-plan-price relative pb-1 text-sm font-bold !text-emerald-200">{onboarding.price}/month</p>
                         </div>
                     </div>

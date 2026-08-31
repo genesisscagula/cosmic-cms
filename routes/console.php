@@ -44,6 +44,9 @@ Schedule::command('cosmic:prune-media-packs --days=30')
 Schedule::command('cosmic:queue-health')
     ->everyFiveMinutes()->withoutOverlapping(5)->onOneServer();
 
+Schedule::command('trials:recover-bundles --limit=100')
+    ->everyFiveMinutes()->withoutOverlapping(10)->onOneServer()->runInBackground();
+
 
 if (config('cosmic_media.localize_remote_images', false)) {
     Schedule::command('cosmic:retry-media-localizations --minutes=5 --limit=50')

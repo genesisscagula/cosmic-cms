@@ -722,10 +722,25 @@ export default function PageTemplatesModal({
                         </div>
                     </div>
 
-                    {aiResults && (
-                        <div className="cosmic-template-muted mt-3 flex flex-wrap items-center gap-2 text-xs">
-                            <span><b>✦ Luna results</b> for “{aiPrompt}” · {visible.length} match{visible.length === 1 ? '' : 'es'}</span>
-                            <button type="button" onClick={clearAiSearch} className="cosmic-template-secondary rounded-full border px-2.5 py-1 text-[11px] font-semibold">Clear AI results</button>
+                    {aiSearchBusy && (
+                        <div className="cosmic-template-luna-process mt-3" role="status" aria-live="polite">
+                            <div className="cosmic-template-luna-process__header">
+                                <span>✦ Luna · Template Finder</span>
+                                <span>AI Active</span>
+                            </div>
+                            <div className="cosmic-template-luna-process__steps">
+                                <span className="is-complete"><i>✓</i>Understanding your website</span>
+                                <span className="is-active"><i/>Ranking template matches</span>
+                                <span><i>•</i>Checking layout fit</span>
+                                <span><i>•</i>Preparing results</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {aiResults && !aiSearchBusy && (
+                        <div className="cosmic-template-luna-result mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span><b>✦ Luna</b> found {visible.length} matching Template{visible.length === 1 ? '' : 's'} for “{aiPrompt}”. Best matches are ranked first.</span>
+                            <button type="button" onClick={clearAiSearch} className="cosmic-template-secondary rounded-full border px-2.5 py-1 text-[11px] font-semibold">Clear results</button>
                         </div>
                     )}
 
@@ -773,7 +788,7 @@ export default function PageTemplatesModal({
                                 </div>
 
                                 {template.trial_locked && (
-                                    <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-xl backdrop-blur">🔒 Sign up to unlock</div>
+                                    <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-xl backdrop-blur">🔒 Sign up to unlock</div>
                                 )}
                                 <div className="p-4 pt-1">
                                     <div className="flex items-start justify-between gap-3">
@@ -781,7 +796,7 @@ export default function PageTemplatesModal({
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="font-semibold">{template.name}</h3>
                                                 {!template.saved && Number(template.credits || 0) >= 200 && (
-                                                    <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Premium · ⚡{template.credits}</span>
+                                                    <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Premium · ⚡{template.credits}</span>
                                                 )}
                                             </div>
                                             {aiResults && aiResultMap.get(template.key)?.reason && (

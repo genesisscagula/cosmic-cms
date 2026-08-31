@@ -448,13 +448,13 @@ export default function Start({ trial }) {
                                 <div className="mx-auto mb-9 max-w-2xl text-center">
                                     <Link href="/" className="inline-flex items-center gap-3 font-semibold tracking-tight text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#13151d]">
                                         <CosmicBrandMark size="lg" />
-                                        <span className="text-xl font-black tracking-tight text-slate-950">Cosmic CMS</span>
+                                        <span className="text-xl font-bold tracking-tight text-slate-950">Cosmic CMS</span>
                                     </Link>
                                     <p className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-emerald-800">
                                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
                                         Build your first draft in minutes
                                     </p>
-                                    <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">
+                                    <h1 className="mt-5 text-balance text-4xl font-black leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">
                                         Describe your business. Start with a real website draft.
                                     </h1>
                                     <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
@@ -569,7 +569,7 @@ export default function Start({ trial }) {
                 <section className="border-t border-slate-200 bg-white px-5 py-10 sm:px-6">
                     <div className="mx-auto max-w-5xl text-center">
                         <p className="text-sm font-bold text-slate-500">Learn more before you generate</p>
-                        <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-black">
+                        <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold">
                             <Link href="/ai-website-builder" className="text-slate-700 hover:text-emerald-700">AI Website Builder</Link>
                             <Link href="/ai-website-generator" className="text-slate-700 hover:text-emerald-700">AI Website Generator</Link>
                             <Link href="/modern-website-builder" className="text-slate-700 hover:text-emerald-700">Modern Website Builder</Link>

@@ -229,7 +229,7 @@ function FontSelect({ label, value, onChange, light }) {
     const known = FONT_OPTIONS.some((option) => option.value === value);
     return (
         <label className="block">
-            <span className="text-[10px] font-black uppercase tracking-[.16em] text-slate-500">{label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">{label}</span>
             <select
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
@@ -279,7 +279,7 @@ function DeviceSwitch({ device, setDevice, light }) {
     return (
         <div className={`flex rounded-lg border p-0.5 ${light ? 'border-slate-200 bg-slate-100' : 'border-white/10 bg-black/20'}`}>
             {['desktop', 'tablet', 'mobile'].map((item) => (
-                <button key={item} type="button" onClick={() => setDevice(item)} aria-pressed={device === item} title={item} className={`h-7 rounded-md px-2 text-[10px] font-black uppercase transition ${device === item ? 'bg-violet-600 text-white' : light ? 'text-slate-500 hover:bg-white' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
+                <button key={item} type="button" onClick={() => setDevice(item)} aria-pressed={device === item} title={item} className={`h-7 rounded-md px-2 text-[10px] font-bold uppercase transition ${device === item ? 'bg-violet-600 text-white' : light ? 'text-slate-500 hover:bg-white' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
                     {item === 'desktop' ? 'D' : item === 'tablet' ? 'T' : 'M'}
                 </button>
             ))}
@@ -291,7 +291,7 @@ function SettingsCard({ title, description, children, light }) {
     return (
         <div className={`rounded-2xl border p-4 ${light ? 'border-slate-200 bg-slate-50/60' : 'border-white/10 bg-white/[0.018]'}`}>
             <div>
-                <p className={`text-xs font-black ${light ? 'text-slate-950' : 'text-white'}`}>{title}</p>
+                <p className={`text-xs font-bold ${light ? 'text-slate-950' : 'text-white'}`}>{title}</p>
                 {description ? <p className="mt-1 text-[10px] leading-4 text-slate-500">{description}</p> : null}
             </div>
             <div className="mt-4">{children}</div>
@@ -384,13 +384,13 @@ function DesignSystemPreview({ layout, components, device, light }) {
     return (
         <div className="mx-auto transition-all duration-200" style={{ width: deviceWidth, maxWidth: '100%' }}>
             <div className={`overflow-hidden border ${light ? 'border-slate-200 bg-white' : 'border-white/10 bg-[#17191f]'}`} style={{ borderRadius: components.section_radius || '32px', padding: `${sectionPy || '56px'} ${sectionPx || '20px'}` }}>
-                <p className="text-[9px] font-black uppercase tracking-[.2em] text-violet-500">Design system preview</p>
-                <h4 className={`mt-2 text-lg font-black ${light ? 'text-slate-950' : 'text-white'}`}>Spacing, corners and effects</h4>
+                <p className="text-[9px] font-bold uppercase tracking-[.2em] text-violet-500">Design system preview</p>
+                <h4 className={`mt-2 text-lg font-semibold ${light ? 'text-slate-950' : 'text-white'}`}>Spacing, corners and effects</h4>
                 <div className="mt-4 grid grid-cols-2" style={{ gap: gridGap || '20px' }}>
                     {[1, 2].map((item) => (
                         <div key={item} className={`border ${light ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.04]'}`} style={{ borderRadius: components.card_radius || '24px', padding: cardPadding || '24px', boxShadow: components.card_shadow || 'none' }}>
                             <div className="aspect-[4/3] w-full bg-gradient-to-br from-violet-500/20 to-cyan-400/10" style={{ borderRadius: components.image_radius || '24px' }} />
-                            <p className={`mt-3 text-xs font-black ${light ? 'text-slate-900' : 'text-white'}`}>Premium card</p>
+                            <p className={`mt-3 text-xs font-bold ${light ? 'text-slate-900' : 'text-white'}`}>Premium card</p>
                             <p className="mt-1 text-[10px] leading-4 text-slate-500">Shared global tokens keep every Spark visually related.</p>
                         </div>
                     ))}
@@ -493,8 +493,8 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
             <div className={`cosmic-global-styling-dialog flex max-h-[94vh] w-[min(96vw,90rem)] flex-col overflow-hidden rounded-3xl border shadow-2xl ${light ? 'border-slate-200 bg-white text-slate-900' : 'border-white/10 bg-[#111318] text-white'}`}>
                 <div className={`flex items-start justify-between gap-5 border-b px-5 py-4 sm:px-6 ${light ? 'border-slate-200' : 'border-white/10'}`}>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-500">Design · Global Styling</p>
-                        <h3 id="cosmic-global-styling-title" className={`mt-1 text-xl font-black ${light ? 'text-slate-950' : 'text-white'}`}>Website Design System</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-500">Design · Global Styling</p>
+                        <h3 id="cosmic-global-styling-title" className={`mt-1 text-xl font-semibold ${light ? 'text-slate-950' : 'text-white'}`}>Website Design System</h3>
                         <p className={`mt-1 max-w-2xl text-xs leading-5 ${light ? 'text-slate-600' : 'text-slate-400'}`}>Premium defaults are already active. Customize the global system here; individual Spark overrides can still win locally.</p>
                     </div>
                     <button type="button" onClick={onCancel} className={`h-9 w-9 rounded-xl text-lg transition ${light ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`} aria-label="Close Global Styling">×</button>
@@ -505,7 +505,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                         ['typography', 'Aa', 'Typography'],
                         ['design', '◇', 'Layout & Components'],
                     ].map(([key, icon, label]) => (
-                        <button key={key} type="button" role="tab" data-active={tab === key ? 'true' : 'false'} aria-selected={tab === key} onClick={() => setTab(key)} className={`cosmic-global-styling-tab rounded-t-xl border border-b-0 px-4 py-2.5 text-xs font-black transition ${tab === key ? (light ? 'border-violet-300 bg-violet-600 text-white' : 'border-violet-400/40 bg-violet-500/20 text-violet-100') : (light ? 'border-transparent text-slate-600 hover:bg-slate-100 hover:text-violet-700' : 'border-transparent text-slate-500 hover:text-violet-300')}`}>
+                        <button key={key} type="button" role="tab" data-active={tab === key ? 'true' : 'false'} aria-selected={tab === key} onClick={() => setTab(key)} className={`cosmic-global-styling-tab rounded-t-xl border border-b-0 px-4 py-2.5 text-xs font-bold transition ${tab === key ? (light ? 'border-violet-300 bg-violet-600 text-white' : 'border-violet-400/40 bg-violet-500/20 text-violet-100') : (light ? 'border-transparent text-slate-600 hover:bg-slate-100 hover:text-violet-700' : 'border-transparent text-slate-500 hover:text-violet-300')}`}>
                             <span className="mr-2" aria-hidden="true">{icon}</span>{label}
                         </button>
                     ))}
@@ -522,7 +522,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                                 <div className={`mt-5 rounded-2xl border p-4 ${light ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.025]'}`}>
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <p className={`text-xs font-black ${light ? 'text-slate-950' : 'text-white'}`}>Live popup preview</p>
+                                            <p className={`text-xs font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Live popup preview</p>
                                             <p className="mt-0.5 text-[10px] text-slate-500">{previewNote} · Builder stays frozen until Apply.</p>
                                         </div>
                                         <DeviceSwitch device={device} setDevice={setDevice} light={light} />
@@ -536,7 +536,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                             <div className={`rounded-2xl border p-4 ${light ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.025]'}`}>
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
-                                        <p className={`text-xs font-black ${light ? 'text-slate-950' : 'text-white'}`}>Design preview</p>
+                                        <p className={`text-xs font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Design preview</p>
                                         <p className="mt-0.5 text-[10px] text-slate-500">{previewNote} · preview only.</p>
                                     </div>
                                     <DeviceSwitch device={device} setDevice={setDevice} light={light} />
@@ -556,7 +556,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                             <>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
-                                        <p className={`text-sm font-black ${light ? 'text-slate-950' : 'text-white'}`}>Responsive type scale</p>
+                                        <p className={`text-sm font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Responsive type scale</p>
                                         <p className="mt-1 text-[11px] leading-5 text-slate-500">Sizes accept px, rem, em, %, or a safe clamp() value. Line-height and weight stay unitless.</p>
                                     </div>
                                     <button type="button" onClick={resetTypography} className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Reset Typography</button>
@@ -567,7 +567,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                                         <div key={role} className={`rounded-2xl border p-3.5 ${light ? 'border-slate-200 bg-slate-50/60' : 'border-white/10 bg-white/[0.018]'}`}>
                                             <div className="grid gap-3 xl:grid-cols-[150px_repeat(3,minmax(88px,1fr))_82px_76px_86px] xl:items-end">
                                                 <div className="min-w-0 pb-0.5">
-                                                    <p className={`text-xs font-black ${light ? 'text-slate-950' : 'text-white'}`}>{label}</p>
+                                                    <p className={`text-xs font-bold ${light ? 'text-slate-950' : 'text-white'}`}>{label}</p>
                                                     <p className="mt-0.5 text-[9px] leading-4 text-slate-500">{description}</p>
                                                 </div>
                                                 <TokenInput label="Desktop" value={draft.typography[`${role}_size`]} onChange={(next) => setTypographyToken(`${role}_size`, next)} light={light} invalid={Boolean(typographyErrors[`${role}_size`])} />
@@ -585,7 +585,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                             <>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
-                                        <p className={`text-sm font-black ${light ? 'text-slate-950' : 'text-white'}`}>Layout & component tokens</p>
+                                        <p className={`text-sm font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Layout & component tokens</p>
                                         <p className="mt-1 text-[11px] leading-5 text-slate-500">Control site-wide spacing, containers, buttons, cards, media corners and effects without editing every Spark.</p>
                                     </div>
                                     <button type="button" onClick={resetDesignSystem} className={`rounded-xl border px-3 py-2 text-[11px] font-bold transition ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Reset Design System</button>
@@ -673,7 +673,7 @@ export default function GlobalStylingModal({ open, value, onCancel, onApply, tri
                     <p className="text-[10px] text-slate-500">Apply updates the Builder draft only. Save Draft / Publish remains the final website save step.</p>
                     <div className="flex items-center gap-2">
                         <button type="button" onClick={onCancel} className={`rounded-xl border px-4 py-2 text-xs font-bold transition ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Cancel</button>
-                        <button type="button" disabled={!hasChanges || !allValid} onClick={() => onApply?.({ typography: draft.typography, section_layout: draft.section_layout, components: draft.components })} className="rounded-xl bg-violet-600 px-5 py-2 text-xs font-black text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">{!typographyValid ? 'Fix Typography Values' : !designValid ? 'Fix Design Values' : hasChanges ? 'Apply Global Styles' : 'No Changes'}</button>
+                        <button type="button" disabled={!hasChanges || !allValid} onClick={() => onApply?.({ typography: draft.typography, section_layout: draft.section_layout, components: draft.components })} className="rounded-xl bg-violet-600 px-5 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">{!typographyValid ? 'Fix Typography Values' : !designValid ? 'Fix Design Values' : hasChanges ? 'Apply Global Styles' : 'No Changes'}</button>
                     </div>
                 </div>
             </div>

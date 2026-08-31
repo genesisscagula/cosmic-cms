@@ -31,7 +31,7 @@ export default function ChatConversation({ conversation }) {
                 <div>
                     <Link href={route('admin.chat.index')} className="text-sm font-medium text-emerald-700">← Chat Inbox</Link>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <h1 className="text-xl font-semibold text-slate-900">
+                        <h1 className="text-xl font-black text-slate-900">
                             {conversation.visitor_name || conversation.visitor_email || 'Anonymous visitor'}
                         </h1>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${conversation.ai_paused ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>

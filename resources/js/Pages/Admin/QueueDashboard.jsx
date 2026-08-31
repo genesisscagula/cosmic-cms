@@ -20,7 +20,7 @@ export default function QueueDashboard(props) {
     <Head title="Queue Dashboard" />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
-        <div><p className="text-sm font-semibold text-emerald-600">COSMIC OPERATIONS</p><h1 className="text-3xl font-bold text-slate-900">Queue Dashboard</h1><p className="mt-1 text-sm text-slate-500">Live Horizon-lite view · refreshes every 5 seconds</p></div>
+        <div><p className="text-sm font-semibold text-emerald-600">COSMIC OPERATIONS</p><h1 className="text-3xl font-black text-slate-900">Queue Dashboard</h1><p className="mt-1 text-sm text-slate-500">Live Horizon-lite view · refreshes every 5 seconds</p></div>
         <span className={`rounded-full px-3 py-1 text-sm font-semibold ${data.healthy ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{data.healthy ? 'Healthy' : 'Needs attention'}</span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label,value]) => <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold text-slate-900">{value}</p></div>)}</div>

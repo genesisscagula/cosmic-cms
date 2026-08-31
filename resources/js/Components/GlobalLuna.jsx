@@ -5,6 +5,7 @@ import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { handoffToBuilder, normalizeBuilderUrl } from '@/Support/builderHandoff';
 import { useAppearance } from '@/Appearance/AppearanceContext';
 import CosmicLoadingIcon from './CosmicLoadingIcon';
+import LunaProcessCard from './Luna/LunaProcessCard';
 
 const lunaText = (value, fallback = '') => {
     if (typeof value === 'string') return value;
@@ -66,6 +67,8 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
     const [input,setInput]=useState('');
     const [busy,setBusy]=useState(false);
     const [status,setStatus]=useState('Ready');
+    const [processMode,setProcessMode]=useState(false);
+    const [processSteps,setProcessSteps]=useState([]);
     const [starterSiteContext,setStarterSiteContext]=useState(null);
     const endRef=useRef(null);
     const inputRef=useRef(null);
@@ -79,6 +82,7 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
     const component=routeContext.component;
     const currentUrl=routeContext.url;
     const effectiveAuthenticated=Boolean(routeContext.authenticated);
+    const welcomeMode=component==='Welcome'&&!effectiveAuthenticated&&!starterSiteContext;
     const areaLabel=component.split('/').filter(Boolean).pop()?.replace(/([a-z])([A-Z])/g,'$1 $2')||'Cosmic CMS';
 
     const builderOwned=/Websites\/Builder$/i.test(component);
@@ -140,7 +144,7 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
                 return [...current,{
                     role:'assistant',
                     text,
-                    starterSiteStatus:installed?true:false,
+                    starterSiteStatus:Boolean(installed||building),
                     options:installed&&starterTerminalStatuses.has(starterSite.status)?starterOptions(starterSite):[],
                 }];
             });
@@ -200,10 +204,28 @@ useEffect(()=>{
     },[open,messages]);
 
     useEffect(()=>{
+        if(!open||component!=='Welcome'||effectiveAuthenticated||starterSiteContext||messages.length)return;
+        setMessages([{role:'assistant',text:'Hey! What would you like to build? Tell me about your business or ask me anything about Cosmic CMS.'}]);
+    },[open,component,effectiveAuthenticated,starterSiteContext,messages.length]);
+
+    useEffect(()=>{
         if(!open)return;
         const frame=requestAnimationFrame(()=>endRef.current?.scrollIntoView({behavior:'smooth',block:'end'}));
         return ()=>cancelAnimationFrame(frame);
     },[open,messages,busy,status]);
+
+    useEffect(()=>{
+        if(!open)return undefined;
+        const focusFrame=window.requestAnimationFrame(()=>inputRef.current?.focus?.({preventScroll:true}));
+        const onKeyDown=(event)=>{
+            if(event.key==='Escape'&&!busy)setOpen(false);
+        };
+        window.addEventListener('keydown',onKeyDown);
+        return ()=>{
+            window.cancelAnimationFrame(focusFrame);
+            window.removeEventListener('keydown',onKeyDown);
+        };
+    },[open,busy]);
 
     const generatePublicTrial=async(message)=>{
         const stages=[
@@ -312,15 +334,19 @@ useEffect(()=>{
         if(!safeConfirmationToken)setMessages(current=>[...current,{role:'user',text:message}]);
 
         if(starterWebsiteId&&!safeConfirmationToken){
+            setProcessMode(true);
+            setProcessSteps(['Understanding your request','Selecting the starter bundle','Checking page compatibility','Verifying the plan']);
             await planStarterSite(message);
+            setProcessMode(false);
+            setProcessSteps([]);
             setBusy(false);
             return;
         }
 
-        const buildIntent=/\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(message);
+        const buildIntent=/\b(build|create|generate|design|make|start|launch)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(message);
         const updateIntent=/\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove)\b/i.test(message);
         const publishIntent=/\b(publish|go live|make .* live)\b/i.test(message);
-        const navigateIntent=/\b(open|go to|take me to|navigate to)\b/i.test(message);
+        const navigateIntent=/\b(open|go to|take me to|navigate to|show me|view)\b/i.test(message);
         const actionIntent=buildIntent||updateIntent||publishIntent||navigateIntent;
         const phases=buildIntent
             ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
@@ -331,6 +357,8 @@ useEffect(()=>{
                     : navigateIntent
                         ? ['Understanding your request…','Verifying the result…']
                         : ['Understanding your request…'];
+        setProcessMode(actionIntent);
+        setProcessSteps(actionIntent ? phases.map((phase)=>String(phase).replace(/…+$/,'').trim()) : []);
         let phaseIndex=0;
         const timer=actionIntent ? window.setInterval(()=>{
             phaseIndex=Math.min(phaseIndex+1,phases.length-1);
@@ -417,6 +445,8 @@ useEffect(()=>{
             setMessages(current=>[...current,{role:'assistant',text:explanation}]);
         }finally{
             if (timer) window.clearInterval(timer);
+            setProcessMode(false);
+            setProcessSteps([]);
             setBusy(false);
         }
     };
@@ -424,6 +454,8 @@ useEffect(()=>{
     const installStarterSite=async(confirmation,messageRecord)=>{
         if(!confirmation||busy||confirmation.disabled)return;
         setBusy(true);
+        setProcessMode(true);
+        setProcessSteps(['Confirming the starter plan','Preparing the pages','Starting page generation','Verifying the build']);
         setStatus('Starting starter-page build…');
         setMessages(current=>current.map(item=>item===messageRecord?{...item,confirmation:null}:item));
         try{
@@ -449,6 +481,8 @@ useEffect(()=>{
             setMessages(current=>[...current,{role:'assistant',text:raw}]);
             setStatus('Ready');
         }finally{
+            setProcessMode(false);
+            setProcessSteps([]);
             setBusy(false);
         }
     };
@@ -457,8 +491,21 @@ useEffect(()=>{
         setMessages([]);
         setInput('');
         setStatus('Ready');
+        setProcessMode(false);
+        setProcessSteps([]);
         try{sessionStorage.removeItem(STORAGE_KEY);}catch{}
     };
+
+    const visibleMessages=messages.slice(-20);
+    const contextLabel=starterSiteContext?'Starter Site':welcomeMode?'Welcome':areaLabel;
+    const panelTitle=starterSiteContext?'Starter Pages':welcomeMode?'Website Assistant':effectiveAuthenticated?'Workspace Assistant':'Cosmic CMS Assistant';
+    const panelMeta=starterSiteContext
+        ? `Website context · ${Number(balance||0).toLocaleString()} credits`
+        : effectiveAuthenticated
+            ? `Help & navigation · ${Number(balance||0).toLocaleString()} credits`
+            : welcomeMode
+                ? 'Build, explore, or ask a question'
+                : 'Explore Cosmic CMS with Luna';
 
     if(builderOwned)return null;
 
@@ -466,61 +513,126 @@ useEffect(()=>{
         {!open&&<button
             type="button"
             onClick={()=>{setStarterSiteContext(null);setOpen(true);}}
-            className="fixed bottom-6 right-6 z-[980] inline-flex h-14 items-center gap-2 rounded-full border border-violet-300/30 bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-black text-white shadow-2xl shadow-violet-950/30 transition hover:-translate-y-0.5"
+            className="cosmic-global-luna-launcher cosmic-native-text-layer"
             title="Ask Luna"
-        ><span className="text-lg">✦</span> Ask Luna</button>}
+            aria-label="Open Luna chat"
+        >Ask Luna</button>}
 
-        {open&&<section className={`fixed bottom-6 right-6 z-[990] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark?'border-violet-300/20 bg-[#111318]/95 text-white':'border-slate-200 bg-white text-slate-900'}`}>
-            <header className={`flex items-start justify-between border-b px-4 py-3 ${appDark?'border-white/10':'border-slate-200'}`}>
+        {open&&<section
+            className={`cosmic-native-text-layer cosmic-luna-premium cosmic-global-luna-premium ${welcomeMode?'is-welcome':''}`}
+            data-appearance={appDark?'dark':'light'}
+            role="dialog"
+            aria-label="Luna chat"
+            aria-modal="false"
+        >
+            <header className="cosmic-luna-premium__header">
                 <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {starterSiteContext?'Starter site':areaLabel}</p>
-                    <p className="mt-1 truncate text-xs text-slate-400">{starterSiteContext?<>Starter Pages · ⚡ {Number(balance||0).toLocaleString()}</>:effectiveAuthenticated ? <>Help & navigation · ⚡ {Number(balance||0).toLocaleString()}</> : 'Luna preview · Explore Cosmic CMS'}</p>
+                    <p className="cosmic-luna-premium__eyebrow">Luna · {contextLabel}</p>
+                    <h3 className="font-semibold cosmic-luna-premium__title">{panelTitle}</h3>
+                    <p className="cosmic-global-luna-premium__meta">{panelMeta}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button type="button" onClick={clearConversation} disabled={busy||messages.length===0} title="Clear conversation" className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Clear</button>
-                    <button type="button" onClick={()=>setOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
+                <div className="cosmic-luna-premium__header-actions">
+                    <button
+                        type="button"
+                        onClick={clearConversation}
+                        disabled={busy||messages.length===0}
+                        title="Clear conversation"
+                        className="cosmic-luna-premium__header-action"
+                    >Clear</button>
+                    <button type="button" onClick={()=>setOpen(false)} className="cosmic-luna-premium__close" aria-label="Close Luna">×</button>
                 </div>
             </header>
 
-            <div className={`border-b px-4 py-3 text-xs leading-5 ${appDark?'border-white/5 text-slate-400':'border-slate-100 text-slate-600'}`}>
-                {starterSiteContext
-                    ? 'Cosmic selects a matching starter bundle from the website details you already provided. Review it, then install — no second prompt required.'
-                    : effectiveAuthenticated
-                    ? 'Outside the Builder, Luna can answer questions, navigate, and handle safe workspace actions like creating or renaming pages.'
-                    : 'Ask Luna about Cosmic CMS, plans, or start building when you are ready.'}
+            <div className="cosmic-luna-premium__context">
+                <div className="cosmic-luna-premium__context-label"><span aria-hidden="true"/>Context · {contextLabel}</div>
+                <div className="cosmic-luna-premium__active"><span aria-hidden="true"/>AI Active</div>
             </div>
 
-            <div className="min-h-28 flex-1 space-y-2 overflow-y-auto px-4 py-3">
-                {messages.length?messages.slice(-20).map((message,index)=><div key={`${index}-${lunaText(message.text,'')}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}>
-                    <div className="max-w-[86%]">
-                        <div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-600 text-white':(appDark?'border border-white/10 bg-white/[0.05] text-slate-200':'border border-slate-200 bg-slate-50 text-slate-700')}`}>{lunaText(message.text,'')}</div>
-                        {message.role==='assistant'&&message.starterPlan?<div className="mt-2 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] p-3">
-                            <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Registered bundle</p><p className="mt-1 text-xs font-semibold text-white">{message.starterPlan.bundle_name}</p></div><p className="shrink-0 text-[11px] font-semibold text-amber-200">⚡ {Number(message.starterPlan.credit_cost||0).toLocaleString()}</p></div>
-                            <div className="mt-2 grid grid-cols-2 gap-1.5">{(message.starterPlan.pages||[]).map(page=><div key={`${page.slug}-${page.template_key}`} className="rounded-lg border border-white/10 bg-black/20 px-2 py-1.5"><p className="truncate text-[11px] font-semibold text-slate-200">{page.title}</p><p className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-500">{page.install_action}</p></div>)}</div>
-                            <p className="mt-2 text-[10px] leading-4 text-slate-500">Only empty/new pages are charged. Existing populated pages are preserved; failed page builds are refunded.</p>
-                            {message.confirmation?.disabled?<p className="mt-2 text-[10px] leading-4 text-rose-300">Not enough credits for this plan.</p>:null}
+            <div className="cosmic-luna-premium__chat">
+                {visibleMessages.length?visibleMessages.map((message,index)=><div key={`${index}-${lunaText(message.text,'')}`} className={`cosmic-luna-premium__message-row ${message.role==='user'?'cosmic-luna-premium__message-row--user':'cosmic-luna-premium__message-row--assistant'}`}>
+                    <div className="cosmic-luna-premium__message-wrap">
+                        <div className={`cosmic-luna-premium__bubble ${message.role==='user'?'cosmic-luna-premium__bubble--user':'cosmic-luna-premium__bubble--assistant'}`}>{lunaText(message.text,'')}</div>
+
+                        {message.role==='assistant'&&message.starterPlan?<div className="cosmic-global-luna-plan-card">
+                            <div className="cosmic-global-luna-plan-card__head">
+                                <div className="min-w-0">
+                                    <p className="cosmic-global-luna-plan-card__eyebrow">Registered bundle</p>
+                                    <p className="cosmic-global-luna-plan-card__title">{message.starterPlan.bundle_name}</p>
+                                </div>
+                                <p className="cosmic-global-luna-plan-card__cost">{Number(message.starterPlan.credit_cost||0).toLocaleString()} credits</p>
+                            </div>
+                            <div className="cosmic-global-luna-plan-card__pages">{(message.starterPlan.pages||[]).map(page=><div key={`${page.slug}-${page.template_key}`} className="cosmic-global-luna-plan-card__page"><p>{page.title}</p><span>{page.install_action}</span></div>)}</div>
+                            <p className="cosmic-global-luna-plan-card__note">Only empty or new pages are charged. Existing populated pages are preserved, and failed page builds are refunded.</p>
+                            {message.confirmation?.disabled?<p className="cosmic-global-luna-plan-card__error">Not enough credits for this plan.</p>:null}
                         </div>:null}
-                        {message.role==='assistant'&&message.starterSiteStatus&&index===messages.slice(-20).length-1&&starterSiteContext?.starterSite?.installed?<div className="mt-2 rounded-xl border border-white/10 bg-black/20 p-3">
-                            <div className="flex items-center justify-between gap-2"><p className="truncate text-[11px] font-semibold text-slate-200">{starterSiteContext.starterSite.bundle_name||'Starter website'}</p><span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[9px] font-bold uppercase text-emerald-200">{starterSiteContext.starterSite.status}</span></div>
-                            {starterBuildingStatuses.has(starterSiteContext.starterSite.status)?<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all" style={{width:`${Math.max(4,Number(starterSiteContext.starterSite.progress||0))}%`}}/></div>:null}
-                            <div className="mt-2 space-y-1">{(starterSiteContext.starterSite.pages||[]).map(page=><div key={page.page_id||page.slug} className="flex items-center justify-between gap-2 text-[10px]"><span className="truncate text-slate-400">{page.title}</span><span className={page.build_status==='failed'?'text-rose-300':['ready','preserved'].includes(page.build_status)?'text-emerald-300':'text-violet-300'}>{page.build_status}</span></div>)}</div>
+
+                        {message.role==='assistant'&&message.starterSiteStatus&&index===visibleMessages.length-1&&starterSiteContext?.starterSite?<div className="cosmic-global-luna-status-card">
+                            <div className="cosmic-global-luna-status-card__head">
+                                <p>{starterSiteContext.starterSite.bundle_name||'Starter website'}</p>
+                                <span data-status={starterSiteContext.starterSite.status}>{starterSiteContext.starterSite.status}</span>
+                            </div>
+                            {starterBuildingStatuses.has(starterSiteContext.starterSite.status)?<div className="cosmic-global-luna-status-card__track"><div className="cosmic-global-luna-status-card__fill" style={{width:`${Math.max(4,Number(starterSiteContext.starterSite.progress||0))}%`}}/></div>:null}
+                            <div className="cosmic-global-luna-status-card__pages">{(starterSiteContext.starterSite.pages||[]).map(page=><div key={page.page_id||page.slug}><span>{page.title}</span><strong data-status={page.build_status}>{page.build_status}</strong></div>)}</div>
                         </div>:null}
-                        {message.role==='assistant'&&Array.isArray(message.options)&&message.options.length>0?<div className="mt-2 flex flex-wrap gap-1.5">{message.options.map((option,optionIndex)=><button key={`${optionIndex}-${option.label}`} type="button" onClick={()=>option.url?router.visit(option.url):(option.send_message?send(option.send_message):null)} className="rounded-lg border border-violet-300/20 bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200 transition hover:bg-violet-400/20">{option.label}</button>)}</div>:null}
-                        {message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={busy||message.confirmation.disabled} onClick={()=>message.confirmation.kind==='starter_site_install'?installStarterSite(message.confirmation,message):send(message.confirmation.originalMessage,message.confirmation.token)} className={`rounded-lg px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40 ${message.confirmation.kind==='starter_site_install'?'bg-emerald-500 hover:bg-emerald-400':'bg-rose-500 hover:bg-rose-400'}`}>{message.confirmation.confirmLabel}</button><button type="button" disabled={busy} onClick={()=>setMessages(current=>current.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">{message.confirmation.cancelLabel}</button></div>:null}
+
+                        {message.role==='assistant'&&Array.isArray(message.options)&&message.options.length>0?<div className="cosmic-luna-premium__message-actions">{message.options.map((option,optionIndex)=><button key={`${optionIndex}-${option.label}`} type="button" disabled={busy} onClick={()=>option.url?router.visit(option.url):(option.send_message?send(option.send_message):null)} className="cosmic-luna-premium__action">{option.label}</button>)}</div>:null}
+
+                        {message.role==='assistant'&&message.confirmation?<div className="cosmic-luna-premium__message-actions">
+                            <button type="button" disabled={busy||message.confirmation.disabled} onClick={()=>message.confirmation.kind==='starter_site_install'?installStarterSite(message.confirmation,message):send(message.confirmation.originalMessage,message.confirmation.token)} className={`cosmic-luna-premium__action cosmic-luna-premium__action--primary ${message.confirmation.kind==='starter_site_install'?'cosmic-global-luna-action--install':'cosmic-global-luna-action--confirm'}`}>{message.confirmation.confirmLabel}</button>
+                            <button type="button" disabled={busy} onClick={()=>setMessages(current=>current.map(item=>item===message?{...item,confirmation:null}:item))} className="cosmic-luna-premium__action">{message.confirmation.cancelLabel}</button>
+                        </div>:null}
                     </div>
-                </div>):<div className={`rounded-xl border px-3 py-2 text-xs leading-5 ${appDark?'border-violet-300/10 bg-violet-400/[0.05] text-slate-400':'border-violet-200 bg-violet-50 text-slate-600'}`}>
-                    {effectiveAuthenticated
-                        ? 'Try “Create an About Us page in Cosmic React”, “Open Orders for my store”, or “Rename Contact to Get a Quote”.'
-                        : 'Try “What can Luna do?”, “Show me the plans”, or “Start building a website”.'}
+                </div>):<div className="cosmic-luna-premium__empty">
+                    <strong>{effectiveAuthenticated?'What would you like to do?':'Hey! What would you like to build?'}</strong>
+                    <span>{effectiveAuthenticated?'Ask Luna a question, open a workspace area, or request a safe action.':'Ask about Cosmic CMS, compare plans, or describe the website you want.'}</span>
                 </div>}
-                {busy&&<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{status}</span></div>}
+
+                {busy&&(processMode
+                    ? <div className="cosmic-luna-premium__message-row cosmic-luna-premium__message-row--assistant"><LunaProcessCard status={status} steps={processSteps} dark={appDark}/></div>
+                    : <div className="cosmic-luna-premium__thinking" role="status" aria-live="polite"><span aria-hidden="true"/>{status}</div>)}
                 <div ref={endRef} className="h-px" aria-hidden="true"/>
             </div>
 
-            {starterSiteContext ? <div className="border-t border-white/10 px-4 py-3 text-[10px] leading-5 text-slate-500">Bundle selection uses saved website context. AI page generation starts only after you choose <strong className="text-slate-300">Install Starter Pages</strong>.</div> : <div className={`border-t p-4 ${appDark?'border-white/10':'border-slate-200'}`}>
-                <textarea ref={inputRef} value={input} onChange={event=>setInput(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}} rows={3} placeholder="Ask Luna…" className={`w-full resize-none rounded-xl border px-3 py-3 text-sm leading-6 outline-none focus:border-violet-400 ${appDark?'border-white/10 bg-black/25 text-white placeholder:text-slate-600':'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`} />
-                <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-slate-600">{effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span><button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="inline-flex items-center gap-2 rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?<><CosmicLoadingIcon className="h-3.5 w-3.5"/>Working…</>:'Send'}</button></div>
-            </div>}
+            {!starterSiteContext&&welcomeMode?<div className="cosmic-luna-premium__quick-actions" aria-label="Luna suggestions">
+                {[
+                    ['Create a free demo','Build me a website'],
+                    ['Show me the plans','Show me the plans'],
+                    ['What can Luna do?','What can Luna do?'],
+                ].map(([label,message])=><button
+                    key={label}
+                    type="button"
+                    disabled={busy}
+                    onClick={()=>{
+                        if(label==='Create a free demo'){
+                            setStatus('Complete your free demo details');
+                            window.dispatchEvent(new CustomEvent('cosmic:open-free-demo',{
+                                detail:{source:'luna_welcome_quick_action',prompt:''},
+                            }));
+                            return;
+                        }
+                        send(message);
+                    }}
+                >{label}</button>)}
+            </div>:null}
+
+            {starterSiteContext
+                ? <div className="cosmic-global-luna-premium__starter-note">Bundle selection uses your saved website context. AI page generation starts only after you choose <strong>Install Starter Pages</strong>.</div>
+                : <div className="cosmic-luna-premium__composer">
+                    <textarea
+                        ref={inputRef}
+                        value={input}
+                        onChange={event=>setInput(event.target.value)}
+                        onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}}
+                        rows={3}
+                        placeholder={welcomeMode?'Ask Luna anything…':'Ask Luna…'}
+                        className="cosmic-luna-premium__textarea"
+                        aria-label="Message Luna"
+                    />
+                    <div className="cosmic-luna-premium__footer">
+                        <span className="cosmic-global-luna-premium__composer-note">{effectiveAuthenticated?'Luna requests use credits':welcomeMode?'No credit card required to create a demo':'Sign in or start a build for full Luna access'}</span>
+                        <button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="cosmic-luna-premium__send">{busy?<><CosmicLoadingIcon className="h-4 w-4"/>Working…</>:<>Send <span aria-hidden="true">→</span></>}</button>
+                    </div>
+                </div>}
         </section>}
     </>;
 }

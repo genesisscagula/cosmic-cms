@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\BuildTrialSiteBundleJob;
+use App\Jobs\FinalizeTrialSiteBundleJob;
 use App\Jobs\SendTrialBundleReadyJob;
 use App\Models\TrialGeneration;
 use App\Models\User;
@@ -20,16 +21,14 @@ class TrialGenerationPipelineTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_completed_home_claims_exactly_one_inner_page_with_two_minute_delay(): void
+    public function test_completed_home_claims_exactly_one_inner_page_without_browser_or_delay(): void
     {
         Queue::fake();
-        config(['cosmic.trial_inner_page_delay_minutes' => 2]);
         [$trial, $home, $inner] = $this->trialBundle();
 
         (new BuildTrialSiteBundleJob($trial->id, $home->id))->handle(
             app(AiPageGenerationService::class),
             app(LunaPexelsVideoService::class),
-            app(TrialStagingPublisherService::class),
         );
 
         $innerManifest = collect($trial->fresh()->bundle_manifest['pages'])->firstWhere('page_id', $inner->id);
@@ -37,10 +36,7 @@ class TrialGenerationPipelineTest extends TestCase
 
         Queue::assertPushed(BuildTrialSiteBundleJob::class, function (BuildTrialSiteBundleJob $job) use ($inner): bool {
             $this->assertSame($inner->id, $job->pageId);
-            $this->assertNotNull($job->delay);
-            $seconds = now()->diffInSeconds($job->delay, false);
-            $this->assertGreaterThanOrEqual(118, $seconds);
-            $this->assertLessThanOrEqual(122, $seconds);
+            $this->assertNull($job->delay);
             return true;
         });
         Queue::assertPushed(BuildTrialSiteBundleJob::class, 1);
@@ -79,7 +75,7 @@ class TrialGenerationPipelineTest extends TestCase
         $this->assertStringContainsString('/pages/'.$home->id.'/builder?token='.urlencode($trial->token), $html);
     }
 
-    public function test_staging_status_exposes_a_clickable_preview_when_home_is_ready(): void
+    public function test_staging_status_remains_poll_only_until_every_page_is_ready(): void
     {
         [$trial, $home] = $this->trialBundle();
         $manifest = $trial->bundle_manifest;
@@ -92,12 +88,54 @@ class TrialGenerationPipelineTest extends TestCase
         $response = $this->getJson('/trials/'.$trial->token.'/staging-status');
 
         $response->assertOk()
-            ->assertJsonPath('preview_ready', true)
+            ->assertJsonPath('preview_ready', false)
+            ->assertJsonPath('pages_complete', false)
             ->assertJsonPath('ready_pages', 1)
             ->assertJsonPath('page_count', 2);
-        $this->assertNotEmpty($response->json('preview_url'));
+        $this->assertNull($response->json('preview_url'));
         $this->assertSame('building', $trial->fresh()->bundle_status);
-        $this->assertSame('published', $home->fresh()->status);
+        $this->assertSame('draft', $home->fresh()->status);
+    }
+
+    public function test_recovery_command_requeues_one_stale_scheduled_page_without_rebuilding_home(): void
+    {
+        Queue::fake();
+        [$trial, $home, $inner] = $this->trialBundle();
+        $manifest = $trial->bundle_manifest;
+        $manifest['pages'][0]['build_status'] = 'ready';
+        $manifest['pages'][1]['build_status'] = 'scheduled';
+        $manifest['pages'][1]['scheduled_at'] = now()->subMinutes(30)->toIso8601String();
+        $trial->forceFill(['bundle_manifest' => $manifest, 'bundle_status' => 'building'])->save();
+
+        $this->artisan('trials:recover-bundles --limit=10')->assertSuccessful();
+
+        Queue::assertPushed(BuildTrialSiteBundleJob::class, function (BuildTrialSiteBundleJob $job) use ($inner): bool {
+            return $job->pageId === $inner->id;
+        });
+        $this->assertSame('ready', collect($trial->fresh()->bundle_manifest['pages'])->firstWhere('page_id', $home->id)['build_status']);
+    }
+
+    public function test_ready_page_job_is_idempotent_and_only_queues_final_staging(): void
+    {
+        Queue::fake();
+        [$trial, $home, $inner] = $this->trialBundle();
+        $inner->forceFill(['blocks' => [['type' => 'about', 'heading' => 'Already generated']]])->save();
+        $manifest = $trial->bundle_manifest;
+        $manifest['pages'][0]['build_status'] = 'ready';
+        $manifest['pages'][1]['build_status'] = 'scheduled';
+        $trial->forceFill(['bundle_manifest' => $manifest, 'bundle_status' => 'building'])->save();
+        $pageCount = $trial->website->pages()->count();
+
+        (new BuildTrialSiteBundleJob($trial->id, $inner->id))->handle(
+            app(AiPageGenerationService::class),
+            app(LunaPexelsVideoService::class),
+        );
+
+        $this->assertSame($pageCount, $trial->website->pages()->count());
+        $this->assertSame('Already generated', data_get($inner->fresh()->blocks, '0.heading'));
+        $this->assertSame('ready', $trial->fresh()->bundle_status);
+        Queue::assertPushed(FinalizeTrialSiteBundleJob::class, fn (FinalizeTrialSiteBundleJob $job): bool => $job->trialId === $trial->id);
+        Queue::assertNotPushed(BuildTrialSiteBundleJob::class);
     }
 
     public function test_current_trial_can_save_its_existing_email_but_another_trial_cannot_claim_it(): void

@@ -45,4 +45,10 @@ section.cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmi
 .cosmic-theme-gradient--champagne{--cosmic-section-from:#392D20;--cosmic-section-mid:#9A7650;--cosmic-section-to:#554D32;--cosmic-section-angle:120deg;}
 .cosmic-theme-gradient--my-brand{--cosmic-section-from:var(--cosmic-gradient-from,#17283B);--cosmic-section-mid:var(--cosmic-brand-bg,#243447);--cosmic-section-to:var(--cosmic-gradient-to,#2B2447);--cosmic-section-angle:var(--cosmic-gradient-angle,120deg);}
 
+/* My Brand primary actions use the semantic on-primary/button foreground. */
+.cosmic-brand-bg.cosmic-brand-text,
+.cosmic-brand-bg.cosmic-brand-text * {
+    color:var(--cosmic-brand-button-text,var(--cosmic-color-on-primary,#FFFFFF))!important;
+    -webkit-text-fill-color:var(--cosmic-brand-button-text,var(--cosmic-color-on-primary,#FFFFFF))!important;
+}
 

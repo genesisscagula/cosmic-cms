@@ -31,7 +31,7 @@ export default function FeedbackInbox({ reports, filters, unreadCount }) {
         <AuthenticatedLayout header={(
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-900">Feedback Inbox</h1>
+                    <h1 className="text-xl font-black text-slate-900">Feedback Inbox</h1>
                     <p className="mt-1 text-sm text-slate-500">Bug reports, suggestions, and product feedback · {unreadCount} unread</p>
                 </div>
                 <Link href={route('admin.chat.index')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">

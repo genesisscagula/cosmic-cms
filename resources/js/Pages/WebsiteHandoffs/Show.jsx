@@ -10,7 +10,7 @@ export default function Show({ handoff }) {
             <Head title="Website handoff" />
             <div className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-white/[0.04] p-7 shadow-2xl">
                 <p className="text-sm font-medium text-violet-300">Cosmic CMS · Website Handoff</p>
-                <h1 className="mt-3 text-3xl font-semibold">{handoff.website?.name || 'Website'}</h1>
+                <h1 className="mt-3 text-3xl font-black">{handoff.website?.name || 'Website'}</h1>
                 <p className="mt-3 text-slate-400">
                     {handoff.from_user?.name || handoff.from_user?.email} wants to transfer this website to {handoff.recipient_email}.
                 </p>

@@ -73,13 +73,13 @@ export default function Settings({ dashboard }) {
     };
 
     if (!website) {
-        return <section><p className="text-sm font-medium text-violet-300">Workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Settings</h1><div className="mt-8 rounded-2xl border border-dashed border-white/10 p-10 text-center text-sm text-slate-400">Create a website first to manage its settings.</div></section>;
+        return <section><p className="text-sm font-medium text-violet-300">Workspace</p><h1 className="mt-2 text-3xl font-black text-white">Settings</h1><div className="mt-8 rounded-2xl border border-dashed border-white/10 p-10 text-center text-sm text-slate-400">Create a website first to manage its settings.</div></section>;
     }
 
     return (
         <section>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><p className="text-sm font-medium text-violet-300">Workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Settings</h1><p className="mt-3 text-sm text-slate-400">Manage the public identity, contact details, localization, and legal information for your website.</p></div>
+                <div><p className="text-sm font-medium text-violet-300">Workspace</p><h1 className="mt-2 text-3xl font-black text-white">Settings</h1><p className="mt-3 text-sm text-slate-400">Manage the public identity, contact details, localization, and legal information for your website.</p></div>
                 {websites.length > 1 && <label className="min-w-64"><span className={labelClass}>Website</span><select className={fieldClass} value={selectedId || ""} onChange={(e) => setSelectedId(Number(e.target.value))}>{websites.map((item) => <option key={item.id} value={item.id} className="bg-slate-950">{item.name}</option>)}</select></label>}
             </div>
 

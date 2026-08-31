@@ -44,11 +44,11 @@ export default function PublicHeader({
                             <img src={logoSrc} alt={logoAlt} className="h-14 w-auto max-w-[270px] object-contain sm:h-[3.75rem]" />
                         ) : (
                             <>
-                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-bold text-white shadow-sm shadow-emerald-200">
                                     ✦
                                 </span>
                                 <span>
-                                    <span className="block text-lg font-black tracking-tight text-slate-950">Cosmic CMS</span>
+                                    <span className="block text-lg font-bold tracking-tight text-slate-950">Cosmic CMS</span>
                                     <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>
                                 </span>
                             </>
@@ -104,7 +104,7 @@ export default function PublicHeader({
                 >
                     <div className="flex items-center justify-between border-b border-slate-200 px-5 py-5">
                         <div>
-                            <p className="text-base font-black text-slate-950">Cosmic CMS</p>
+                            <p className="text-base font-bold text-slate-950">Cosmic CMS</p>
                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Navigation</p>
                         </div>
                         <button
@@ -132,10 +132,10 @@ export default function PublicHeader({
 
                     <div className="border-t border-slate-200 p-5">
                         <div className="grid gap-3">
-                            <Link href="/login" onClick={closeMenu} className="flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-black text-slate-900">
+                            <Link href="/login" onClick={closeMenu} className="flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-900">
                                 Log in
                             </Link>
-                            <Link href={getStartedHref} onClick={closeMenu} className="flex min-h-12 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-black text-white shadow-sm">
+                            <Link href={getStartedHref} onClick={closeMenu} className="flex min-h-12 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white shadow-sm">
                                 Get started
                             </Link>
                         </div>

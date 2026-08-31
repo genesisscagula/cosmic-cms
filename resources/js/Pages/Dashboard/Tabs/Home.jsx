@@ -21,7 +21,7 @@ export default function Home({ dashboard = {}, onTabChange }) {
             <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p className="text-sm font-medium">Cosmic workspace</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight cosmic-text-strong sm:text-4xl">Overview</h1>
+                    <h1 className="mt-2 text-3xl font-black tracking-tight cosmic-text-strong sm:text-4xl">Overview</h1>
                     <p className="mt-2 text-sm cosmic-text-muted">Your websites, performance, releases, and next steps in one place.</p>
                 </div>
                 <span className="cosmic-updated-pill">

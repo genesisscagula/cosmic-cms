@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
 import { useAppearance } from "../../../Appearance/AppearanceContext";
-import CosmicLoadingIcon from "../../../Components/CosmicLoadingIcon";
 
 const COLOR_FAMILY_SCHEMA = {
     sourceColor: '#RRGGBB', primary: '#RRGGBB', primaryText: '#RRGGBB', primaryHover: '#RRGGBB', primarySoft: '#RRGGBB',
@@ -347,21 +346,54 @@ export default function ThemeModal({
                         </div>
                     )}
                     </div>
-                    <aside className={`cosmic-theme-luna-panel flex min-h-0 flex-col border-l p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'}`}>
-                        <div>
-                            <p className={`text-[10px] font-bold uppercase tracking-[.18em] ${isDark ? 'text-violet-300' : 'text-violet-700'}`}>✦ Luna · Theme</p>
-                            <h3 className={`mt-1 text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Custom color family</h3>
-                            <p className={`mt-1 text-xs leading-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Ask for a palette, typography mood, logo-derived colors, or a custom brand direction. Luna only previews the theme until you save.</p>
+                    <aside className="cosmic-theme-luna-panel cosmic-theme-luna-premium flex min-h-0 flex-col border-l" data-appearance={isDark ? 'dark' : 'light'}>
+                        <div className="cosmic-theme-luna-premium__header">
+                            <div className="min-w-0">
+                                <p className="cosmic-theme-luna-premium__eyebrow">✦ Luna · Theme</p>
+                                <h3 className="font-semibold cosmic-theme-luna-premium__title">Theme Builder</h3>
+                            </div>
+                            <div className="cosmic-theme-luna-premium__active"><span aria-hidden="true"/>AI Active</div>
                         </div>
-                        <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto">
+                        <div className="cosmic-theme-luna-premium__context">
+                            <span aria-hidden="true"/>
+                            Context · Theme Preview
+                        </div>
+                        <div className="cosmic-theme-luna-premium__chat">
                             {lunaMessages.length ? lunaMessages.map((message, index) => (
-                                <div key={`${index}-${message.role}`} className={`cosmic-theme-luna-message rounded-xl px-3 py-2 text-xs leading-5 ${message.role === 'user' ? 'ml-6 is-user bg-violet-600 text-white' : (isDark ? 'mr-3 is-assistant border border-white/10 bg-white/[0.06] text-slate-100' : 'mr-3 is-assistant border border-slate-200 bg-slate-50 text-slate-900')}`}>
-                                    {message.text}
+                                <div key={`${index}-${message.role}`} className={`cosmic-theme-luna-premium__message-row ${message.role === 'user' ? 'is-user' : 'is-assistant'}`}>
+                                    <div className={`cosmic-theme-luna-message cosmic-theme-luna-premium__bubble ${message.role === 'user' ? 'is-user' : 'is-assistant'}`}>
+                                        {message.text}
+                                    </div>
                                 </div>
-                            )) : <div className={`rounded-xl border p-3 text-xs leading-5 ${isDark ? 'border-white/10 bg-white/[0.035] text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>Try “premium navy and warm gold”, “use colors from my logo”, or “make this warmer and less corporate”.</div>}
+                            )) : (
+                                <div className="cosmic-theme-luna-premium__message-row is-assistant">
+                                    <div className="cosmic-theme-luna-premium__bubble is-assistant">
+                                        Tell me the visual direction you want. I can select an existing theme or create a new semantic color family, and nothing is applied until you choose Save Theme.
+                                    </div>
+                                </div>
+                            )}
+                            {lunaBusy ? (
+                                <div className="cosmic-theme-luna-premium__message-row is-assistant">
+                                    <div className={`cosmic-luna-process-card ${isDark ? 'cosmic-luna-process-card--dark' : ''}`} role="status" aria-live="polite">
+                                        <p className="cosmic-luna-process-card__intro">Luna is preparing your theme preview.</p>
+                                        <div className="cosmic-luna-process-card__steps">
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--complete"><span className="cosmic-luna-process-card__marker" aria-hidden="true">✓</span><span>Understanding your theme request</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--active"><span className="cosmic-luna-process-card__marker" aria-hidden="true"/><span>Designing the visual direction</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--pending"><span className="cosmic-luna-process-card__marker" aria-hidden="true">•</span><span>Preparing the palette preview</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--pending"><span className="cosmic-luna-process-card__marker" aria-hidden="true">•</span><span>Verifying color contrast</span></div>
+                                        </div>
+                                        <p className="cosmic-luna-process-card__status">Updating theme preview…</p>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
-                        <textarea value={lunaPrompt} onChange={(event) => setLunaPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); askThemeLuna(); } }} rows={4} placeholder="Ask Luna about this theme…" className={`mt-4 w-full resize-none rounded-xl border px-3 py-3 text-xs leading-5 outline-none focus:border-violet-400/50 ${isDark ? 'border-white/10 bg-black/30 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`} />
-                        <button type="button" disabled={lunaBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="mt-2 inline-flex h-9 items-center gap-2 rounded-lg bg-violet-500 px-4 text-xs font-bold text-white transition hover:bg-violet-400 disabled:opacity-40">{lunaBusy ? <><CosmicLoadingIcon className="h-3.5 w-3.5"/>Updating preview…</> : 'Ask Luna'}</button>
+                        <div className="cosmic-theme-luna-premium__composer">
+                            <textarea value={lunaPrompt} onChange={(event) => setLunaPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); askThemeLuna(); } }} rows={4} placeholder="e.g. Premium navy with warm gold accents" className="cosmic-theme-luna-premium__textarea" />
+                            <div className="cosmic-theme-luna-premium__composer-footer">
+                                <span className="cosmic-theme-luna-premium__builder-label"><span aria-hidden="true">✦</span>Theme Preview</span>
+                                <button type="button" disabled={lunaBusy || !lunaPrompt.trim()} onClick={askThemeLuna} className="cosmic-theme-luna-premium__send">{lunaBusy ? 'Working…' : 'Ask Luna'}</button>
+                            </div>
+                        </div>
                     </aside>
                     </div>
                 </div>

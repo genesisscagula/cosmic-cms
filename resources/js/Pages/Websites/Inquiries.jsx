@@ -18,7 +18,7 @@ export default function Inquiries({ website, submissions = [] }) {
                     <div className="mt-6 flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Website inbox</p>
-                            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Inquiries</h1>
+                            <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Inquiries</h1>
                             <p className="mt-2 text-sm text-slate-400">Messages submitted from {website.name}'s published contact forms.</p>
                         </div>
                         <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-semibold text-slate-300">{submissions.length} {submissions.length === 1 ? 'inquiry' : 'inquiries'}</span>

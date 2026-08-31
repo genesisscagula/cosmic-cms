@@ -11,7 +11,6 @@ import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
 import { createSparkTailwindRuntime } from "../Blocks/Shared/sparkTailwindRuntime";
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 import { useAppearance } from "../../../Appearance/AppearanceContext";
-import CosmicLoadingIcon from "../../../Components/CosmicLoadingIcon";
 
 const SECTION_TYPE_META = {
     "Hero": { tone: "violet", icon: "sparkles", description: "Headers, banners & hero layouts" },
@@ -64,55 +63,6 @@ function SectionTypeIcon({ icon = "sparkles" }) {
     if (icon === "image") return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5 17 4.5-4.5 3.5 3 2.5-2.5L20 17"/></svg>;
     if (icon === "bag") return <svg {...common}><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>;
     return <svg {...common}><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z"/><path d="m18.5 15 .9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></svg>;
-}
-
-function LunaAddSectionVisual() {
-    return (
-        <div className="cosmic-add-section-luna-visual" aria-hidden="true">
-            <span className="cosmic-add-section-luna-orbit cosmic-add-section-luna-orbit--one" />
-            <span className="cosmic-add-section-luna-orbit cosmic-add-section-luna-orbit--two" />
-            <span className="cosmic-add-section-luna-mini-spark cosmic-add-section-luna-mini-spark--one">✦</span>
-            <span className="cosmic-add-section-luna-mini-spark cosmic-add-section-luna-mini-spark--two">✦</span>
-            <svg className="cosmic-add-section-luna-illustration" viewBox="0 0 260 190" fill="none">
-                <defs>
-                    <linearGradient id="cosmic-luna-orb" x1="79" y1="57" x2="180" y2="150" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#C4B5FD" />
-                        <stop offset="0.52" stopColor="#8B5CF6" />
-                        <stop offset="1" stopColor="#6D28D9" />
-                    </linearGradient>
-                    <linearGradient id="cosmic-luna-ring" x1="67" y1="78" x2="190" y2="133" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#DDD6FE" />
-                        <stop offset="0.55" stopColor="#8B5CF6" />
-                        <stop offset="1" stopColor="#A855F7" />
-                    </linearGradient>
-                    <linearGradient id="cosmic-luna-bubble" x1="165" y1="24" x2="220" y2="74" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#A78BFA" />
-                        <stop offset="1" stopColor="#7C3AED" />
-                    </linearGradient>
-                    <filter id="cosmic-luna-shadow" x="34" y="34" width="190" height="150" filterUnits="userSpaceOnUse">
-                        <feDropShadow dx="0" dy="14" stdDeviation="13" floodColor="#7C3AED" floodOpacity="0.20" />
-                    </filter>
-                </defs>
-                <ellipse cx="128" cy="156" rx="51" ry="10" fill="#7C3AED" opacity="0.08" />
-                <g filter="url(#cosmic-luna-shadow)">
-                    <path d="M70 107c14-28 41-45 72-43 30 2 55 21 66 49-20 17-47 26-76 24-27-2-49-12-62-30Z" fill="url(#cosmic-luna-ring)" opacity="0.96" />
-                    <circle cx="137" cy="104" r="43" fill="url(#cosmic-luna-orb)" />
-                    <circle cx="137" cy="104" r="31" fill="#FAFAFF" />
-                    <ellipse cx="124" cy="105" rx="4.2" ry="6.5" fill="#2E2357" />
-                    <ellipse cx="151" cy="105" rx="4.2" ry="6.5" fill="#2E2357" />
-                    <path d="M130 120c5 4 10 4 15 0" stroke="#8B5CF6" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx="116" cy="114" r="4" fill="#F0ABFC" opacity="0.28" />
-                    <circle cx="159" cy="114" r="4" fill="#F0ABFC" opacity="0.28" />
-                </g>
-                <g className="cosmic-add-section-luna-bubble">
-                    <path d="M171 34c0-7 6-13 13-13h43c7 0 13 6 13 13v25c0 7-6 13-13 13h-24l-12 10 2-10h-9c-7 0-13-6-13-13V34Z" fill="url(#cosmic-luna-bubble)" />
-                    <circle cx="191" cy="47" r="3.2" fill="white" />
-                    <circle cx="205" cy="47" r="3.2" fill="white" />
-                    <circle cx="219" cy="47" r="3.2" fill="white" />
-                </g>
-            </svg>
-        </div>
-    );
 }
 
 // Batch 3: Add Section is a production surface, not a raw catalog dump.
@@ -179,6 +129,14 @@ const categoryFor = (type, rawCategory = "") => {
     if (haystack.includes("about") || haystack.includes("content") || haystack.includes("story") || haystack.includes("split")) return "About / Content";
     return "Other";
 };
+
+const marketplaceCategoryForSectionType = (sectionType = "") => ({
+    "About / Content": "About",
+    "Stats": "Proof",
+    "Gallery": "Portfolio",
+    "Ecommerce": "Commerce",
+}[sectionType] || sectionType);
+
 
 function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight", payloadOverride = null }) {
     const Preview = spark.registry.preview;
@@ -618,6 +576,9 @@ export default function AddSectionModal({
         .filter((spark) => spark.registry), [catalog, registry]);
     const sparkReadiness = useMemo(() => new Map(catalogItems.map((spark) => [spark.key, addSectionSparkEligibility(spark)])), [catalogItems]);
     const items = useMemo(() => catalogItems.filter((spark) => sparkReadiness.get(spark.key)?.ready), [catalogItems, sparkReadiness]);
+    // Builder Add/Insert flows intentionally expose only the user's installed/shared
+    // Spark library. The full catalog lives in the dedicated Marketplace.
+    const displayItems = useMemo(() => ownedOnly ? items.filter((item) => item.owned) : items, [items, ownedOnly]);
     const hiddenUnsafeSparkCount = catalogItems.length - items.length;
     const categories = useMemo(() => ["All", ...new Set(items.map((item) => categoryFor(item.key, item.category)))], [items]);
     const categoryCards = useMemo(() => {
@@ -642,7 +603,7 @@ export default function AddSectionModal({
 
     const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index + 1 }])), [aiResults]);
 
-    const filteredItems = useMemo(() => items.filter((item) => {
+    const filteredItems = useMemo(() => displayItems.filter((item) => {
         if (tab === "owned" && !item.owned) return false;
         if (tab === "favorites" && !item.favorited) return false;
         if (category !== "All" && categoryFor(item.key, item.category) !== category) return false;
@@ -650,22 +611,22 @@ export default function AddSectionModal({
         if (aiResults) return true;
         const haystack = `${item.name} ${item.description} ${item.category} ${item.collection || ""}`.toLowerCase();
         return haystack.includes(query.trim().toLowerCase());
-    }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [items, tab, category, query, aiResults, aiResultMap]);
+    }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [displayItems, tab, category, query, aiResults, aiResultMap]);
 
     const categorySparkItems = useMemo(() => {
         if (category === "All") {
             if (!aiResults) return [];
-            return items
+            return displayItems
                 .filter((item) => aiResultMap.has(item.key))
                 .sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999));
         }
-        return items.filter((item) => (categoryFor(item.key, item.category)) === category);
-    }, [items, category, aiResults, aiResultMap]);
+        return displayItems.filter((item) => (categoryFor(item.key, item.category)) === category);
+    }, [displayItems, category, aiResults, aiResultMap]);
 
     const pickerSpark = useMemo(() => {
         if (!pickerSparkKey) return categorySparkItems[0] || null;
-        return items.find((item) => item.key === pickerSparkKey) || categorySparkItems[0] || null;
-    }, [items, categorySparkItems, pickerSparkKey]);
+        return displayItems.find((item) => item.key === pickerSparkKey) || categorySparkItems[0] || null;
+    }, [displayItems, categorySparkItems, pickerSparkKey]);
 
     const blockForSpark = (spark) => {
         if (!spark?.registry) return null;
@@ -725,50 +686,52 @@ export default function AddSectionModal({
     };
 
     const chooseCategory = (name) => {
-        // `items` is already parity/QA filtered. Never fall back to a raw
-        // catalog Spark here: category cards must open a Builder-safe draft.
-        const matches = items.filter((item) => (categoryFor(item.key, item.category)) === name);
-        const initial = matches.find((item) => item.owned && !item.trial_locked) || matches.find((item) => !item.trial_locked) || matches[0] || null;
-        if (!initial) {
-            showCosmicNotification({
-                title: "No ready layouts yet",
-                message: "This section type has no Builder-ready Spark yet. Try Luna or choose another section type.",
-                tone: "info",
-            });
-            return;
-        }
+        // Category cards always remain visible so users can discover section types,
+        // but the next screen is their owned/shared collection only.
+        const matches = displayItems.filter((item) => (categoryFor(item.key, item.category)) === name);
+        const initial = matches.find((item) => !item.trial_locked) || matches[0] || null;
         setCategory(name);
         setPickerSparkKey(initial?.key || null);
         setPreviewVariantIndex(0);
-
-        // Universal Add Section experience: every category opens the same reusable
-        // Section Editor used by Hero. Ownership is editor state, not a separate
-        // marketplace UI. Locked Sparks can be previewed in the same editor, but
-        // Luna and Add Section stay gated until the Spark is unlocked.
-        if (onCustomize && !initial?.trial_locked) {
-            const block = blockForSpark(initial);
-            if (block) {
-                onCustomize(block, {
-                    spark: initial,
-                    insertionContext,
-                    category: name,
-                    creationSource: 'registered_spark',
-                    ownership: {
-                        owned: Boolean(initial?.owned),
-                        canInstall: initial?.can_install !== false,
-                        credits: Number(initial?.credits || 0),
-                        trialLocked: Boolean(initial?.trial_locked),
-                    },
-                });
-                onClose();
-                return;
-            }
-        }
-
-        // Trial-locked content cannot enter the editor; retain the library gate.
         setPickerStage("sparks");
         window.requestAnimationFrame(() => marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: "auto" }));
     };
+
+    const browseMarketplace = (sectionType = category) => {
+        if (trialMode) return;
+        const marketplaceCategory = marketplaceCategoryForSectionType(sectionType);
+        const baseUrl = route('sparks.index');
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        const marketplaceUrl = marketplaceCategory && marketplaceCategory !== 'All'
+            ? `${baseUrl}${separator}category=${encodeURIComponent(marketplaceCategory)}`
+            : baseUrl;
+        const marketplaceWindow = window.open(marketplaceUrl, '_blank');
+        if (marketplaceWindow) {
+            try { marketplaceWindow.opener = null; } catch (_) {}
+            return;
+        }
+        showCosmicNotification({
+            title: 'Marketplace blocked by your browser',
+            message: 'Allow popups for Cosmic CMS, then choose Browse Sparks again.',
+            tone: 'warning',
+        });
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const handleOwnershipSync = (event) => {
+            if (event.key !== 'cosmic:spark-ownership-changed' || !event.newValue) return;
+            try {
+                const payload = JSON.parse(event.newValue);
+                const sparkKey = String(payload?.key || '');
+                if (!sparkKey || payload?.owned === false) return;
+                setCatalog((current) => current.map((item) => item.key === sparkKey ? { ...item, owned: true } : item));
+                onOwnershipChanged?.(sparkKey);
+            } catch (_) {}
+        };
+        window.addEventListener('storage', handleOwnershipSync);
+        return () => window.removeEventListener('storage', handleOwnershipSync);
+    }, [onOwnershipChanged]);
 
     const sparkRevealKey = `${tab}|${category}|${query.trim().toLowerCase()}|${aiResults ? 'ai' : 'browse'}|${filteredItems.length}`;
     const {
@@ -934,7 +897,7 @@ export default function AddSectionModal({
                             <div className="min-w-0">
                                 <p className="cosmic-add-section-eyebrow text-[10px] font-bold uppercase tracking-[0.22em] text-violet-600">{modalContextLabel}</p>
                                 <h2 className="mt-2 text-[clamp(1.65rem,2vw,2.15rem)] font-semibold tracking-[-0.035em]">Choose a section type</h2>
-                                <p className={`cosmic-add-section-intro mt-2 max-w-3xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type to browse proven layouts, or describe what you need to Luna. Luna will choose the closest premade Spark and customize it in the Section Editor.</p>
+                                <p className={`cosmic-add-section-intro mt-2 max-w-3xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type to use Sparks from your collection. Need another layout? Browse the Marketplace and add more Sparks anytime.</p>
                                 {insertionHint ? <p className={`cosmic-add-section-insertion-hint mt-2 text-xs font-semibold ${appDark ? 'text-violet-300' : 'text-violet-700'}`}>{insertionHint}</p> : null}
                             </div>
                             <div className="cosmic-add-section-heading-art" aria-hidden="true"><span /><span /><span>✦</span></div>
@@ -988,26 +951,56 @@ export default function AddSectionModal({
                         )}
                     </div>
 
-                    <aside className={`cosmic-add-section-luna-panel flex min-h-0 flex-col border-t p-6 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
-                        <div className="cosmic-add-section-luna-copy">
-                            <p className="cosmic-add-section-luna-eyebrow text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {isContextualInsert ? modalContextLabel : 'Add Section'}</p>
-                            <h3 className="mt-3 text-lg font-semibold tracking-tight">Need help choosing?</h3>
-                            <p className={`cosmic-add-section-luna-description mt-2 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Describe the section you want. Luna will rank matching Sparks without changing the Builder.</p>
+                    <aside className="cosmic-add-section-luna-panel cosmic-add-section-luna-premium flex min-h-0 flex-col border-t lg:border-l lg:border-t-0" data-appearance={appDark ? 'dark' : 'light'}>
+                        <div className="cosmic-add-section-luna-premium__header">
+                            <div className="min-w-0">
+                                <p className="cosmic-add-section-luna-premium__eyebrow">✦ Luna · {isContextualInsert ? modalContextLabel : 'Add Section'}</p>
+                                <h3 className="font-semibold cosmic-add-section-luna-premium__title">Find the right section</h3>
+                            </div>
+                            <div className="cosmic-add-section-luna-premium__active"><span aria-hidden="true"/>AI Active</div>
                         </div>
-                        <LunaAddSectionVisual />
-                        <div className="cosmic-add-section-luna-actions mt-auto pt-8">
+                        <div className="cosmic-add-section-luna-premium__context">
+                            <span aria-hidden="true"/>
+                            Context · {isContextualInsert ? 'Insert Section' : 'Section Library'}
+                        </div>
+                        <div className="cosmic-add-section-luna-premium__chat">
+                            <div className="cosmic-add-section-luna-premium__message-row is-assistant">
+                                <div className="cosmic-add-section-luna-premium__bubble is-assistant">
+                                    Describe the section you need. I’ll rank the closest Sparks already in your collection, then you can customize the selected layout before it is added.
+                                </div>
+                            </div>
+                            {aiSearchBusy ? (
+                                <div className="cosmic-add-section-luna-premium__message-row is-assistant">
+                                    <div className={`cosmic-luna-process-card ${appDark ? 'cosmic-luna-process-card--dark' : ''}`} role="status" aria-live="polite">
+                                        <p className="cosmic-luna-process-card__intro">Luna is finding the best section match.</p>
+                                        <div className="cosmic-luna-process-card__steps">
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--complete"><span className="cosmic-luna-process-card__marker" aria-hidden="true">✓</span><span>Understanding the section request</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--active"><span className="cosmic-luna-process-card__marker" aria-hidden="true"/><span>Ranking matching Sparks</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--pending"><span className="cosmic-luna-process-card__marker" aria-hidden="true">•</span><span>Checking Builder compatibility</span></div>
+                                            <div className="cosmic-luna-process-card__step cosmic-luna-process-card__step--pending"><span className="cosmic-luna-process-card__marker" aria-hidden="true">•</span><span>Preparing the results</span></div>
+                                        </div>
+                                        <p className="cosmic-luna-process-card__status">Searching the Spark library…</p>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                        <div className="cosmic-add-section-luna-premium__composer">
                             <textarea
                                 value={query}
                                 onChange={(event) => { setQuery(event.target.value); if (aiResults) clearAiSearch(); }}
                                 rows={5}
                                 placeholder="e.g. Add a premium services section with four cards"
-                                className={`cosmic-add-section-luna-input w-full resize-none rounded-2xl border px-4 py-3.5 text-sm outline-none transition ${appDark ? 'border-white/10 bg-black/20 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}
+                                className="cosmic-add-section-luna-premium__textarea"
                             />
-                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="cosmic-add-section-luna-button mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{aiSearchBusy ? <><CosmicLoadingIcon/>Searching…</> : <><span aria-hidden="true">✦</span>Ask Luna</>}</button>
-                            <div className={`cosmic-add-section-whole-page mt-4 flex items-start gap-3 rounded-2xl border px-3.5 py-3.5 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
-                                <span className="cosmic-add-section-whole-page__icon" aria-hidden="true"><SectionTypeIcon icon="grid" /></span>
-                                <div><b className={appDark ? 'text-slate-200' : 'text-slate-800'}>Whole page?</b><br/>Use the whole-page Luna chat when you want Luna to plan multiple sections together.</div>
+                            <div className="cosmic-add-section-luna-premium__composer-footer">
+                                <span className="cosmic-add-section-luna-premium__builder-label"><span aria-hidden="true">✦</span>Section Finder</span>
+                                <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="cosmic-add-section-luna-premium__send">{aiSearchBusy ? 'Working…' : 'Ask Luna'}</button>
                             </div>
+                            {trialMode ? <p className="cosmic-add-section-luna-premium__note">Luna section search is available after sign up. You can still use the curated Sparks included with your trial.</p> : null}
+                        </div>
+                        <div className="cosmic-add-section-luna-premium__whole-page">
+                            <b>Building several sections?</b>
+                            <span>Use the whole-page Luna chat when you want Luna to plan the page as one composition.</span>
                         </div>
                     </aside>
                 </div>
@@ -1026,8 +1019,14 @@ export default function AddSectionModal({
                                     <span>All section types</span>
                                 </button>
                                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500">{modalContextLabel} · {category}</p>
-                                <h2 className="mt-1 truncate text-xl font-semibold">{pickerSpark?.name || `Choose a ${category} Spark`}</h2>
+                                <h2 className="mt-1 truncate text-xl font-semibold">{pickerSpark?.name || `My ${category} Sparks`}</h2>
+                                <p className={`mt-1 text-xs ${appDark ? 'text-slate-400' : 'text-slate-500'}`}>{categorySparkItems.length ? `${categorySparkItems.length} Spark${categorySparkItems.length === 1 ? '' : 's'} in your collection` : 'No Sparks from this section type are in your collection yet.'}</p>
                             </div>
+                            {trialMode ? (
+                                <Link href={trialSignupUrl} className={`mt-12 shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark ? 'border-violet-300/20 bg-violet-300/10 text-violet-100 hover:bg-violet-300/15' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}>Sign up for more Sparks</Link>
+                            ) : (
+                                <button type="button" onClick={() => browseMarketplace(category)} className={`mt-12 shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${appDark ? 'border-violet-300/20 bg-violet-300/10 text-violet-100 hover:bg-violet-300/15' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}>Browse More Sparks ↗</button>
+                            )}
                         </div>
                         <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
                             {categorySparkItems.map((spark) => {
@@ -1043,12 +1042,23 @@ export default function AddSectionModal({
                                 <div className={`overflow-hidden rounded-2xl border ${appDark ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-slate-50'}`}>
                                     <UnifiedSparkPreviewEngine spark={pickerSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} interactive={true} />
                                 </div>
-                            ) : <div className="grid min-h-[420px] place-items-center text-sm text-slate-500">No Sparks found in this category.</div>}
+                            ) : <div className="grid min-h-[420px] place-items-center px-6 text-center">
+                                <div className="max-w-md">
+                                    <div className={`mx-auto grid h-12 w-12 place-items-center rounded-2xl border text-lg ${appDark ? 'border-white/10 bg-white/[0.04] text-violet-200' : 'border-violet-100 bg-violet-50 text-violet-700'}`}>✦</div>
+                                    <h3 className="mt-4 text-base font-semibold">No {category} Sparks in your collection yet</h3>
+                                    <p className={`mt-2 text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Add a Spark from the Marketplace, then it will appear here automatically and stay reusable across your pages.</p>
+                                    {trialMode ? (
+                                        <Link href={trialSignupUrl} className="mt-5 inline-flex rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-500">Sign up to browse Sparks</Link>
+                                    ) : (
+                                        <button type="button" onClick={() => browseMarketplace(category)} className="mt-5 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-500">Browse {category} Sparks ↗</button>
+                                    )}
+                                </div>
+                            </div>}
                         </div>
                         <aside className={`flex min-h-0 flex-col border-t p-4 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {category}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">✦ Luna · {category}</p>
                             <h3 className="mt-2 text-sm font-semibold">{pickerSpark?.name || category}</h3>
-                            <p className={`mt-1 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Click the Spark buttons to compare layouts. Nothing is added until you confirm below.</p>
+                            <p className={`mt-1 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Compare the Sparks you already own. Nothing is added until you confirm below.</p>
                             {insertionHint ? <p className={`mt-2 rounded-lg border px-2.5 py-2 text-[11px] font-semibold leading-4 ${appDark ? 'border-violet-400/20 bg-violet-400/[0.06] text-violet-200' : 'border-violet-200 bg-violet-50 text-violet-800'}`}>{insertionHint}</p> : null}
                             {pickerSpark?.description ? <p className={`mt-4 rounded-xl border p-3 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>{pickerSpark.description}</p> : null}
                         </aside>
@@ -1060,7 +1070,7 @@ export default function AddSectionModal({
                         </div>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={onClose} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${appDark ? 'border-white/10 text-slate-300' : 'border-slate-300 text-slate-700'}`}>Cancel</button>
-                            {pickerSpark?.trial_locked ? <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link> : pickerSpark?.owned ? <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button> : pickerSpark ? <button type="button" disabled={busyKey === pickerSpark.key || pickerSpark.can_install === false} onClick={() => unlock(pickerSpark)} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-40">{busyKey === pickerSpark.key ? 'Adding…' : Number(pickerSpark.credits || 0) === 0 ? 'Add Free Spark' : `Unlock · ⚡ ${pickerSpark.credits}`}</button> : null}
+                            {pickerSpark?.trial_locked ? <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link> : pickerSpark?.owned ? <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button> : (!ownedOnly && pickerSpark) ? <button type="button" disabled={busyKey === pickerSpark.key || pickerSpark.can_install === false} onClick={() => unlock(pickerSpark)} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-40">{busyKey === pickerSpark.key ? 'Adding…' : Number(pickerSpark.credits || 0) === 0 ? 'Add Free Spark' : `Unlock · ⚡ ${pickerSpark.credits}`}</button> : null}
                         </div>
                     </footer>
                 </>
@@ -1122,35 +1132,37 @@ export default function AddSectionModal({
             />
         )}
 
-        {personalizingSpark && <div className="cosmic-spark-progress-overlay fixed inset-0 z-[990] grid place-items-center bg-black/80 px-4 backdrop-blur-md" role="status" aria-live="polite">
-            <section className="cosmic-spark-progress-modal w-full max-w-xl rounded-3xl border border-white/10 bg-[#151519]/98 px-5 py-7 text-center shadow-2xl shadow-black/70 sm:px-8 sm:py-8">
-                <div className="relative mx-auto h-16 w-16" aria-hidden="true">
-                    <div className="cosmic-loading-spinner absolute inset-0 rounded-full" />
-                    <div className="absolute inset-[3px] grid place-items-center rounded-full bg-[#17171d] text-xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div>
+        {personalizingSpark && <div className="cosmic-spark-progress-overlay cosmic-luna-action-overlay fixed inset-0 z-[990] grid place-items-center px-4" role="status" aria-live="polite">
+            <section className="cosmic-luna-action-modal w-full max-w-md">
+                <div className="cosmic-luna-action-modal__header">
+                    <div>
+                        <p className="cosmic-luna-action-modal__eyebrow">✦ Luna · Section</p>
+                        <h3 className="font-semibold cosmic-luna-action-modal__title">Personalizing your Spark</h3>
+                    </div>
+                    <span className="cosmic-luna-action-modal__percent">{personalizeProgress}%</span>
                 </div>
-                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Cosmic AI</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">Personalizing your Spark</h3>
-                <p className="mt-3 text-sm text-slate-300">{personalizeStage}</p>
-                <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[
-                        { label: "Understand Spark", threshold: 18 },
-                        { label: "Personalize content", threshold: 46 },
-                        { label: "Apply style", threshold: 74 },
-                        { label: "Finish section", threshold: 96 },
-                    ].map((step, index, steps) => {
-                        const isComplete = personalizeProgress >= step.threshold;
-                        const previousThreshold = index === 0 ? 0 : steps[index - 1].threshold;
-                        const isCurrent = !isComplete && personalizeProgress >= previousThreshold;
-                        return <div key={step.label} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${isComplete ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : isCurrent ? "border-violet-400/45 bg-violet-400/10 text-violet-100" : "border-white/10 bg-white/[0.02] text-slate-500"}`}>
-                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? "bg-emerald-400 text-emerald-950" : isCurrent ? "bg-violet-400 text-white" : "bg-white/10 text-slate-400"}`}>{isComplete ? "✓" : index + 1}</span>
-                            <span className="leading-4">{step.label}</span>
-                        </div>;
-                    })}
+                <div className="cosmic-luna-process-card cosmic-luna-process-card--dark !w-full !max-w-none">
+                    <p className="cosmic-luna-process-card__intro">I’m tailoring this section to your website.</p>
+                    <div className="cosmic-luna-process-card__steps">
+                        {[
+                            { label: "Understanding the Spark", threshold: 18 },
+                            { label: "Personalizing the content", threshold: 46 },
+                            { label: "Applying your website style", threshold: 74 },
+                            { label: "Verifying the section", threshold: 96 },
+                        ].map((step, index, steps) => {
+                            const isComplete = personalizeProgress >= step.threshold;
+                            const previousThreshold = index === 0 ? 0 : steps[index - 1].threshold;
+                            const isCurrent = !isComplete && personalizeProgress >= previousThreshold;
+                            const state = isComplete ? 'complete' : isCurrent ? 'active' : 'pending';
+                            return <div key={step.label} className={`cosmic-luna-process-card__step cosmic-luna-process-card__step--${state}`}>
+                                <span className="cosmic-luna-process-card__marker" aria-hidden="true">{isComplete ? '✓' : state === 'pending' ? '•' : ''}</span>
+                                <span>{step.label}</span>
+                            </div>;
+                        })}
+                    </div>
+                    <p className="cosmic-luna-process-card__status">{personalizeStage}</p>
                 </div>
-                <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-200" style={{ width: `${personalizeProgress}%` }} />
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>Personalizing...</span><span>{personalizeProgress}%</span></div>
+                <div className="cosmic-luna-action-modal__progress"><span style={{ width: `${personalizeProgress}%` }} /></div>
             </section>
         </div>}
 

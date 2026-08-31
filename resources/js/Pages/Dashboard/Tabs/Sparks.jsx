@@ -215,7 +215,7 @@ export default function Sparks({ dashboard }) {
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p className="text-sm font-medium text-violet-300">Sparks Center</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Reusable sections, centralized.</h1>
+                    <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Reusable sections, centralized.</h1>
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
                         Manage owned Sparks and discover new reusable sections from one account-level library.
                     </p>

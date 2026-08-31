@@ -19,7 +19,7 @@ export default function ChatInbox({ conversations, filters, unreadCount }) {
         <AuthenticatedLayout
             header={<div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-900">Customer Chat Inbox</h1>
+                    <h1 className="text-xl font-black text-slate-900">Customer Chat Inbox</h1>
                     <p className="mt-1 text-sm text-slate-500">Platform-owner only · {unreadCount} unread</p>
                 </div>
             </div>}
