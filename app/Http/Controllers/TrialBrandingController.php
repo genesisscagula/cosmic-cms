@@ -63,28 +63,8 @@ class TrialBrandingController extends Controller
         $path = $file->store("trials/{$trial->id}/branding", 'public');
         $url = '/storage/'.$path;
 
-        if ($extension === 'svg') {
-            $previewTheme['brand_original_logo_url'] = $url;
-            $previewTheme['brand_active_logo_url'] = $url;
-            $previewTheme['brand_favicon_url'] = $url;
-            $previewTheme['brand_logo_variants'] = [];
-            if ($svgAnalysis['is_majority_white']) {
-                // A white SVG would disappear against the default light header.
-                // Turn overlay on only as a local visibility safeguard after the
-                // user explicitly uploads the logo; /start generation remains OFF.
-                $previewTheme['overlay_header_on_banner'] = true;
-            }
-        }
-        $trial->update([
-            'logo_url' => $url,
-            'preview_theme' => $previewTheme,
-            'logo_company_name' => $trial->business_name,
-            'logo_source' => 'upload',
-            'logo_theme_sync_state' => 'logo_changed',
-            'logo_theme_sync_source' => 'upload',
-            'logo_theme_synced_theme' => null,
-            'logo_updated_at' => now(),
-        ]);
+        // Upload is a staging action only. The currently active trial logo/theme
+        // remains untouched until the user confirms the shared cropper.
 
         return response()->json([
             'status' => 'success',
@@ -257,6 +237,7 @@ class TrialBrandingController extends Controller
             'company_name' => ['nullable', 'string', 'max:80'],
             'source_url' => ['nullable', 'string', 'max:2048'],
             'source_kind' => ['nullable', 'in:ai,upload,theme_match'],
+            'source_theme_key' => ['nullable', 'string', 'max:60'],
         ]);
 
         if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=\r\n]+)$/', $validated['image_data'], $matches)) {
@@ -294,7 +275,8 @@ class TrialBrandingController extends Controller
 
         $previewTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
         $sourceKind = (string) ($validated['source_kind'] ?? 'upload');
-        $activeThemeKey = (string) data_get($previewTheme, 'primary', 'midnight');
+        $activeThemeKey = trim((string) ($validated['source_theme_key'] ?? data_get($previewTheme, 'primary', 'midnight')));
+        if ($activeThemeKey === '') $activeThemeKey = 'midnight';
 
         if ($sourceKind === 'theme_match') {
             // Preserve the original brand source; only the active theme variant
@@ -311,7 +293,7 @@ class TrialBrandingController extends Controller
             $previewTheme['brand_original_logo_url'] = $url;
             $previewTheme['brand_active_logo_url'] = $url;
             $previewTheme['brand_favicon_url'] = $url;
-            $previewTheme['brand_logo_variants'] = [];
+            $previewTheme['brand_logo_variants'] = $sourceKind === 'ai' ? [$activeThemeKey => $url] : [];
         }
 
         $previewTheme['brand_logo_crop_confirmed'] = true;
@@ -326,7 +308,7 @@ class TrialBrandingController extends Controller
             'logo_url' => $url,
             'preview_theme' => $previewTheme,
             'logo_company_name' => trim((string) ($validated['company_name'] ?? $trial->logo_company_name ?: $trial->business_name)),
-            'logo_source' => $isThemeMatch ? 'ai-theme-match' : ($isGeneratedFromTheme ? 'ai' : ($trial->logo_source ?: 'upload')),
+            'logo_source' => $isThemeMatch ? 'ai-theme-match' : ($isGeneratedFromTheme ? 'ai' : 'upload'),
             'logo_theme_sync_state' => ($isThemeMatch || $isGeneratedFromTheme) ? 'synced' : 'logo_changed',
             'logo_theme_sync_source' => $isThemeMatch ? 'logo_to_theme' : ($isGeneratedFromTheme ? 'generated_from_theme' : 'upload'),
             'logo_theme_synced_theme' => ($isThemeMatch || $isGeneratedFromTheme) ? $activeThemeKey : null,

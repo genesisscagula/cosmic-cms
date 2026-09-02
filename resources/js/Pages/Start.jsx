@@ -17,7 +17,7 @@ const plans = [
         name: 'Starter',
         price: '$49',
         summary: '500 free Cosmic Credits included once',
-        features: ['🎁 100 FREE Welcome Credits', 'Posts / Updates included', 'Standard Sparks Library', 'Standard AI Models'],
+        features: ['🎁 100 FREE Welcome Credits', 'Posts / Updates included', '30 Sparks included', 'Standard AI Models'],
     },
     {
         id: 'growth',
@@ -25,7 +25,7 @@ const plans = [
         name: 'Growth',
         price: '$79',
         summary: '1,000 free Cosmic Credits included once',
-        features: ['Everything in Starter', 'Full Commerce Store', 'Expanded Sparks Library', 'Priority AI Queue', 'Advanced Builder Tools', 'AI Content Generation', 'Version History & Restore'],
+        features: ['Everything in Starter', 'Full Commerce Store', '100 Sparks included', 'Priority AI Queue', 'Advanced Builder Tools', 'AI Content Generation', 'Version History & Restore'],
         featured: true,
     },
     {
@@ -34,7 +34,7 @@ const plans = [
         name: 'Pro',
         price: '$129',
         summary: '1,500 free Cosmic Credits included once',
-        features: ['Member Pricing on Cosmic Credit Packs', 'Everything in Growth', 'Premium Sparks Library', 'Exclusive Sparks', 'Premium AI Models', 'Unlimited Workspaces', 'Team Collaboration', 'White Label Workspace', 'API Access', 'Early Access Features'],
+        features: ['Member Pricing on Cosmic Credit Packs', 'Everything in Growth', 'Unlimited Sparks', 'Exclusive Pro Sparks', 'Premium AI Models', 'Unlimited Workspaces', 'Team Collaboration', 'White Label Workspace', 'API Access', 'Early Access Features'],
     },
 ];
 

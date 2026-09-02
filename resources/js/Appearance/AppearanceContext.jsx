@@ -53,9 +53,14 @@ function isPublicSurface(url = '') {
 }
 
 function appearanceEnabledForPage(page) {
-    // Some authenticated Builder and Marketplace responses intentionally omit
-    // the shared auth payload. Route scope is therefore the reliable source
-    // of truth for whether the appearance engine should be active.
+    // Marketplace is a branded public storefront on both /marketplace locally
+    // and marketplace.cosmiccms.com in production. Component scope is required
+    // because production detail/demo URLs begin with /templates rather than /marketplace.
+    const component = String(page?.component || '');
+    if (component.startsWith('Marketplace/')) return false;
+
+    // Some authenticated Builder responses intentionally omit the shared auth
+    // payload. Route scope remains the fallback for the rest of the application.
     return !isPublicSurface(page?.url);
 }
 

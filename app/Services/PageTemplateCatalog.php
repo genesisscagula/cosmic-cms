@@ -6773,7 +6773,189 @@ class PageTemplateCatalog
             ],
         ];
 
-        return $balanced = app(TemplateCompositionBalancer::class)->balanceAll($templates);
+        $templates = app(TemplateCompositionBalancer::class)->balanceAll($templates);
+
+        // Batch 2: the 535-page Template marketplace now has a deliberate plan ladder.
+        // Starter gets 50 curated, broadly useful compositions; Growth adds 150;
+        // Pro unlocks the remaining 335. Tier assignment is deterministic and
+        // based on design/runtime complexity rather than raw catalog position.
+        return $balanced = self::withAccessTiers($templates);
+    }
+
+
+    /**
+     * Apply the Personal plan Template ladder while preserving the original
+     * catalog ordering shown in Marketplace.
+     *
+     * Distribution is intentionally exact for the current 535-template catalog:
+     * 50 Starter / 150 Growth / the remainder Pro.
+     *
+     * @param array<int, array<string, mixed>> $templates
+     * @return array<int, array<string, mixed>>
+     */
+    private static function withAccessTiers(array $templates): array
+    {
+        $starterTarget = min(50, count($templates));
+        $growthTarget = min(150, max(0, count($templates) - $starterTarget));
+
+        $ranked = collect($templates)
+            ->map(function (array $template, int $index): array {
+                $profile = self::templateTierProfile($template);
+
+                return [
+                    'index' => $index,
+                    'score' => $profile['score'],
+                    'floor' => $profile['floor'],
+                ];
+            });
+
+        // A hard Pro runtime (commerce, video/cinematic motion, parallax and
+        // similar interaction-heavy systems) is never placed in Starter/Growth.
+        $starterPool = $ranked
+            ->filter(fn (array $row): bool => $row['floor'] === 'starter')
+            ->sortBy(fn (array $row): array => [$row['score'], $row['index']])
+            ->take($starterTarget)
+            ->pluck('index')
+            ->all();
+
+        // If future catalog changes ever reduce the plain Starter-safe pool,
+        // fill from the safest Growth-floor templates rather than changing count.
+        if (count($starterPool) < $starterTarget) {
+            $needed = $starterTarget - count($starterPool);
+            $fallback = $ranked
+                ->reject(fn (array $row): bool => in_array($row['index'], $starterPool, true) || $row['floor'] === 'pro')
+                ->sortBy(fn (array $row): array => [$row['score'], $row['index']])
+                ->take($needed)
+                ->pluck('index')
+                ->all();
+            $starterPool = array_values(array_merge($starterPool, $fallback));
+        }
+
+        $growthPool = $ranked
+            ->reject(fn (array $row): bool => in_array($row['index'], $starterPool, true) || $row['floor'] === 'pro')
+            ->sortBy(fn (array $row): array => [$row['score'], $row['index']])
+            ->take($growthTarget)
+            ->pluck('index')
+            ->all();
+
+        // Maintain the requested 150 Growth templates even if a future catalog
+        // becomes unusually Pro-heavy. Pick the least-complex remaining entries;
+        // actual Spark-level generation/install checks still remain authoritative.
+        if (count($growthPool) < $growthTarget) {
+            $needed = $growthTarget - count($growthPool);
+            $fallback = $ranked
+                ->reject(fn (array $row): bool => in_array($row['index'], $starterPool, true) || in_array($row['index'], $growthPool, true))
+                ->sortBy(fn (array $row): array => [$row['score'], $row['index']])
+                ->take($needed)
+                ->pluck('index')
+                ->all();
+            $growthPool = array_values(array_merge($growthPool, $fallback));
+        }
+
+        $starter = array_fill_keys($starterPool, true);
+        $growth = array_fill_keys($growthPool, true);
+
+        return collect($templates)
+            ->map(function (array $template, int $index) use ($starter, $growth): array {
+                $level = isset($starter[$index]) ? 'starter' : (isset($growth[$index]) ? 'growth' : 'pro');
+
+                return [
+                    ...$template,
+                    'access_level' => $level,
+                    'access_label' => ucfirst($level),
+                    'catalog_index' => $index,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** @return array{score:int,floor:string} */
+    private static function templateTierProfile(array $template): array
+    {
+        $sections = array_values(array_filter((array) ($template['sections'] ?? []), 'is_string'));
+        $text = strtolower(implode(' ', array_merge(
+            [(string) ($template['name'] ?? ''), (string) ($template['description'] ?? '')],
+            (array) ($template['tags'] ?? []),
+            (array) ($template['style'] ?? []),
+            (array) ($template['features'] ?? [])
+        )));
+
+        $score = (int) ($template['price_credits'] ?? self::PURCHASE_CREDITS);
+        $floor = 'starter';
+        $heroMedia = strtolower((string) ($template['hero_media_mode'] ?? 'none'));
+
+        $growthSectionTokens = ['content_', 'blog_', 'newsletter', 'events_', 'event_', 'latest_resources'];
+        $proSectionTokens = [
+            'commerce_', 'video', 'cinematic', 'ken_burns', 'parallax', 'mouse_', 'scroll_', 'pinned_',
+            '3d_', 'tilt_', 'particle_', 'constellation_', 'aurora_', 'mesh_', 'cursor_', 'marquee_',
+            'typewriter_', 'curtain_', 'morph_', 'perspective_', 'before_after_', 'light_trails_',
+            'grid_pulse_', 'device_showcase_', 'app_screens_', 'interactive_', 'automation_', 'zoom_', 'orbit_',
+        ];
+
+        foreach ($sections as $section) {
+            $key = strtolower($section);
+
+            foreach ($proSectionTokens as $token) {
+                if (str_contains($key, $token)) {
+                    $floor = 'pro';
+                    $score += 220;
+                    break 2;
+                }
+            }
+
+            foreach ($growthSectionTokens as $token) {
+                if (str_contains($key, $token)) {
+                    $floor = $floor === 'pro' ? 'pro' : 'growth';
+                    $score += 45;
+                    break;
+                }
+            }
+
+            if (str_contains($key, '_premium')) {
+                $score += 8;
+            }
+            if (str_contains($key, 'slider') || str_contains($key, 'carousel')) {
+                $score += 18;
+            }
+            if (str_contains($key, 'bento') || str_contains($key, 'masonry')) {
+                $score += 10;
+            }
+        }
+
+        if ($heroMedia === 'video') {
+            $floor = 'pro';
+            $score += 180;
+        } elseif ($heroMedia === 'slider') {
+            $score += 45;
+        } elseif ($heroMedia === 'image') {
+            $score += 8;
+        }
+
+        foreach ([
+            'cinematic' => 120, 'video' => 120, 'parallax' => 100, 'interactive' => 75,
+            'motion' => 70, 'fullscreen' => 35, 'slider' => 35, 'luxury' => 25,
+            'bento' => 20, 'editorial' => 12, 'premium' => 10,
+        ] as $token => $weight) {
+            if (str_contains($text, $token)) {
+                $score += $weight;
+            }
+        }
+
+        if (str_contains($text, 'ecommerce') || str_contains($text, 'commerce')) {
+            $floor = 'pro';
+            $score += 220;
+        }
+
+        return ['score' => $score, 'floor' => $floor];
+    }
+
+    /** @return array<string, int> */
+    public static function accessCounts(): array
+    {
+        return collect(self::all())
+            ->countBy(fn (array $template): string => (string) ($template['access_level'] ?? 'pro'))
+            ->all();
     }
 
     public static function plannerIndex(): array

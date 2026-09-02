@@ -54,7 +54,7 @@ export default function SeoLanding({ page }) {
         <div className="min-h-screen bg-white text-slate-900">
             <PublicHeader />
 
-            <main>
+            <main id="main-content">
                 <section className="border-b border-slate-200 bg-gradient-to-b from-emerald-50/70 to-white">
                     <div className="mx-auto max-w-5xl px-5 py-20 text-center sm:px-6 lg:py-28">
                         <p className="text-sm font-bold uppercase tracking-[.18em] text-emerald-700">{page.eyebrow}</p>

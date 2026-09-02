@@ -57,9 +57,12 @@ function StepIndicator({ currentStep }) {
     );
 }
 
-export default function Register({ trialToken = '', trialEmail = '', trialPlan = '' }) {
-    const storageKey = `cosmic:onboarding:${trialToken || 'new'}`;
-    const selectedPlan = plans[trialPlan] || plans.starter;
+export default function Register({ trialToken = '', trialEmail = '', trialPlan = '', marketplaceTemplate = null }) {
+    const storageKey = `cosmic:onboarding:${marketplaceTemplate?.slug || trialToken || 'new'}`;
+    const selectedPlan = plans[trialPlan] || plans[marketplaceTemplate?.plan] || plans.starter;
+    const availableIndustries = marketplaceTemplate?.industry && !industries.includes(marketplaceTemplate.industry)
+        ? [marketplaceTemplate.industry, ...industries]
+        : industries;
     const stepStorageKey = `${storageKey}:step`;
     const [step, setStep] = useState(() => {
         const storedStep = Number(window.sessionStorage.getItem(stepStorageKey));
@@ -77,10 +80,11 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
         password: '',
         password_confirmation: '',
         trial_token: trialToken || '',
-        selected_plan: trialPlan || 'starter',
+        marketplace_template: marketplaceTemplate?.slug || '',
+        selected_plan: trialPlan || marketplaceTemplate?.plan || 'starter',
         website_name: '',
         website_url: '',
-        industry: '',
+        industry: marketplaceTemplate?.industry || '',
         business_description: '',
         location: '',
     });
@@ -219,6 +223,23 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                 </div>
             )}
 
+            {marketplaceTemplate && (
+                <div className="mb-6 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-4 text-sm leading-5 text-violet-100">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.15em] text-violet-300">Marketplace website selected</p>
+                            <p className="mt-1 font-semibold text-white">{marketplaceTemplate.name}</p>
+                            <p className="mt-1 text-violet-200">{marketplaceTemplate.industry} · {marketplaceTemplate.pages} pages</p>
+                        </div>
+                        <div className="rounded-xl border border-violet-300/20 bg-black/20 px-4 py-2 text-right">
+                            <p className="text-xs text-violet-200">{selectedPlan.name}</p>
+                            <p className="font-bold text-white">{selectedPlan.price}/month</p>
+                        </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-violet-200">This exact website stays attached through PayPal checkout and account provisioning.</p>
+                </div>
+            )}
+
             <form onSubmit={submit} noValidate onKeyDown={(event) => {
                 if (event.key === 'Enter' && step < 3 && event.target.tagName !== 'TEXTAREA') {
                     event.preventDefault();
@@ -285,7 +306,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                             <InputLabel htmlFor="industry" value="Industry" className="text-sm font-medium text-slate-200" />
                             <select id="industry" value={data.industry} onChange={(event) => setData('industry', event.target.value)} className={fieldClass} required>
                                 <option value="">Select an industry</option>
-                                {industries.map((industry) => <option key={industry} value={industry}>{industry}</option>)}
+                                {availableIndustries.map((industry) => <option key={industry} value={industry}>{industry}</option>)}
                             </select>
                             <InputError message={errorFor('industry')} className="mt-2 text-rose-300" />
                         </div>
@@ -325,7 +346,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                                 <ul className="mt-5 space-y-3 text-sm text-slate-300">
                                     <li>✓ {selectedPlan.credits}</li>
                                     <li>✓ {selectedPlan.welcome}</li>
-                                    <li>✓ Your trial landing page is preserved</li>
+                                    <li>✓ {marketplaceTemplate ? `${marketplaceTemplate.name} selected` : 'Your trial landing page is preserved'}</li>
                                 </ul>
                                 <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-400">After account creation, you’ll be redirected securely to PayPal to activate this plan.</p>
                             </aside>

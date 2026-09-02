@@ -167,7 +167,9 @@ class WebsiteController extends Controller
 
                 return [
                     ...$spark,
-                    'owned' => (bool) ($unlock?->is_installed) || $sharedSparkKeys->contains($spark['key']),
+                    'owned' => (bool) ($unlock?->is_installed) || $shared,
+                    'installed' => (bool) ($unlock?->is_installed),
+                    'owned_permanently' => $unlock !== null,
                     'shared' => $shared,
                     'usage_state' => $usageState,
                     'purchased' => (int) ($unlock?->credits_paid ?? 0) > 0,
@@ -1112,6 +1114,7 @@ class WebsiteController extends Controller
         $footer['terms_url'] = trim((string) ($footer['terms_url'] ?? '/terms-and-conditions')) ?: '/terms-and-conditions';
         $footer['mega_footer'] = array_merge([
             'enabled' => $megaEnabled,
+            'variant' => 'classic',
             'tagline' => 'A premium information-rich footer.',
             'primary_label' => 'Get in touch',
             'primary_url' => '#contact',
@@ -1122,6 +1125,7 @@ class WebsiteController extends Controller
             ],
         ], $mega);
         $footer['mega_footer']['enabled'] = $megaEnabled;
+        $footer['mega_footer']['variant'] = in_array(($footer['mega_footer']['variant'] ?? 'classic'), ['classic','cta','brand','contact','newsletter'], true) ? $footer['mega_footer']['variant'] : 'classic';
         $columns = is_array($footer['mega_footer']['columns'] ?? null) ? array_values($footer['mega_footer']['columns']) : [];
         $columns = array_slice($columns, 0, 4);
         $footer['mega_footer']['columns'] = array_values(array_map(function ($column, $columnIndex) {

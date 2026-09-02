@@ -596,14 +596,14 @@ export default function CreditsIndex({
                                         personal: {
                                             starter: [
                                                 'Posts / Updates included',
-                                                'Up to 15 active Sparks',
+                                                '30 Marketplace Sparks',
                                                 'Contact forms and publishing',
                                                 'Basic SEO and analytics',
                                             ],
                                             growth: [
                                                 'Everything in Starter',
                                                 'Full commerce store',
-                                                'Up to 30 active Sparks',
+                                                '100 Marketplace Sparks',
                                                 'Advanced Posts / Updates + AI',
                                                 'Lead history and enhanced SEO',
                                                 'Traffic analytics',
@@ -611,7 +611,7 @@ export default function CreditsIndex({
                                             pro: [
                                                 'Everything in Growth',
                                                 'Advanced commerce and sales workflows',
-                                                'All Personal templates and Spark tiers',
+                                                'All Personal templates + Unlimited Sparks',
                                                 '15 free Owned Sparks',
                                                 'Premium AI layouts and generation',
                                                 'Full lead and sales tracking',

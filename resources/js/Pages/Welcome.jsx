@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import SeoHead from '@/Components/Seo/SeoHead';
 import PublicHeader from '@/Components/Public/PublicHeader';
+import PublicFooter from '@/Components/Public/PublicFooter';
 import CreateFreeDemoModal from '@/Components/CreateFreeDemoModal';
 import { trackCosmicEvent } from '@/Analytics/tracking';
 import rocketSpace from '../../images/cosmic-rocket-space.png';
@@ -31,10 +32,26 @@ const guides = [
 ];
 
 const plans = [
-    ['Starter', '$49', 'For small businesses launching one polished website.', ['1 Website', 'AI Page Generation', 'Visual Builder + Luna', 'Static Website Export', 'Basic SEO & Analytics']],
-    ['Growth', '$79', 'For growing businesses and teams managing more content and leads.', ['Up to 10 Websites', 'Everything in Starter', 'Blog & Updates', 'Lead Management & CRM', 'Premium AI Branding']],
-    ['Agency', '$99', 'For freelancers and agencies managing multiple client websites.', ['Up to 100 Websites', 'Team & Client Workspaces', 'Client Invites & Previews', 'Priority AI Generation', 'Shared Account Credits']],
+    ['Starter', '$49', 'For a business launching one complete standard website.', ['1 Website', 'Luna AI Website Assistance', '30 Marketplace Sparks', 'Static Website Export', 'Basic SEO & Analytics']],
+    ['Growth', '$79', 'For a growing business publishing content and capturing more leads.', ['1 Website', 'Everything in Starter', 'Posts & Updates', '100 Marketplace Sparks', 'Lead Tools + Enhanced SEO']],
+    ['Pro', '$129', 'For a serious website that needs ecommerce and the complete single-site stack.', ['1 Website', 'Everything in Growth', 'Full Ecommerce', 'Unlimited Marketplace Sparks', 'Priority AI + Advanced Analytics']],
 ];
+
+const technologies = [
+    ['react', 'React'], ['tailwind', 'Tailwind CSS'], ['next', 'Next.js'], ['vercel', 'Vercel'],
+    ['sanity', 'Sanity'], ['inertia', 'Inertia'], ['paypal', 'PayPal'], ['stripe', 'Stripe'],
+];
+
+function TechnologyLogo({ type }) {
+    if (type === 'react') return <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7 fill-none stroke-current"><circle cx="16" cy="16" r="2.4" fill="currentColor" stroke="none" /><ellipse cx="16" cy="16" rx="13" ry="5.2" /><ellipse cx="16" cy="16" rx="13" ry="5.2" transform="rotate(60 16 16)" /><ellipse cx="16" cy="16" rx="13" ry="5.2" transform="rotate(120 16 16)" /></svg>;
+    if (type === 'tailwind') return <svg viewBox="0 0 36 24" aria-hidden="true" className="h-7 w-9 fill-current"><path d="M9 8.2c1.2-4 3.7-6 7.6-6 5.8 0 6.5 4.4 9.4 5.1 1.9.5 3.6-.2 5-2-1.2 4-3.7 6-7.6 6-5.8 0-6.5-4.4-9.4-5.1-1.9-.5-3.6.2-5 2Zm-5 8.5c1.2-4 3.7-6 7.6-6 5.8 0 6.5 4.4 9.4 5.1 1.9.5 3.6-.2 5-2-1.2 4-3.7 6-7.6 6-5.8 0-6.5-4.4-9.4-5.1-1.9-.5-3.6.2-5 2Z" /></svg>;
+    if (type === 'next') return <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full border border-current font-serif text-base font-bold">N</span>;
+    if (type === 'vercel') return <svg viewBox="0 0 30 26" aria-hidden="true" className="h-7 w-8 fill-current"><path d="M15 2 29 25H1L15 2Z" /></svg>;
+    if (type === 'sanity') return <span aria-hidden="true" className="text-4xl font-black italic leading-none tracking-[-.2em]">S</span>;
+    if (type === 'inertia') return <svg viewBox="0 0 38 26" aria-hidden="true" className="h-7 w-9 fill-none stroke-current stroke-[4]"><path d="m3 3 9 10-9 10M14 3l9 10-9 10M25 3l9 10-9 10" /></svg>;
+    if (type === 'paypal') return <span aria-hidden="true" className="relative block h-8 w-8 font-black italic"><span className="absolute left-1 top-0 text-3xl opacity-60">P</span><span className="absolute left-0 top-0 text-3xl">P</span></span>;
+    return <span aria-hidden="true" className="text-4xl font-black italic leading-none">S</span>;
+}
 
 function Check({ children }) {
     return <span className="inline-flex items-center gap-2"><span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-100 text-[11px] font-bold text-emerald-700">✓</span>{children}</span>;
@@ -116,7 +133,7 @@ function BuilderMockup() {
                             ].map(([title, copy, icon, tone]) => (
                                 <div key={title} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4">
                                     <div className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-bold ${tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' : tone === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'}`}>{icon}</div>
-                                    <p className={`mt-2 text-[11px] font-bold ${tone === 'emerald' ? 'text-emerald-700' : tone === 'blue' ? 'text-blue-600' : 'text-violet-600'}`}>{title}</p>
+                                    <p className={`mt-2 text-[11px] font-semibold ${tone === 'emerald' ? 'text-emerald-700' : tone === 'blue' ? 'text-blue-600' : 'text-violet-600'}`}>{title}</p>
                                     <p className="mt-1 text-[9px] text-slate-400">{copy}</p>
                                     <span className="absolute right-4 top-4 text-[10px] text-slate-400">↗</span>
                                 </div>
@@ -192,10 +209,11 @@ export default function Welcome() {
                 description="Create modern, responsive business websites with Cosmic CMS. Generate a website with AI, customize it in the builder, and launch faster without starting from scratch."
                 path="/"
             />
-            <div className="cosmic-welcome-page min-h-screen bg-white font-sans text-[#162238] selection:bg-emerald-100 selection:text-emerald-950">
+            <div className="cosmic-public-site cosmic-public-light cosmic-welcome-page min-h-screen overflow-x-clip bg-white font-sans text-[#162238] selection:bg-emerald-100 selection:text-emerald-950">
+                <a href="#main-content" className="fixed left-4 top-3 z-[120] -translate-y-20 rounded-xl bg-[#07132c] px-4 py-2.5 text-sm font-bold text-white shadow-xl transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2">Skip to content</a>
                 <PublicHeader logoSrc={cosmicLogo} logoAlt="Cosmic CMS" />
 
-                <main>
+                <main id="main-content" tabIndex={-1} className="outline-none">
                     <section className="relative overflow-hidden bg-white">
                         <img
                             src={welcomeHeroBg}
@@ -223,8 +241,14 @@ export default function Welcome() {
                                         <button type="button" onClick={() => openFreeDemo('home_hero')} className="inline-flex items-center justify-center rounded-lg bg-emerald-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800">Create Free Demo <span className="ml-2">→</span></button>
                                         <a href="#workflow" className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-[#07132c] shadow-sm transition hover:bg-slate-50"><span className="mr-2 grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-[9px] text-white shadow-sm">▶</span> See how it works</a>
                                     </div>
-                                    <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3 text-xs font-semibold text-slate-500">
-                                        <Check>No code needed</Check><Check>Fully editable</Check><Check>Fast & secure</Check><Check>Responsive output</Check>
+                                    <div className="mt-7 grid max-w-[520px] grid-cols-1 gap-3 sm:grid-cols-3">
+                                        {[['⌁', 'No code', 'required'], ['✦', 'AI-assisted', 'creation'], ['◉', 'Publish in', 'minutes']].map(([icon, title, copy]) => <div key={title} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-4 py-3 shadow-sm backdrop-blur"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-black text-emerald-700">{icon}</span><span className="text-[11px] font-bold leading-4 text-[#162238]">{title}<span className="block font-semibold text-slate-500">{copy}</span></span></div>)}
+                                    </div>
+                                    <div className="mt-7 flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500">
+                                        <span className="text-lg tracking-[.08em] text-emerald-600">★★★★★</span>
+                                        <span>Loved by 2,000+ teams</span>
+                                        <span className="flex -space-x-2">{['A','K','M','R'].map((letter, index) => <span key={letter} className="grid h-8 w-8 place-items-center rounded-full border-2 border-white text-[9px] font-black text-white" style={{ background: ['#334155','#0f766e','#7c3aed','#c2410c'][index] }}>{letter}</span>)}</span>
+                                        <span className="grid h-9 min-w-9 place-items-center rounded-full bg-emerald-50 px-2 text-[10px] font-black text-emerald-700">2K+</span>
                                     </div>
                                 </div>
                                 <div className="min-h-[260px] lg:min-h-[470px]" />
@@ -233,11 +257,11 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section className="bg-[#03112a] py-5 text-white">
-                        <div className="mx-auto max-w-[1440px] px-5 sm:px-6 lg:px-8">
+                    <section className="border-y border-white/10 bg-[#03112a] py-5 text-white shadow-[0_14px_40px_rgba(3,17,42,.12)]">
+                        <div className="mx-auto max-w-[1540px] px-5 sm:px-6 lg:px-8">
                             <p className="text-center text-[11px] font-bold uppercase tracking-[.24em] text-emerald-300 sm:text-xs">A modern workflow built on technology teams already trust</p>
-                            <div className="mt-5 grid grid-cols-3 gap-3 text-center text-sm font-semibold text-slate-100 sm:grid-cols-6">
-                                {['Cosmic CMS', 'React', 'Tailwind', 'Inertia', 'PayPal', 'Static HTML'].map((item) => <div key={item} className="border-l border-white/10 py-2 first:border-l-0">{item}</div>)}
+                            <div className="mt-5 grid grid-cols-2 text-slate-100 sm:grid-cols-4 xl:grid-cols-8">
+                                {technologies.map(([type, label], index) => <div key={type} className={`flex min-h-14 items-center justify-center gap-3 border-white/10 px-3 py-3 ${index % 2 ? 'border-l' : ''} sm:border-l sm:first:border-l-0`}><TechnologyLogo type={type} /><span className="text-sm font-semibold whitespace-nowrap">{label}</span></div>)}
                             </div>
                         </div>
                     </section>
@@ -328,21 +352,14 @@ export default function Welcome() {
 
                     <section className="px-5 pb-14 sm:px-6 sm:pb-16 lg:px-8">
                         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-2xl bg-[#03112a] px-7 py-10 text-white sm:px-10 sm:py-12">
-                            <img src={welcomeHeroBg} alt="" aria-hidden="true" className="absolute inset-y-0 right-0 h-full w-[56%] object-cover object-right opacity-75" />
+                            <img src={welcomeHeroBg} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-y-0 right-0 h-full w-[56%] object-cover object-right opacity-75" />
                             <div className="absolute inset-0 bg-gradient-to-r from-[#03112a] via-[#03112a]/95 to-[#03112a]/15" />
-                            <div className="relative max-w-[650px] pr-3 sm:pr-8 lg:pr-16"><span className="text-[9px] font-bold uppercase tracking-[.18em] text-emerald-300">Your next website can start today</span><h2 className="mt-3 max-w-[580px] text-4xl font-extrabold leading-[1.1] tracking-[-.025em]">Ready to launch your next website?</h2><p className="mt-4 max-w-[560px] text-sm leading-6 text-slate-300">Turn a short business description into a complete, editable website in minutes.</p><div className="mt-6 flex gap-3"><button type="button" onClick={() => openFreeDemo('home_final_cta')} className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold">Create Free Demo →</button><Link href="/pricing" className="rounded-lg border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold">View plans</Link></div></div>
+                            <div className="relative max-w-[650px] pr-3 sm:pr-8 lg:pr-16"><span className="text-[9px] font-bold uppercase tracking-[.18em] text-emerald-300">Your next website can start today</span><h2 className="mt-3 max-w-[580px] text-3xl font-extrabold leading-[1.1] tracking-[-.025em] sm:text-4xl">Ready to launch your next website?</h2><p className="mt-4 max-w-[560px] text-sm leading-6 text-slate-300">Turn a short business description into a complete, editable website in minutes.</p><div className="mt-6 grid gap-3 sm:flex"><button type="button" onClick={() => openFreeDemo('home_final_cta')} className="min-h-12 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold">Create Free Demo →</button><Link href="/pricing" className="inline-flex min-h-12 items-center justify-center rounded-lg border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold">View plans</Link></div></div>
                         </div>
                     </section>
                 </main>
 
-                <footer className="bg-[#03112a] text-slate-300">
-                    <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
-                        <div><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-600 font-bold text-white">✦</span><div><p className="font-bold text-white">Cosmic CMS</p><p className="text-[10px] uppercase tracking-[.18em] text-slate-500">AI website platform</p></div></div><p className="mt-4 max-w-xs text-xs leading-5 text-slate-500">AI-powered website creation for businesses and agencies.</p></div>
-                        <div><p className="text-xs font-bold text-white">Product</p><div className="mt-3 space-y-2 text-xs text-slate-500"><a href="#features">Features</a><br/><a href="#workflow">Workflow</a><br/><Link href="/pricing">Pricing</Link></div></div>
-                        <div><p className="text-xs font-bold text-white">Resources</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/ai-website-builder">Guides</Link><br/><Link href="/privacy">Privacy</Link><br/><Link href="/terms">Terms</Link></div></div>
-                        <div><p className="text-xs font-bold text-white">Company</p><div className="mt-3 space-y-2 text-xs text-slate-500"><Link href="/login">Log in</Link><br/><Link href="/pricing">Get started</Link><br/><span>© {new Date().getFullYear()} Cosmic CMS</span></div></div>
-                    </div>
-                </footer>
+                <PublicFooter />
             </div>
 
             <CreateFreeDemoModal

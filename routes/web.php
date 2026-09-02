@@ -50,6 +50,8 @@ use App\Http\Controllers\AiTextController;
 use App\Http\Controllers\MediaLibraryController;
 use App\Http\Controllers\WebsiteHealthController;
 use App\Http\Controllers\StarterSiteController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\MarketplaceCheckoutController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -140,6 +142,29 @@ Route::get('/sitemap.xml', function () {
         ['path' => '/', 'priority' => '1.0', 'frequency' => 'weekly'],
         ['path' => '/start', 'priority' => '0.9', 'frequency' => 'weekly'],
         ['path' => '/pricing', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/features', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/workflow', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/guides', 'priority' => '0.7', 'frequency' => 'monthly'],
+        ['path' => '/guides/plan-your-ai-website', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/guides/write-better-luna-prompts', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/guides/keep-pages-visually-consistent', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/guides/website-content-that-converts', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/guides/launch-checklist', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/guides/turn-website-into-growth-channel', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs', 'priority' => '0.7', 'frequency' => 'monthly'],
+        ['path' => '/docs/cosmic-overview', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/create-first-website', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/luna-basics', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/luna-page-actions', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/builder-overview', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/global-styling', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/marketplace-websites', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/preview-and-publish', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/docs/plans-and-credits', 'priority' => '0.6', 'frequency' => 'monthly'],
+        ['path' => '/templates', 'priority' => '0.8', 'frequency' => 'weekly'],
+        ['path' => '/examples', 'priority' => '0.7', 'frequency' => 'monthly'],
+        ['path' => '/help', 'priority' => '0.7', 'frequency' => 'monthly'],
+        ['path' => '/updates', 'priority' => '0.7', 'frequency' => 'weekly'],
         ['path' => '/ai-website-builder', 'priority' => '0.9', 'frequency' => 'monthly'],
         ['path' => '/ai-website-generator', 'priority' => '0.9', 'frequency' => 'monthly'],
         ['path' => '/modern-website-builder', 'priority' => '0.8', 'frequency' => 'monthly'],
@@ -287,12 +312,177 @@ if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_previ
     });
 }
 
+// Cosmic Marketplace public storefront. Local development keeps the storefront
+// under /marketplace, while production serves the same controllers/components from
+// marketplace.cosmiccms.com without duplicating marketplace code.
+Route::prefix(config('cosmic_marketplace.local_prefix', 'marketplace'))->group(function () {
+    Route::get('/', function (Request $request, MarketplaceController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            return redirect()->away(rtrim($scheme.'://'.$domain, '/'), 302);
+        }
+
+        return $controller->index($request);
+    })->name('marketplace.local.home');
+
+    Route::get('/checkout/{template}', function (Request $request, string $template, MarketplaceCheckoutController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            return redirect()->away(rtrim($scheme.'://'.$domain, '/').'/checkout/'.rawurlencode($template), 302);
+        }
+        return $controller->show($request, $template);
+    })->where('template', '[a-z0-9-]+')->name('marketplace.local.checkout');
+
+    Route::post('/checkout/{template}/start', function (Request $request, string $template, MarketplaceCheckoutController $controller, \App\Services\PaymentCheckoutService $payments, \App\Services\MarketplaceWebsiteProvisioningService $marketplaceProvisioning) {
+        if (app()->environment('production')) {
+            abort(404);
+        }
+        return $controller->start($request, $template, $payments, $marketplaceProvisioning);
+    })->middleware(['auth', 'throttle:10,1'])->where('template', '[a-z0-9-]+')->name('marketplace.local.checkout.start');
+    Route::get('/checkout/{template}/status', [MarketplaceCheckoutController::class, 'status'])
+        ->middleware(['auth', 'throttle:60,1'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.local.checkout.status');
+    Route::post('/checkout/{template}/retry', [MarketplaceCheckoutController::class, 'retryProvisioning'])
+        ->middleware(['auth', 'throttle:10,1'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.local.checkout.retry');
+
+    Route::get('/templates', function (Request $request, MarketplaceController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates';
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->catalog($request);
+    })->name('marketplace.local.templates');
+    Route::get('/templates/{template}/demo/{page?}', function (Request $request, string $template, MarketplaceController $controller, ?string $page = null) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates/'.rawurlencode($template).'/demo'.($page ? '/'.rawurlencode($page) : '');
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->demoBySlug($request, $template, $page);
+    })->where(['template' => '[a-z0-9-]+', 'page' => '[a-z0-9-]+'])->name('marketplace.local.templates.demo');
+
+    Route::get('/templates/{industry}/{template}/demo/{page?}', function (Request $request, string $industry, string $template, MarketplaceController $controller, ?string $page = null) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates/'.rawurlencode($industry).'/'.rawurlencode($template).'/demo'.($page ? '/'.rawurlencode($page) : '');
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->demo($request, $industry, $template, $page);
+    })->where(['industry' => '[a-z0-9-]+', 'template' => '[a-z0-9-]+', 'page' => '[a-z0-9-]+'])->name('marketplace.local.templates.demo.legacy');
+
+    Route::get('/templates/{industry}/{template}', function (Request $request, string $industry, string $template, MarketplaceController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates/'.rawurlencode($industry).'/'.rawurlencode($template);
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->show($request, $industry, $template);
+    })->where(['industry' => '[a-z0-9-]+', 'template' => '[a-z0-9-]+'])->name('marketplace.local.templates.show');
+
+    Route::get('/templates/{template}', function (Request $request, string $template, MarketplaceController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates/'.rawurlencode($template);
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->showBySlug($request, $template);
+    })->where('template', '[a-z0-9-]+')->name('marketplace.local.templates.show-slug');
+
+    Route::get('/templates/{industry}', function (Request $request, string $industry, MarketplaceController $controller) {
+        if (app()->environment('production')) {
+            $scheme = (string) config('cosmic_marketplace.scheme', 'https');
+            $domain = (string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com');
+            $target = rtrim($scheme.'://'.$domain, '/').'/templates/'.rawurlencode($industry);
+            return redirect()->away($target.($request->getQueryString() ? '?'.$request->getQueryString() : ''), 302);
+        }
+        return $controller->catalog($request, $industry);
+    })->where('industry', '[a-z0-9-]+')->name('marketplace.local.templates.industry');
+});
+
+Route::domain(config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com'))->group(function () {
+    Route::get('/', [MarketplaceController::class, 'index'])->name('marketplace.home');
+    Route::get('/checkout/{template}', [MarketplaceCheckoutController::class, 'show'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.checkout');
+    Route::post('/checkout/{template}/start', [MarketplaceCheckoutController::class, 'start'])
+        ->middleware(['auth', 'throttle:10,1'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.checkout.start');
+    Route::get('/checkout/{template}/status', [MarketplaceCheckoutController::class, 'status'])
+        ->middleware(['auth', 'throttle:60,1'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.checkout.status');
+    Route::post('/checkout/{template}/retry', [MarketplaceCheckoutController::class, 'retryProvisioning'])
+        ->middleware(['auth', 'throttle:10,1'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.checkout.retry');
+    Route::get('/templates', [MarketplaceController::class, 'catalog'])->name('marketplace.templates');
+    Route::get('/templates/{template}/demo/{page?}', [MarketplaceController::class, 'demoBySlug'])
+        ->where(['template' => '[a-z0-9-]+', 'page' => '[a-z0-9-]+'])
+        ->name('marketplace.templates.demo');
+    Route::get('/templates/{industry}/{template}/demo/{page?}', [MarketplaceController::class, 'demo'])
+        ->where(['industry' => '[a-z0-9-]+', 'template' => '[a-z0-9-]+', 'page' => '[a-z0-9-]+'])
+        ->name('marketplace.templates.demo.legacy');
+    Route::get('/templates/{industry}/{template}', [MarketplaceController::class, 'show'])
+        ->where(['industry' => '[a-z0-9-]+', 'template' => '[a-z0-9-]+'])
+        ->name('marketplace.templates.show');
+    Route::get('/templates/{template}', [MarketplaceController::class, 'showBySlug'])
+        ->where('template', '[a-z0-9-]+')
+        ->name('marketplace.templates.show-slug');
+    Route::get('/templates/{industry}', [MarketplaceController::class, 'catalog'])
+        ->where('industry', '[a-z0-9-]+')
+        ->name('marketplace.templates.industry');
+});
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);
 });
+
+
+// Batch 2: the Features route now has its own full premium page while still
+// using the shared Batch 1 public header/footer/design-system components.
+Route::get('/features', fn () => Inertia::render('Public/Features'))->name('public.features');
+
+// Batch 3: Workflow now has its own full premium page.
+Route::get('/workflow', fn () => Inertia::render('Public/Workflow'))->name('public.workflow');
+
+// Batch 5: dedicated learning and documentation experiences, including
+// reusable guide/document article layouts for detail pages.
+Route::get('/guides', fn () => Inertia::render('Public/Guides'))->name('public.guides');
+Route::get('/guides/{guide}', fn (string $guide) => Inertia::render('Public/ResourceArticle', [
+    'kind' => 'guide',
+    'slug' => $guide,
+]))->where('guide', 'plan-your-ai-website|write-better-luna-prompts|keep-pages-visually-consistent|website-content-that-converts|launch-checklist|turn-website-into-growth-channel')->name('public.guides.show');
+
+Route::get('/docs', fn () => Inertia::render('Public/Docs'))->name('public.docs');
+Route::get('/docs/{doc}', fn (string $doc) => Inertia::render('Public/ResourceArticle', [
+    'kind' => 'doc',
+    'slug' => $doc,
+]))->where('doc', 'cosmic-overview|create-first-website|luna-basics|luna-page-actions|builder-overview|global-styling|marketplace-websites|preview-and-publish|plans-and-credits')->name('public.docs.show');
+
+// Batch 6: Templates and Website Examples use the published Marketplace catalog
+// as their source of truth. These are public discovery pages, not a duplicate
+// template system or a replacement for the Marketplace catalog/checkout flow.
+Route::get('/templates', [MarketplaceController::class, 'publicTemplates'])->name('public.templates');
+Route::get('/examples', [MarketplaceController::class, 'publicExamples'])->name('public.examples');
+
+// Batch 7: dedicated Help Center and Product Updates experiences.
+Route::get('/help', fn () => Inertia::render('Public/Help'))->name('public.help');
+Route::get('/updates', fn () => Inertia::render('Public/Updates'))->name('public.updates');
 
 Route::get('/pricing', fn (\Illuminate\Http\Request $request) => Inertia::render('Pricing', ['trialToken' => $request->query('token')]))->name('pricing');
 
@@ -750,3 +940,15 @@ if (app()->environment('local')) {
 }
 
 require __DIR__.'/auth.php';
+
+// Public-facing fallback: keep HTML navigation inside the Cosmic marketing shell,
+// while API/JSON callers continue to receive the normal Laravel 404 response.
+Route::fallback(function (Request $request) {
+    if ($request->expectsJson() || str_starts_with($request->path(), 'api/')) {
+        abort(404);
+    }
+
+    return Inertia::render('Public/NotFound')
+        ->toResponse($request)
+        ->setStatusCode(404);
+});

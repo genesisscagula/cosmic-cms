@@ -165,6 +165,8 @@ class ImageController extends Controller
         $validated = $request->validate([
             'image_data' => ['required', 'string', 'max:8000000'],
             'source_url' => ['nullable', 'string', 'max:2048'],
+            'source_kind' => ['nullable', 'in:ai,upload,theme_match'],
+            'source_theme_key' => ['nullable', 'string', 'max:60'],
         ]);
 
         if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=\r\n]+)$/', $validated['image_data'], $matches)) {
@@ -199,24 +201,48 @@ class ImageController extends Controller
         $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'logo', $request->user()?->id, $filename);
         $logoUrl = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
         $themeSettings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
-        $themeSettings['brand_original_logo_url'] = $logoUrl;
-        $themeSettings['brand_active_logo_url'] = $logoUrl;
-        $themeSettings['brand_favicon_url'] = $logoUrl;
-        $themeSettings['brand_logo_variants'] = [];
+        $sourceKind = (string) ($validated['source_kind'] ?? 'upload');
+        $activeThemeKey = trim((string) ($validated['source_theme_key'] ?? data_get($themeSettings, 'primary', 'midnight')));
+        if ($activeThemeKey === '') $activeThemeKey = 'midnight';
+
+        if ($sourceKind === 'theme_match') {
+            // Preview/apply contract: preserve the source logo and only switch the
+            // active asset after the user confirms the redesigned crop.
+            if (empty($themeSettings['brand_original_logo_url'])) {
+                $themeSettings['brand_original_logo_url'] = data_get($website->global_header, 'logo_image_url') ?: $logoUrl;
+            }
+            $themeSettings['brand_active_logo_url'] = $logoUrl;
+            $themeSettings['brand_favicon_url'] = $logoUrl;
+            $variants = (array) ($themeSettings['brand_logo_variants'] ?? []);
+            $variants[$activeThemeKey] = $logoUrl;
+            $themeSettings['brand_logo_variants'] = $variants;
+            $themeSettings['logo_theme_sync_state'] = 'synced';
+            $themeSettings['logo_theme_sync_source'] = 'logo_to_theme';
+            $themeSettings['logo_theme_synced_theme'] = $activeThemeKey;
+        } else {
+            $themeSettings['brand_original_logo_url'] = $logoUrl;
+            $themeSettings['brand_active_logo_url'] = $logoUrl;
+            $themeSettings['brand_favicon_url'] = $logoUrl;
+            $themeSettings['brand_logo_variants'] = $sourceKind === 'ai' ? [$activeThemeKey => $logoUrl] : [];
+            $themeSettings['logo_theme_sync_state'] = $sourceKind === 'ai' ? 'synced' : 'logo_changed';
+            $themeSettings['logo_theme_sync_source'] = $sourceKind === 'ai' ? 'generated_from_theme' : 'upload';
+            $themeSettings['logo_theme_synced_theme'] = $sourceKind === 'ai' ? $activeThemeKey : null;
+            unset($themeSettings['brand_pre_upload_snapshot']);
+        }
         $website->theme_settings = $themeSettings;
 
-        // Registered Builder parity with the trial flow: Save Logo is the commit
-        // point. Persist the active logo into both global shell locations now so
-        // a refresh/preview/export immediately uses the confirmed crop instead of
-        // waiting for a separate Save Draft action.
+        // Save Logo is the commit point. Persist the confirmed active logo into
+        // both global shell locations so refresh/preview/export remain identical.
         $header = is_array($website->global_header) ? $website->global_header : [];
         $footer = is_array($website->global_footer) ? $website->global_footer : [];
         $header['logo_image_url'] = $logoUrl;
         $header['logo_filter'] = 'none';
+        unset($header['logo_theme_match_mode']);
         $header['logo_height'] = max(60, (int) ($header['logo_height'] ?? 0));
         $header['logo_max_width'] = max(300, (int) ($header['logo_max_width'] ?? 0));
         $footer['logo_image_url'] = $logoUrl;
         $footer['logo_filter'] = 'none';
+        unset($footer['logo_theme_match_mode']);
         if (! empty($header['logo_text'])) {
             $footer['logo_text'] = $footer['logo_text'] ?? $header['logo_text'];
         }
@@ -245,6 +271,10 @@ class ImageController extends Controller
             'url' => $logoUrl,
             'logo_width' => (int) ($dimensions['width'] ?? 650),
             'logo_height' => (int) ($dimensions['height'] ?? 200),
+            'sync_state' => $themeSettings['logo_theme_sync_state'] ?? null,
+            'sync_source' => $themeSettings['logo_theme_sync_source'] ?? null,
+            'synced_theme' => $themeSettings['logo_theme_synced_theme'] ?? null,
+            'source_kind' => $sourceKind,
         ]);
     }
 
@@ -370,16 +400,12 @@ class ImageController extends Controller
         // used to undo its safe-area contract before the user could confirm it.
 
         $filename = 'theme-matched-logo-'.Str::lower(Str::random(10)).'.'.$result['extension'];
-        $path = "websites/{$website->id}/logos/{$filename}";
+        $path = "websites/{$website->id}/logos/tmp/{$filename}";
         Storage::disk('public')->put($path, $result['bytes']);
+        $previewUrl = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
 
-        $settings['brand_active_logo_url'] = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
-        $settings['brand_favicon_url'] = $settings['brand_active_logo_url'];
-        $variants = (array) ($settings['brand_logo_variants'] ?? []);
-        $variants[$themeKey] = $settings['brand_active_logo_url'];
-        $settings['brand_logo_variants'] = $variants;
-        $website->forceFill(['theme_settings' => $settings])->save();
-
+        // Do not mutate the active logo here. The generated file is a preview
+        // source only; Builder crop/apply is the single commit point.
         $wallet->debit(
             $user,
             $cost,
@@ -392,13 +418,14 @@ class ImageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path,
+            'url' => $previewUrl,
             'cost' => $cost,
             'balance' => $wallet->balance($user),
             'source' => $result['ai'] ? 'ai-theme-match' : 'svg-theme-match',
-            'sync_state' => 'synced',
-            'sync_source' => 'logo_to_theme',
-            'synced_theme' => $themeKey,
+            'sync_state' => 'theme_changed',
+            'sync_source' => 'logo_to_theme_pending_apply',
+            'synced_theme' => null,
+            'pending_theme' => $themeKey,
             'logo_palette' => $logoPalette,
         ]);
     }
@@ -469,14 +496,16 @@ class ImageController extends Controller
 
             $customTheme['source_logo_url'] = $validated['logo_url'];
             $customTheme['updated_at'] = now()->toIso8601String();
-            $settings['custom_brand_theme'] = $customTheme;
-            $settings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
-            $settings['brand_source'] = 'logo';
-            // Upload -> crop -> automatic analysis should behave exactly like the
-            // trial Builder: My Brand Theme becomes active as soon as analysis
-            // succeeds. Manual Match Theme to Logo still waits for its preview/apply
-            // flow because automatic_upload is false in that path.
+
+            // A normal Design -> Match Theme to Logo request is preview-only.
+            // Do not persist even the generated palette/custom-theme metadata here;
+            // Builder commits it only after the user clicks Apply Theme (then Save).
+            // Legacy automatic/post-upload flows keep their existing immediate-apply
+            // behavior for compatibility with callers outside the new Design CTA.
             if ($automaticUpload || $postUploadChoice) {
+                $settings['custom_brand_theme'] = $customTheme;
+                $settings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
+                $settings['brand_source'] = 'logo';
                 $settings['primary'] = 'my-brand';
                 $settings['brand_active_logo_url'] = $validated['logo_url'];
                 $settings['brand_original_logo_url'] = $settings['brand_original_logo_url'] ?? $validated['logo_url'];
@@ -484,10 +513,10 @@ class ImageController extends Controller
                 $settings['logo_theme_sync_state'] = 'synced';
                 $settings['logo_theme_sync_source'] = 'theme_to_logo';
                 $settings['logo_theme_synced_theme'] = 'my-brand';
+                unset($settings['brand_pre_upload_snapshot']);
+                $website->theme_settings = $settings;
+                $website->save();
             }
-            unset($settings['brand_pre_upload_snapshot']);
-            $website->theme_settings = $settings;
-            $website->save();
             $result['custom_theme'] = $customTheme;
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
@@ -647,56 +676,12 @@ class ImageController extends Controller
             $svgAnalysis = $svgLightness->analyze($svg);
         }
 
-        // Preserve the currently active brand until automatic theme analysis
-        // succeeds. This lets a throttled upload roll back cleanly.
-        $themeSettings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
-        if (! isset($themeSettings['brand_pre_upload_snapshot'])) {
-            $themeSettings['brand_pre_upload_snapshot'] = [
-                'brand_original_logo_url' => $themeSettings['brand_original_logo_url'] ?? null,
-                'brand_active_logo_url' => $themeSettings['brand_active_logo_url'] ?? null,
-                'brand_favicon_url' => $themeSettings['brand_favicon_url'] ?? null,
-                'brand_logo_variants' => $themeSettings['brand_logo_variants'] ?? [],
-                'logo_theme_sync_state' => $themeSettings['logo_theme_sync_state'] ?? null,
-                'logo_theme_sync_source' => $themeSettings['logo_theme_sync_source'] ?? null,
-                'logo_theme_synced_theme' => $themeSettings['logo_theme_synced_theme'] ?? null,
-            ];
-            $website->theme_settings = $themeSettings;
-            $website->save();
-        }
-
+        // Upload is staged; the active brand remains untouched until crop/apply.
         $path = $file->store("websites/{$website->id}/logos", 'public');
         $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'logo', $request->user()?->id, $file->getClientOriginalName());
         $url = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
-        if (strtolower($file->getClientOriginalExtension()) === 'svg') {
-            $themeSettings['brand_original_logo_url'] = $url;
-            $themeSettings['brand_active_logo_url'] = $url;
-            $themeSettings['brand_favicon_url'] = $url;
-            $themeSettings['brand_logo_variants'] = [];
-            if ($svgAnalysis['is_majority_white']) {
-                $themeSettings['overlay_header_on_banner'] = true;
-            }
-            $website->theme_settings = $themeSettings;
-
-            // SVGs skip the raster cropper, so upload itself is their Save Logo
-            // commit point. Keep global header/footer in sync immediately.
-            $header = is_array($website->global_header) ? $website->global_header : [];
-            $footer = is_array($website->global_footer) ? $website->global_footer : [];
-            $header['logo_image_url'] = $url;
-            $header['logo_filter'] = 'none';
-            $header['logo_height'] = max(60, (int) ($header['logo_height'] ?? 0));
-            $header['logo_max_width'] = max(300, (int) ($header['logo_max_width'] ?? 0));
-            if ($svgAnalysis['is_majority_white']) {
-                $header['overlay_header_on_banner'] = true;
-            }
-            $footer['logo_image_url'] = $url;
-            $footer['logo_filter'] = 'none';
-            if (! empty($header['logo_text'])) {
-                $footer['logo_text'] = $footer['logo_text'] ?? $header['logo_text'];
-            }
-            $website->global_header = $header;
-            $website->global_footer = $footer;
-            $website->save();
-        }
+        // All logo formats, including SVG, are staged until the shared cropper
+        // confirms the asset. Uploading alone never replaces the active brand.
 
         return response()->json([
             'url' => $url,

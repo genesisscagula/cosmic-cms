@@ -31,7 +31,7 @@ function Copy({d,onUpdate,visual,block}){
   const secondary=visual.isLight?`border-slate-300 bg-white/75 ${visual.theme.text}`:"border-white/25 bg-white/5 text-white";
   return <div className={sparkTw(block, "content", "relative z-20 max-w-2xl")}>
     <EditableText value={d.eyebrow} className={sparkTw(block, "eyebrow", `text-xs font-bold uppercase tracking-[.3em] ${visual.isLight?visual.theme.sub:"text-white/65"}`)} onSave={v=>onUpdate({eyebrow:v})}/>
-    <EditableText value={d.heading} className={sparkTw(block, "heading", `mt-5 block text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${visual.isLight?visual.theme.text:"text-white"}`)} onSave={v=>onUpdate({heading:v})}/>
+    <EditableText value={d.heading} cosmicType="h1" className={sparkTw(block, "heading", `mt-5 block text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${visual.isLight?visual.theme.text:"text-white"}`)} onSave={v=>onUpdate({heading:v})}/>
     <EditableText value={d.text} className={sparkTw(block, "description", `mt-6 block max-w-xl text-base leading-8 ${visual.isLight?visual.theme.sub:"text-white/70"}`)} onSave={v=>onUpdate({text:v})}/>
     <div className={sparkTw(block, "actions", "mt-8 flex flex-wrap gap-3")}>
       <EditableButton label={d.primary_label} url={d.primary_url} onSave={(label,url)=>onUpdate({primary_label:label,primary_url:url})} className={sparkTw(block, "primary_button", `rounded-full px-6 py-3 text-sm font-bold ${primary}`)}/>

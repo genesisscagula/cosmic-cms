@@ -431,6 +431,10 @@ export default function PageTemplatesModal({
         // One marketplace mutation at a time. This prevents accidental multi-purchases
         // from fast taps while the first credit transaction is still in flight.
         if (busy || template?.owned || template?.saved) return;
+        if (template?.plan_locked) {
+            if (template?.upgrade_url) window.location.assign(template.upgrade_url);
+            return;
+        }
         setBusy(template.key);
 
         try {
@@ -798,6 +802,11 @@ export default function PageTemplatesModal({
                                                 {!template.saved && Number(template.credits || 0) >= 200 && (
                                                     <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Premium · ⚡{template.credits}</span>
                                                 )}
+                                                {!template.saved && template.access_label && (
+                                                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${template.access_level === 'starter' ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-700 dark:text-emerald-300' : template.access_level === 'growth' ? 'border-violet-300/40 bg-violet-400/10 text-violet-700 dark:text-violet-300' : 'border-fuchsia-300/40 bg-fuchsia-400/10 text-fuchsia-700 dark:text-fuchsia-300'}`}>
+                                                        {template.access_label}
+                                                    </span>
+                                                )}
                                             </div>
                                             {aiResults && aiResultMap.get(template.key)?.reason && (
                                                 <p className="mt-1 text-[11px] leading-4 text-emerald-600 dark:text-emerald-300">✦ {aiResultMap.get(template.key).reason}</p>
@@ -839,6 +848,10 @@ export default function PageTemplatesModal({
                                             <button type="button" onClick={() => setSelected(template)} className="cosmic-template-primary flex-1 rounded-xl px-4 py-2.5 text-sm font-bold">
                                                 {template.saved ? 'Use Template' : 'Install'}
                                             </button>
+                                        ) : template.plan_locked ? (
+                                            <a href={template.upgrade_url || '/credits'} className="flex-1 rounded-xl border border-amber-300/40 bg-amber-200 px-4 py-2.5 text-center text-sm font-extrabold text-slate-950 transition hover:bg-amber-100">
+                                                {template.upgrade_label || `Upgrade to ${template.access_label || 'Pro'}`}
+                                            </a>
                                         ) : (
                                             <button
                                                 type="button"
@@ -850,6 +863,10 @@ export default function PageTemplatesModal({
                                             </button>
                                         )}
                                     </div>
+
+                                    {template.plan_locked && !template.owned && (
+                                        <p className="mt-2 text-right text-[10px] font-bold text-amber-700 dark:text-amber-300">🔒 {template.access_label} Template</p>
+                                    )}
 
                                     {template.saved && (
                                         <div className="mt-2 grid grid-cols-3 gap-2">
@@ -895,6 +912,10 @@ export default function PageTemplatesModal({
                                     >
                                         {preview.saved ? 'Use Template' : 'Install'}
                                     </button>
+                                ) : preview.plan_locked ? (
+                                    <a href={preview.upgrade_url || '/credits'} className="rounded-xl border border-amber-300/40 bg-amber-200 px-4 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-amber-100 sm:px-5">
+                                        {preview.upgrade_label || `Upgrade to ${preview.access_label || 'Pro'}`}
+                                    </a>
                                 ) : (
                                     <button
                                         type="button"

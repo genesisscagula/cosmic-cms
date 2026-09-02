@@ -86,7 +86,7 @@ class LogoThemeMatchService
         $industry = $this->clean($industry, 120) ?: 'business';
 
         $prompt = implode("\n", array_filter([
-            'THEME-MATCH REFINEMENT of the supplied existing logo. Preserve the same brand identity and make the smallest professional visual changes needed to fit the website theme.',
+            'BRAND-SAFE LUNA REDESIGN of the supplied existing logo for the website theme. Preserve the same unmistakable brand identity while making a polished, restrained redesign that feels intentionally created for this color system.',
             $companyName !== '' ? "Company/brand name: {$companyName}." : null,
             "Industry: {$industry}.",
             'Theme: '.($themeName !== '' ? $themeName : 'current website theme').'.',
@@ -99,8 +99,8 @@ class LogoThemeMatchService
             $brandContext !== '' ? "Saved brand context: {$brandContext}" : null,
             $latestPrompt !== '' && $latestPrompt !== $brandPrompt ? "Recent brand direction, only if relevant: {$latestPrompt}" : null,
             'IDENTITY FIRST: preserve the exact company/wordmark text, symbol concept, recognizable silhouette, symbol-to-wordmark relationship, and overall identity. Do not invent a different business name, slogan, mascot, icon, or unrelated symbol.',
-            'REFINEMENT LIMIT: this is not a redesign. You may make only restrained adjustments to spacing, balance, line weight, proportions, and typography cleanup when necessary for legibility or header fit. Keep the original composition recognizable at first glance.',
-            'NO NEW ART DIRECTION: do not add 3D depth, glass effects, metallic materials, new shadows, new glows, new decorative layers, photographic effects, mockups, scenes, or stylistic treatments that were not already present in the source logo.',
+            'REDESIGN LIMIT: you may refine spacing, balance, line weight, proportions, typography treatment, and internal color hierarchy, but the original mark must remain recognizable at first glance. Do not replace the core symbol, rename the brand, or invent a different visual identity.',
+            'STYLE DISCIPLINE: keep the redesign clean and logo-like. Do not add mockup scenes, photographic backgrounds, unrelated mascots, or excessive 3D/decorative effects. Any stylistic polish must serve the existing identity and the active theme.',
             'If the source logo already contains gradients, shadows, highlights, or depth, preserve the character of those effects but remap them strictly within the supplied theme palette. Any interpolation must stay between the supplied palette colors only.',
             "PALETTE BALANCE: keep {$primaryHex} as the dominant family anchor (roughly 60–80% of visible colored area), but intentionally use {$secondaryHex} and/or {$tertiaryHex} for up to roughly 20–40% combined when the source logo has multiple logical parts and the extra color improves hierarchy, legibility, or polish. Suitable uses include icon sub-parts, selected lettering, dividers, small highlights, or secondary marks. Stay inside this exact color family; never invent a fourth hue.",
             'Do not force a multicolor result when it would make the logo worse. If the source is intentionally minimal or one-color, a one-color adaptation is acceptable. If the source clearly contains multiple components, prefer a tasteful 2–3 color treatment rather than flattening every component into the dominant color.',
@@ -111,7 +111,7 @@ class LogoThemeMatchService
             'SAFE AREA: keep approximately 10–15% transparent padding on all sides. Nothing may touch the top or bottom safe-area edges. If the supplied logo is tall or square, scale the ENTIRE composition down proportionally and add transparent padding rather than cropping any part.',
             'CONTAIN, NEVER COVER: do not enlarge the logo merely to fill the frame. Never stretch, distort, crop, or separate/reposition pieces in a way that changes the identity. The complete mark must be visible at the cropper default zoom/position.',
             'Transparent background only. No background rectangle/card, no watermark, no decorative scene, and no new tagline.',
-            'Final target: SAME LOGO, SAME BRAND, EXACT WEBSITE COLOR FAMILY, CLEANER HEADER FIT. The result should look like the original logo was professionally color-adapted for this exact theme, not newly redesigned.',
+            'Final target: SAME BRAND IDENTITY, THOUGHTFULLY REDESIGNED FOR THE EXACT WEBSITE COLOR FAMILY, WITH A PREMIUM HEADER FIT. It should feel like a professional evolution of the original logo, not a different company.',
         ]));
 
         $response = Http::withToken($apiKey)

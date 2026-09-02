@@ -13,6 +13,6 @@ return [
     // the dedicated preview domain.
     'reserved_slugs' => [
         'www', 'api', 'admin', 'app', 'mail', 'ftp', 'smtp', 'imap', 'pop',
-        'status', 'health', 'assets', 'static', 'cdn', 'preview', 'dashboard',
+        'status', 'health', 'assets', 'static', 'cdn', 'preview', 'dashboard', 'marketplace',
     ],
 ];

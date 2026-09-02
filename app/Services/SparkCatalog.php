@@ -46,7 +46,7 @@ class SparkCatalog
                     'search_terms' => $metadata['search_terms'],
                     'collection' => $collection,
                     'collection_label' => self::collectionLabel($collection),
-                    'access_level' => (string) ($override['access_level'] ?? self::collectionAccessLevel($collection)),
+                    'access_level' => self::accessLevel($type, $collection, $item, $override),
                     'catalog_index' => 0,
                     'credits' => (int) ($item['credits'] ?? 20),
                     'featured' => in_array($type, [
@@ -108,14 +108,96 @@ class SparkCatalog
             }
         }
 
-        foreach (self::all() as $spark) {
+        $catalog = self::all();
+        foreach ($catalog as $spark) {
             $level = (string) ($spark['access_level'] ?? '');
             if ($level === '' || ! array_key_exists($level, $levels)) {
                 $errors[] = "Spark [{$spark['key']}] references an unknown access level [{$level}].";
             }
         }
 
+        $policy = (array) config('cosmic-sparks.tier_policy', []);
+        $starterKeys = array_map('strval', (array) ($policy['starter_keys'] ?? []));
+        $growthKeys = array_map('strval', (array) ($policy['growth_keys'] ?? []));
+        $configuredKeys = array_merge($starterKeys, $growthKeys);
+        $activeKeys = array_column($catalog, 'key');
+
+        foreach (array_unique(array_diff($configuredKeys, $activeKeys)) as $missingKey) {
+            $errors[] = "Spark tier policy references missing or retired Spark [{$missingKey}].";
+        }
+
+        foreach (array_unique(array_intersect($starterKeys, $growthKeys)) as $duplicateKey) {
+            $errors[] = "Spark [{$duplicateKey}] is assigned to both Starter and Growth.";
+        }
+
+        $counts = collect($catalog)
+            ->countBy(fn (array $spark): string => (string) ($spark['access_level'] ?? 'pro'));
+
+        foreach ((array) ($policy['target_counts'] ?? []) as $level => $target) {
+            $actual = (int) ($counts[(string) $level] ?? 0);
+            if ($actual !== (int) $target) {
+                $errors[] = sprintf('Spark tier [%s] has %d active Sparks; expected %d.', (string) $level, $actual, (int) $target);
+            }
+        }
+
+        $targetTotal = (int) ($policy['target_total_active'] ?? 0);
+        if ($targetTotal > 0 && count($catalog) !== $targetTotal) {
+            $errors[] = sprintf('Spark catalog has %d active Sparks; expected %d.', count($catalog), $targetTotal);
+        }
+
+        // Personal Marketplace Sparks must resolve to the three customer-facing
+        // tiers only. This keeps agency ranks from accidentally becoming a fourth
+        // assignment bucket in the personal library.
+        $personalTiers = ['starter', 'growth', 'pro'];
+        foreach ($catalog as $spark) {
+            $level = (string) ($spark['access_level'] ?? '');
+            if (! in_array($level, $personalTiers, true)) {
+                $errors[] = "Spark [{$spark['key']}] resolves to non-personal Marketplace tier [{$level}].";
+            }
+        }
+
+        // Verify the cumulative promise customers see: Starter 30, Growth 100,
+        // Pro all 324. This catches future policy edits that preserve exclusive
+        // counts but accidentally break effective plan access.
+        $rank = ['starter' => 10, 'growth' => 20, 'pro' => 30];
+        foreach ((array) ($policy['access_totals'] ?? []) as $accountLevel => $target) {
+            $accountRank = $rank[(string) $accountLevel] ?? -1;
+            $actual = collect($catalog)->filter(function (array $spark) use ($rank, $accountRank): bool {
+                $requiredRank = $rank[(string) ($spark['access_level'] ?? '')] ?? PHP_INT_MAX;
+                return $accountRank >= $requiredRank;
+            })->count();
+
+            if ($actual !== (int) $target) {
+                $errors[] = sprintf('Spark access total [%s] exposes %d Sparks; expected %d.', (string) $accountLevel, $actual, (int) $target);
+            }
+        }
+
         return array_values(array_unique($errors));
+    }
+
+    private static function accessLevel(string $type, string $collection, array $item, array $override): string
+    {
+        $policy = (array) config('cosmic-sparks.tier_policy', []);
+        $starterKeys = array_map('strval', (array) ($policy['starter_keys'] ?? []));
+        $growthKeys = array_map('strval', (array) ($policy['growth_keys'] ?? []));
+
+        // Personal Spark access is intentionally curated by key so the product
+        // promise stays deterministic: 30 Starter, 100 Growth total, Pro all.
+        if (in_array($type, $starterKeys, true)) {
+            return 'starter';
+        }
+
+        if (in_array($type, $growthKeys, true)) {
+            return 'growth';
+        }
+
+        // Keep explicit special-case overrides available for future migrations,
+        // but never let an override weaken a curated Starter/Growth assignment.
+        if (! blank($override['access_level'] ?? null)) {
+            return (string) $override['access_level'];
+        }
+
+        return (string) ($policy['default_access_level'] ?? 'pro');
     }
 
     private static function collectionAccessLevel(string $collection): string

@@ -6,6 +6,7 @@ import { ActualSparkPreview } from "../../Websites/Components/AddSectionModal";
 import { BlockRegistry } from "../../Websites/Components/SparkRegistry";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import useTimedReveal from "../../../Hooks/useTimedReveal";
+import { compareSparkMarketplacePriority } from "../../../Utils/sparkMarketplaceSort";
 
 const viewCopy = {
     owned: {
@@ -126,7 +127,9 @@ export default function Sparks({ dashboard }) {
         : activeView === "marketplace"
             ? filteredMarketplace
             : filteredCollection;
-    const sortedActiveFilteredItems = aiResults ? [...activeFilteredItemsRaw].sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : activeFilteredItemsRaw;
+    const sortedActiveFilteredItems = [...activeFilteredItemsRaw].sort((a, b) => aiResults
+        ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) || compareSparkMarketplacePriority(a, b)
+        : compareSparkMarketplacePriority(a, b));
     const libraryRevealKey = `${activeView}|${category}|${marketFilter}|${query}|${aiResults ? "ai" : "browse"}`;
     const libraryVisibleCount = useTimedReveal(sortedActiveFilteredItems.length, libraryRevealKey, {
         initial: 100,

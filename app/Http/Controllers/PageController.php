@@ -1224,6 +1224,11 @@ class PageController extends Controller
                     $previewTheme['overlay_header_on_banner'] = (bool) data_get($validated, 'global_header.overlay_header_on_banner', false);
                 }
                 $trialUpdate['preview_theme'] = $previewTheme;
+                if (array_key_exists('theme_settings', $validated)) {
+                    $trialUpdate['logo_theme_sync_state'] = data_get($validated, 'theme_settings.logo_theme_sync_state', $trial->logo_theme_sync_state);
+                    $trialUpdate['logo_theme_sync_source'] = data_get($validated, 'theme_settings.logo_theme_sync_source', $trial->logo_theme_sync_source);
+                    $trialUpdate['logo_theme_synced_theme'] = data_get($validated, 'theme_settings.logo_theme_synced_theme', $trial->logo_theme_synced_theme);
+                }
                 $trial->update($trialUpdate);
                 return;
             }
@@ -1231,6 +1236,27 @@ class PageController extends Controller
             if (array_key_exists('global_header', $validated)) $website->global_header = $validated['global_header'];
             if (array_key_exists('global_footer', $validated)) $website->global_footer = $validated['global_footer'];
             if (array_key_exists('theme_settings', $validated)) $website->theme_settings = $validated['theme_settings'];
+
+            // Marketplace websites keep a customer-owned design kit in sync with
+            // shell changes. This never mutates the master Marketplace template.
+            $settings = is_array($website->settings) ? $website->settings : [];
+            if (data_get($settings, 'marketplace.source') === 'marketplace' || data_get($settings, 'marketplace.template_id')) {
+                $kit = (array) data_get($settings, 'marketplace.design_kit', []);
+                if (array_key_exists('global_header', $validated)) {
+                    $kit['header'] = $validated['global_header'];
+                    $kit['header_variant'] = (string) data_get($validated, 'global_header.type', 'glassmorphism_header');
+                }
+                if (array_key_exists('global_footer', $validated)) {
+                    $kit['footer'] = $validated['global_footer'];
+                    $kit['footer_variant'] = (string) data_get($validated, 'global_footer.mega_footer.variant', 'classic');
+                }
+                if (array_key_exists('theme_settings', $validated)) {
+                    $kit['theme_settings'] = $validated['theme_settings'];
+                }
+                $kit['updated_at'] = now()->toIso8601String();
+                data_set($settings, 'marketplace.design_kit', $kit);
+                $website->settings = $settings;
+            }
             $website->save();
         });
 

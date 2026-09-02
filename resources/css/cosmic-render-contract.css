@@ -131,7 +131,7 @@
     [data-cosmic-type="h1"], [data-cosmic-type="h2"], [data-cosmic-type="h3"],
     [data-cosmic-type="h4"], [data-cosmic-type="h5"], [data-cosmic-type="h6"],
     .x-heading, .b2-heading, .b3-heading, .b4-heading, .b5-heading
-):not([data-cosmic-preserve-heading-color]) {
+):not([data-cosmic-preserve-heading-color]):not(:where([data-cosmic-card-surface="light"] *)) {
     color: var(--cosmic-current-text) !important;
 }
 
@@ -143,6 +143,15 @@
     .b5-eyebrow, .b5-intro
 ) {
     color: var(--cosmic-current-muted) !important;
+}
+
+/* Nested light cards are independent surfaces even when their parent Spark uses
+ * the primary treatment. Keep both background and foreground semantic. */
+[data-cosmic-card-surface="light"] {
+    --cosmic-local-card-bg: var(--cosmic-color-surface, #fff);
+    --cosmic-local-card-text: var(--cosmic-color-on-surface, var(--cosmic-color-body, #172033));
+    --cosmic-local-card-heading: var(--cosmic-color-heading, var(--cosmic-color-on-surface, #172033));
+    --cosmic-local-card-border: var(--cosmic-color-border, #e2e8f0);
 }
 
 :is(
@@ -295,3 +304,16 @@
     color: var(--cosmic-card-treatment-fg, currentColor) !important;
     -webkit-text-fill-color: var(--cosmic-card-treatment-fg, currentColor) !important;
 }
+
+
+/* Marketplace fixed-design opt-out: Ember & Olive home owns its palette.
+ * Export/preview contracts must preserve the purchased template colors instead
+ * of resolving headings/surfaces from the generic Cosmic color family. */
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="hero"] { background-color:#171713 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="feature"] { background-color:#292819 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="menu"] { background-color:#151612 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="private"] { background-color:#3a3a20 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="reservation"] { background-color:#1a1a16 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="cream"] { background-color:#f5f0e7 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) { color:#f5f0e7 !important; -webkit-text-fill-color:currentColor !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) { color:#221b16 !important; -webkit-text-fill-color:currentColor !important; }

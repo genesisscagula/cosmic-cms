@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentOrder;
 use App\Models\PendingOnboarding;
+use App\Services\MarketplaceCheckoutService;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentCountryResolver;
 use App\Services\PaymentFulfillmentService;
@@ -51,6 +52,7 @@ class PaymentController extends Controller
     public function onboardingCheckout(
         Request $request,
         PaymentCheckoutService $checkout,
+        MarketplaceCheckoutService $marketplaceCheckouts,
     ): JsonResponse {
         $user = $request->user();
 
@@ -60,18 +62,25 @@ class PaymentController extends Controller
             ->firstOrFail();
 
         try {
-            $result = $checkout->create($user, 'paypal', 'plan', $onboarding->selected_plan);
+            $marketplaceCheckout = $marketplaceCheckouts->forOnboarding($onboarding);
+            $paymentContext = [
+                'onboarding_id' => $onboarding->id,
+                'checkout_source' => $marketplaceCheckout ? 'marketplace' : 'paid_onboarding',
+            ];
+
+            if ($marketplaceCheckout) {
+                $paymentContext = array_merge($paymentContext, $marketplaceCheckouts->paymentMetadata($marketplaceCheckout));
+            }
+
+            $result = $checkout->create($user, 'paypal', 'plan', $onboarding->selected_plan, $paymentContext);
 
             $order = PaymentOrder::query()
                 ->where('reference', $result['order_reference'])
                 ->firstOrFail();
 
-            $order->update([
-                'metadata' => array_merge($order->metadata ?? [], [
-                    'onboarding_id' => $onboarding->id,
-                    'checkout_source' => 'paid_onboarding',
-                ]),
-            ]);
+            if ($marketplaceCheckout) {
+                $marketplaceCheckouts->linkPaymentOrder($marketplaceCheckout, $order);
+            }
 
             $onboarding->update([
                 'status' => 'pending_payment',
@@ -181,11 +190,28 @@ class PaymentController extends Controller
                                         ]),
                                     ]);
 
-                                    $provisioning->start($onboarding->fresh(), $paymentOrder->fresh(), 'return_url');
+                                    $provisioningResult = $provisioning->start($onboarding->fresh(), $paymentOrder->fresh(), 'return_url');
+
+                                    if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0 && $provisioningResult->website) {
+                                        return redirect()
+                                            ->to(app(\App\Services\MarketplaceWebsiteProvisioningService::class)->builderUrl($provisioningResult->website))
+                                            ->with('status', 'Payment confirmed. Your Marketplace website is ready — Luna can personalize it now.');
+                                    }
 
                                     return redirect()
                                         ->route('dashboard')
                                         ->with('status', 'Payment confirmed. Your Cosmic CMS workspace is ready.');
+                                }
+
+                                if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0) {
+                                    $checkout = \App\Models\MarketplaceCheckout::query()
+                                        ->find((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id'));
+                                    if ($checkout) {
+                                        $website = app(\App\Services\MarketplaceWebsiteProvisioningService::class)->provision($checkout);
+                                        return redirect()
+                                            ->to(app(\App\Services\MarketplaceWebsiteProvisioningService::class)->builderUrl($website))
+                                            ->with('status', 'Subscription confirmed. Your Marketplace website is ready — Luna can personalize it now.');
+                                    }
                                 }
                             }
                         } catch (Throwable $syncException) {
@@ -198,6 +224,12 @@ class PaymentController extends Controller
                             ->route('onboarding.pending')
                             ->with('status', 'PayPal approved your subscription. We are confirming activation now.');
                     }
+
+                    if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0) {
+                        return redirect()
+                            ->route('dashboard')
+                            ->with('status', 'PayPal approved your Marketplace subscription. We are confirming activation now.');
+                    }
                 }
             }
 
@@ -208,18 +240,20 @@ class PaymentController extends Controller
             report($exception);
 
             $isOnboarding = false;
+            $isMarketplace = false;
 
             if (isset($paymentOrder) && $paymentOrder instanceof PaymentOrder) {
                 $isOnboarding = (int) data_get($paymentOrder->metadata, 'onboarding_id', 0) > 0;
+                $isMarketplace = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0;
             }
 
             return redirect()
-                ->route($isOnboarding ? 'onboarding.pending' : 'credits.index')
+                ->route($isOnboarding ? 'onboarding.pending' : ($isMarketplace ? 'dashboard' : 'credits.index'))
                 ->with('payment_error', $exception->getMessage() ?: 'PayPal could not confirm the payment. Please try again.');
         }
     }
 
-    public function cancel(Request $request)
+    public function cancel(Request $request, MarketplaceCheckoutService $marketplaceCheckouts)
     {
         $reference = (string) $request->query('order');
 
@@ -243,6 +277,7 @@ class PaymentController extends Controller
             }
         }
 
+        $marketplaceCheckouts->markCancelled($order);
         $onboardingId = (int) data_get($order?->metadata, 'onboarding_id', 0);
 
         if ($onboardingId > 0) {
@@ -263,6 +298,11 @@ class PaymentController extends Controller
             return redirect()
                 ->route('onboarding.pending')
                 ->with('payment_error', 'Payment was cancelled. Your saved PayPal checkout is ready to resume.');
+        }
+
+        $marketplaceSlug = (string) data_get($order?->metadata, 'marketplace_template_slug', '');
+        if ($marketplaceSlug !== '') {
+            return redirect()->away($this->marketplaceCheckoutUrl($marketplaceSlug, ['payment' => 'cancelled']));
         }
 
         return redirect()
@@ -329,6 +369,21 @@ class PaymentController extends Controller
                 'message' => $exception->getMessage() ?: 'Unable to recover the subscription.',
             ], 422);
         }
+    }
+
+
+    private function marketplaceCheckoutUrl(string $templateSlug, array $query = []): string
+    {
+        if (app()->environment('production')) {
+            $base = rtrim((string) config('cosmic_marketplace.scheme', 'https').'://'.config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com'), '/');
+        } else {
+            $base = rtrim((string) config('cosmic_marketplace.core_url', config('app.url')), '/')
+                .'/'.trim((string) config('cosmic_marketplace.local_prefix', 'marketplace'), '/');
+        }
+
+        $url = $base.'/checkout/'.rawurlencode($templateSlug);
+
+        return $query ? $url.'?'.http_build_query($query) : $url;
     }
 
 }

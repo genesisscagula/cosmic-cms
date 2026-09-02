@@ -24,7 +24,7 @@ const Step = ({ number, title, active, complete }) => (
     </div>
 );
 
-export default function Pending({ onboarding, status, paymentError, autoCheckout = false }) {
+export default function Pending({ onboarding, marketplaceTemplate = null, status, paymentError, autoCheckout = false }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(paymentError || '');
     const [recovering, setRecovering] = useState(false);
@@ -200,6 +200,17 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                     </div>
 
                     <div className="p-6 sm:p-8">
+                        {marketplaceTemplate && (
+                            <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600">Marketplace website selected</p>
+                                    <p className="mt-1 font-extrabold text-slate-950">{marketplaceTemplate.name}</p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-500">{marketplaceTemplate.industry} · {marketplaceTemplate.pages} pages</p>
+                                </div>
+                                <span className="w-fit rounded-full border border-violet-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700">Saved through checkout</span>
+                            </div>
+                        )}
+
                         <div className="grid gap-3 sm:grid-cols-3">
                             <Step number="1" title="Account saved" complete />
                             <Step number="2" title="Payment approval" active={!paymentConfirmed} complete={paymentConfirmed} />
@@ -297,7 +308,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                         <ul className="mt-4 space-y-3 text-sm text-slate-600">
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your private Cosmic CMS workspace</span></li>
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your one-time included credits and plan access</span></li>
-                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your generated trial website and business profile</span></li>
+                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>{marketplaceTemplate ? `${marketplaceTemplate.name} Marketplace website` : 'Your generated trial website and business profile'}</span></li>
                         </ul>
                         <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">
                             Your website remains protected until PayPal confirmation and provisioning are complete.

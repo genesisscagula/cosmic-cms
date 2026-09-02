@@ -26,9 +26,15 @@ class SparkIntentMatcherService
         $limit = max(1, min($limit, 28));
         $analysis = $this->analyze($prompt, $context);
         $ranked = [];
+        $allowedSparkKeys = array_key_exists('allowed_spark_keys', $context)
+            ? array_flip(array_values(array_filter(array_map('strval', (array) $context['allowed_spark_keys']))))
+            : null;
 
         foreach (SparkCatalog::all() as $spark) {
             if (! is_array($spark) || empty($spark['key'])) {
+                continue;
+            }
+            if (is_array($allowedSparkKeys) && ! isset($allowedSparkKeys[(string) $spark['key']])) {
                 continue;
             }
 

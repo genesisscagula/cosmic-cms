@@ -4,8 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 
-import { getEffectiveTheme } from "../../../../theme/Theme";
-import { colorFamilies } from "../../../../theme/colorFamilies";
+import { getSectionSurfaceThemes } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast } from "../Shared/RepeatableControls";
 import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
@@ -174,7 +173,7 @@ export const ServicesBentoSchema = {
 export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
     const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const { section: theme, surface: cardTheme } = getSectionSurfaceThemes(requestedTheme, globalTheme);
 
     const data = {
         ...ServicesBentoSchema.defaults,
@@ -244,11 +243,13 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                         <div
                             key={index}
                             data-cosmic-card="1"
+                            data-cosmic-card-surface="light"
                             className={sparkTwItem(block, "services", index, "card", `
                                 group
-                                ${theme.card}
+                                cosmic-surface-contrast
+                                ${cardTheme.card}
                                 border
-                                ${theme.border}
+                                ${cardTheme.border}
                                 rounded-3xl
                                 p-8
                                 relative
@@ -269,7 +270,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                             {/* Icon */}
 
                             <div
-                                className={sparkTwItem(block, "services", index, "icon", "w-20 h-20 rounded-3xl cosmic-adaptive-icon-tile border flex items-center justify-center text-4xl shrink-0")}
+                                className={sparkTwItem(block, "services", index, "icon", `w-20 h-20 rounded-3xl cosmic-adaptive-icon-tile border ${cardTheme.border} flex items-center justify-center text-4xl shrink-0`)}
                             >
 
                                 <EditableText
@@ -288,7 +289,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                                 <EditableText
                                     value={service.title}
-                                    className={sparkTwItem(block, "services", index, "title", `text-3xl font-bold ${theme.text} block`)}
+                                    className={sparkTwItem(block, "services", index, "title", `text-3xl font-bold ${cardTheme.text} block`)}
                                     onSave={(val) =>
                                         updateService(index, "title", val)
                                     }
@@ -297,7 +298,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                 <EditableText
                                     value={service.desc}
                                     isTextArea
-                                    className={sparkTwItem(block, "services", index, "desc", `mt-3 text-lg leading-8 ${theme.sub} block`)}
+                                    className={sparkTwItem(block, "services", index, "desc", `mt-3 text-lg leading-8 ${cardTheme.sub} block`)}
                                     onSave={(val) =>
                                         updateService(index, "desc", val)
                                     }
@@ -317,7 +318,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                         updated[index] = { ...updated[index], cta_label: label, cta_url: url };
                                         onUpdate({ services: updated });
                                     }}
-                                    className={sparkTwItem(block, "services", index, "cta", `inline-flex items-center gap-2 text-sm font-semibold ${theme.text}`)}
+                                    className={sparkTwItem(block, "services", index, "cta", `inline-flex items-center gap-2 text-sm font-semibold ${cardTheme.text}`)}
                                 />
 
                             </div>

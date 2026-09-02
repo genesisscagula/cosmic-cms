@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Jobs\SendBillingReceiptJob;
 use App\Models\BillingTransaction;
 use App\Models\CreditTransaction;
+use App\Models\MarketplaceCheckout;
 use App\Models\PaymentOrder;
 use App\Support\SubscriptionStatus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class PaymentFulfillmentService
@@ -106,6 +108,44 @@ class PaymentFulfillmentService
             }
 
             $order->update(['fulfilled_at' => now()]);
+
+            $marketplaceCheckoutId = (int) data_get($order->metadata, 'marketplace_checkout_id', 0);
+            if ($marketplaceCheckoutId > 0) {
+                $marketplaceCheckout = MarketplaceCheckout::query()->lockForUpdate()->find($marketplaceCheckoutId);
+                if ($marketplaceCheckout) {
+                    $marketplaceCheckout->forceFill([
+                        'payment_order_id' => $order->id,
+                        'status' => MarketplaceCheckout::STATUS_PAID,
+                        'paid_at' => $marketplaceCheckout->paid_at ?? now(),
+                        'metadata' => array_merge($marketplaceCheckout->metadata ?? [], [
+                            'payment_fulfilled_at' => now()->toIso8601String(),
+                            'payment_order_reference' => $order->reference,
+                            'external_subscription_id' => $order->external_subscription_id,
+                        ]),
+                    ])->save();
+
+                    // Marketplace purchases without PendingOnboarding (existing account /
+                    // direct upgrade) still need a real website. New-account purchases are
+                    // provisioned by WorkspaceProvisioningService so the same paid website
+                    // is reused instead of creating a duplicate.
+                    if ((int) data_get($order->metadata, 'onboarding_id', 0) <= 0) {
+                        try {
+                            app(MarketplaceWebsiteProvisioningService::class)->provision($marketplaceCheckout->fresh());
+                        } catch (\Throwable $provisioningException) {
+                            // Billing has already succeeded. Do not roll back or replay a
+                            // customer's subscription because website setup needs recovery.
+                            // Persist the error so support/recovery can safely retry Batch 6.
+                            report($provisioningException);
+                            $marketplaceCheckout->forceFill([
+                                'metadata' => array_merge($marketplaceCheckout->metadata ?? [], [
+                                    'website_provisioning_error' => Str::limit($provisioningException->getMessage(), 1000),
+                                    'website_provisioning_failed_at' => now()->toIso8601String(),
+                                ]),
+                            ])->save();
+                        }
+                    }
+                }
+            }
 
             return true;
         });

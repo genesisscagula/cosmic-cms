@@ -49,6 +49,11 @@ final class LunaSparkSelectionPlannerService
             'media' => $context['media'] ?? null,
             'layout' => $context['layout'] ?? null,
         ], static fn ($v): bool => $v !== null && $v !== '' && $v !== []);
+        if (array_key_exists('allowed_spark_keys', $context)) {
+            // Preserve an intentionally empty allowlist: it means no registered
+            // Spark may be introduced for this request/account.
+            $matcherContext['allowed_spark_keys'] = array_values(array_filter(array_map('strval', (array) $context['allowed_spark_keys'])));
+        }
 
         $shortlist = $this->matcher->shortlistForAi($prompt, 10, $matcherContext);
         if ($currentKey !== '') {

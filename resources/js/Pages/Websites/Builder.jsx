@@ -7,7 +7,6 @@ import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadg
 import CosmicLoadingIcon from '../../Components/CosmicLoadingIcon';
 import LunaProcessCard from '../../Components/Luna/LunaProcessCard';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
-import { logoFilterFor } from '@/Branding/logoFilters';
 
 import AddSectionModal, { GlobalSparkPreviewModal, categoryFor as sparkCategoryForSectionType } from "./Components/AddSectionModal";
 import { BlockRegistry as MarketplaceSparkRegistry } from "./Components/SparkRegistry";
@@ -15,6 +14,7 @@ import PageTemplatesModal from "./Components/PageTemplatesModal";
 import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 import GlobalStylingModal from "./Components/GlobalStylingModal";
+import HeaderFooterVariantsModal from "./Components/HeaderFooterVariantsModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
 import PageStyleSelector from "./PageStyle/PageStyleSelector";
@@ -30,7 +30,7 @@ import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSe
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
 import { cosmicComponentVars, cosmicLocalComponentVars } from "./Components/CosmicComponentTokens";
 import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
-import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
+import { DarkCyanHeader, GlassmorphismHeader, PremiumHeaderVariant } from './GenerateHeader';
 
 import { MinimalFooter } from './GenerateFooter';
 import MediaPickerModal from '@/Components/Media/MediaPickerModal';
@@ -201,6 +201,7 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
     })) : [],
     mega_enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
     mega_footer: {
+        variant: ['classic','cta','brand','contact','newsletter'].includes(footer?.mega_footer?.variant) ? footer.mega_footer.variant : 'classic',
         theme: ['auto', 'primary', 'white', 'surface'].includes(footer?.mega_footer?.theme) ? footer.mega_footer.theme : 'auto',
         enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
         tagline: footer?.mega_footer?.tagline || 'A premium information-rich footer.',
@@ -438,6 +439,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // token-aware route can be rendered outside the normal auth route group.
     // Shared auth remains a backwards-compatible fallback only.
     const themeAccess = builderThemeAccess ?? props?.auth?.themeAccess ?? null;
+    const marketplaceWebsite = Boolean(website?.settings?.marketplace?.source === 'marketplace' || website?.settings?.marketplace?.template_id);
+    const marketplaceDesignKit = website?.settings?.marketplace?.design_kit || null;
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
     const capabilities = {
@@ -801,6 +804,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const [builderToolbarMenu, setBuilderToolbarMenu] = useState(null);
     const [globalStylingOpen, setGlobalStylingOpen] = useState(false);
+    const [headerFooterVariantsOpen, setHeaderFooterVariantsOpen] = useState(false);
     const [designToggleModal, setDesignToggleModal] = useState(null);
     const [designToggleDraft, setDesignToggleDraft] = useState(false);
     const [themeMenu, setThemeMenu] = useState(null);
@@ -1227,7 +1231,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 brand_palette: customTheme.palette,
                 brand_source: 'luna',
                 logo_theme_sync_state: 'theme_changed',
+                logo_theme_sync_source: 'luna_theme_change',
+                logo_theme_synced_theme: null,
             }));
+            if (data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png')) {
+                setLogoSyncState('theme_changed');
+            }
         } else if (selectedTheme) {
             await handleThemeChange(selectedTheme);
         }
@@ -1246,31 +1255,29 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             && globalSelections?.custom_brand_theme?.source_logo_url
             && String(globalSelections.custom_brand_theme.source_logo_url) === String(data.global_header.logo_image_url)
         );
-        const cssLogoMatched = String(globalSelections?.logo_theme_sync_source || '') === 'css_logo_to_theme'
-            || String(data.global_header?.logo_theme_match_mode || '') === 'css';
-        const nextThemeFilter = cssLogoMatched ? logoFilterFor(theme) : null;
 
         setGlobalSelections((prev) => ({
             ...prev,
             primary: theme,
             ...(hasRealLogo ? (brandThemeMatchesCurrentLogo
                 ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
-                : (cssLogoMatched
-                    ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'css_logo_to_theme', logo_theme_synced_theme: theme }
-                    : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null })) : {}),
+                : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null }) : {}),
         }));
 
-        if (hasRealLogo && cssLogoMatched && nextThemeFilter) {
+        // A real customer logo is never recolored with CSS after a theme change.
+        // The mismatch becomes an explicit Luna Brand Sync recommendation in the
+        // Design menu, where the user can preview an AI redesign before applying it.
+        if (hasRealLogo) {
             setData((current) => ({
                 ...current,
-                global_header: { ...(current.global_header || {}), logo_filter: nextThemeFilter, logo_filter_key: theme, logo_theme_match_mode: 'css' },
-                global_footer: { ...(current.global_footer || {}), logo_filter: nextThemeFilter, logo_filter_key: theme, logo_theme_match_mode: 'css' },
+                global_header: { ...(current.global_header || {}), logo_filter: 'none', logo_theme_match_mode: undefined },
+                global_footer: { ...(current.global_footer || {}), logo_filter: 'none', logo_theme_match_mode: undefined },
             }));
         }
         if (['stone', 'white'].includes(String(theme).toLowerCase()) && data.global_header?.overlay_header_on_banner) {
             updateHeader({ overlay_header_on_banner: false });
         }
-        if (hasRealLogo) setLogoSyncState((brandThemeMatchesCurrentLogo || cssLogoMatched) ? 'synced' : 'theme_changed');
+        if (hasRealLogo) setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
         setHasUnsavedTheme(true);
     };
 
@@ -1796,10 +1803,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     company_name: logoCropCompanyName,
                     source_url: logoCropOriginalSourceUrl || logoCropSource,
                     source_kind: logoCropSourceKind,
+                    source_theme_key: globalSelections?.primary || 'midnight',
                 })
                 : await axios.post(route('websites.logo.crop', website.id), {
                     image_data: imageData,
                     source_url: logoCropOriginalSourceUrl || logoCropSource,
+                    source_kind: logoCropSourceKind,
+                    source_theme_key: globalSelections?.primary || 'midnight',
                 });
 
             applyTrialLogo(response.data.url, logoCropCompanyName);
@@ -1830,16 +1840,37 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setLogoCropOriginalSourceUrl('');
             setHasUnsavedTheme(true);
             if (trialMode) setTrialLogoCropConfirmed(true);
-            if (logoCropAutoAdaptTheme) {
-                if (trialMode) {
-                    await autoAdaptThemeFromUploadedLogo(response.data.url);
-                } else if (logoCropSourceKind === 'upload' && logoSyncState !== 'synced') {
-                    // Only a genuine new upload may offer "Match Theme to Logo".
-                    // Theme-matched/generated crops are terminal sync operations
-                    // and must never trigger the inverse prompt.
-                    setPendingUploadedLogoThemeChoice(response.data.url);
-                }
+
+            // Brand Sync is intentionally deferred. Upload/replace commits the logo
+            // but never changes the website palette automatically. The latest brand
+            // mutation controls the highlighted recommendation in Design:
+            // upload -> Match Theme to Logo; theme change -> Redesign Logo to Match Theme.
+            if (logoCropSourceKind === 'upload') {
+                setLogoSyncState('logo_changed');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    brand_original_logo_url: response.data.url,
+                    brand_active_logo_url: response.data.url,
+                    brand_logo_variants: {},
+                    logo_theme_sync_state: 'logo_changed',
+                    logo_theme_sync_source: 'upload',
+                    logo_theme_synced_theme: null,
+                }));
+            } else if (logoCropSourceKind === 'ai') {
+                const activeTheme = globalSelections?.primary || 'midnight';
+                setLogoSyncState('synced');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    brand_original_logo_url: response.data.url,
+                    brand_active_logo_url: response.data.url,
+                    brand_logo_variants: { ...(prev.brand_logo_variants || {}), [activeTheme]: response.data.url },
+                    logo_theme_sync_state: 'synced',
+                    logo_theme_sync_source: 'generated_from_theme',
+                    logo_theme_synced_theme: activeTheme,
+                }));
             }
+            setPendingUploadedLogoThemeChoice(null);
+            setPendingSvgLogoMatch(null);
             setLogoCropEntryPrompt(false);
             setLogoCropAutoAdaptTheme(true);
         } catch (error) {
@@ -2038,7 +2069,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setHasUnsavedTheme(true);
         showCosmicNotification({
             title: 'Logo saved · theme match pending',
-            message: 'Your current theme was kept. Open Themes and use Match Theme to Logo under My Brand Theme whenever you are ready.',
+            message: 'Your current theme was kept. Open Design and use Match Theme to Logo whenever you are ready.',
             tone: 'success',
         });
     };
@@ -2214,7 +2245,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const keepCurrentLogoForSelectedTheme = () => {
         // Keeping the logo is a temporary visual choice, not a dismissal of
         // the mismatch. Preserve the pending state so the ACTIVE theme card
-        // continues to offer “Match Logo to Theme” later.
+        // continues to offer “Redesign Logo to Match Theme” later.
         setLogoSyncState('theme_changed');
         setGlobalSelections((prev) => ({
             ...prev,
@@ -2261,18 +2292,25 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const matchLogoToTheme = async (skipConfirmation = false) => {
-        const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
-        if (!logoUrl) return;
+        const logoUrl = data.global_header?.logo_image_url;
+        if (!logoUrl || String(logoUrl).includes('your-logo.png') || logoBusy) return;
 
-        const themeKey = pendingThemeLogoAdapt?.theme || globalSelections?.primary || 'midnight';
-        const family = colorFamilies[themeKey] || colorFamilies.midnight;
-        const themeFilter = logoFilterFor(themeKey);
+        const themeKey = globalSelections?.primary || 'midnight';
+        const family = themeKey === 'my-brand'
+            ? (globalSelections?.custom_brand_theme || colorFamilies.midnight)
+            : (colorFamilies[themeKey] || colorFamilies.midnight);
+        const palette = family?.palette || {};
+        const primaryHex = String(palette.background || palette.primary || '#243447').toUpperCase();
+        const accentHex = String(palette.accent || palette.secondary || primaryHex).toUpperCase();
+        const surfaceHex = String(palette.surface || palette.secondary || palette.tertiary || primaryHex).toUpperCase();
+        const tertiaryHex = String(palette.secondary || palette.muted || surfaceHex).toUpperCase();
+        const cost = trialMode ? trialActionCosts.match_logo_to_theme : 50;
 
         if (!skipConfirmation) {
             const matchConfirmed = await confirmCosmicAction({
-                title: `Match logo to ${family?.name || 'current theme'}?`,
-                message: 'Apply an instant CSS theme treatment to your logo. No AI generation and no Cosmic Credits are required.',
-                confirmLabel: 'Match Logo · Free',
+                title: `Redesign logo to match ${family?.name || 'current theme'}?`,
+                message: `Luna will preserve the brand name, core symbol and recognizable identity while redesigning the logo treatment for the active theme. You will preview the result before applying it. ${creditMessage(cost)}`,
+                confirmLabel: `Redesign · ${cost} Credits`,
             });
             if (!matchConfirmed) return;
         }
@@ -2280,35 +2318,44 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setPendingSvgLogoMatch(null);
         setPendingUploadedLogoThemeChoice(null);
         setPendingThemeLogoAdapt(null);
+        startLogoAiAction('logo_to_theme');
+        setLogoBusy(true);
 
-        setData((current) => ({
-            ...current,
-            global_header: {
-                ...(current.global_header || {}),
-                logo_filter: themeFilter,
-                logo_filter_key: themeKey,
-                logo_theme_match_mode: 'css',
-            },
-            global_footer: {
-                ...(current.global_footer || {}),
-                logo_filter: themeFilter,
-                logo_filter_key: themeKey,
-                logo_theme_match_mode: 'css',
-            },
-        }));
-        setLogoSyncState('synced');
-        setGlobalSelections((prev) => ({
-            ...prev,
-            logo_theme_sync_state: 'synced',
-            logo_theme_sync_source: 'css_logo_to_theme',
-            logo_theme_synced_theme: themeKey,
-        }));
-        setHasUnsavedTheme(true);
-        showCosmicNotification({
-            title: 'Logo matched instantly',
-            message: `Your logo now follows ${family?.name || 'the current theme'} using CSS. No credits used.`,
-            tone: 'success',
-        });
+        try {
+            const payload = {
+                logo_url: logoUrl,
+                theme_key: themeKey,
+                theme_name: family?.name || themeKey,
+                primary_hex: primaryHex,
+                secondary_hex: surfaceHex,
+                tertiary_hex: tertiaryHex,
+                accent_hex: accentHex,
+            };
+            const response = trialMode
+                ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
+                : await axios.post(route('websites.logo.match-theme', website.id), payload);
+
+            if (Number.isFinite(Number(response.data?.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            if (Number.isFinite(Number(response.data?.balance))) setCreditBalance(Number(response.data.balance));
+            if (!response.data?.url) throw new Error('Luna did not return a usable redesigned logo preview.');
+
+            setLogoAiStage('Your redesigned logo preview is ready.');
+            finishLogoAiAction();
+            await openLogoCrop(response.data.url, logoCompanyName || data.global_header?.logo_text || website?.name, {
+                sourceKind: 'theme_match',
+                entryPrompt: false,
+                autoAdaptTheme: false,
+            });
+        } catch (error) {
+            cancelLogoAiAction();
+            showCosmicNotification({
+                title: 'Unable to redesign logo',
+                message: error.response?.data?.message || error.message || 'Luna could not redesign this logo for the current theme. Your existing logo was not changed.',
+                tone: 'error',
+            });
+        } finally {
+            setLogoBusy(false);
+        }
     };
 
     const matchThemeToLogo = async () => {
@@ -2324,8 +2371,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const analysisCost = trialMode ? trialActionCosts.match_theme_to_logo : 50;
         const analysisConfirmed = await confirmCosmicAction({
             title: 'Match theme to this logo?',
-            message: creditMessage(analysisCost),
-            confirmLabel: `Use ${analysisCost} Credits`,
+            message: `Luna will analyze the logo and prepare a site-wide brand theme preview. Nothing changes until you click Apply Theme. ${creditMessage(analysisCost)}`,
+            confirmLabel: `Analyze · ${analysisCost} Credits`,
         });
         if (!analysisConfirmed) return;
 
@@ -2360,7 +2407,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setShowLogoGenerateForm(false);
             showCosmicNotification({
                 title: 'Unable to match My Brand Theme',
-                message: error.response?.data?.message || 'Cosmic AI could not build My Brand Theme from this logo. No theme changes were applied.',
+                message: error.response?.data?.message || 'Luna could not build My Brand Theme from this logo. No theme changes were applied.',
                 tone: 'error',
             });
         } finally {
@@ -3178,6 +3225,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // JavaScript's temporal dead zone and crashes the entire Builder.
     const hasRealBrandLogo = Boolean(
         data.global_header?.logo_image_url
+        && !String(data.global_header.logo_image_url).includes('your-logo.png')
     );
     const customThemeMatchesCurrentLogo = Boolean(
         hasRealBrandLogo
@@ -3751,7 +3799,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const overlayCompatibilityMessage = firstBlockIsBanner
         ? 'Overlay Header is available for this hero/banner.'
         : 'Move or add a hero/banner to the first section to use Overlay Header.';
-    const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner && overlayHeaderCompatible);
+    const overlayHeaderActive = Boolean((data.global_header?.overlay_header_on_banner || data.global_header?.type === 'overlay_hero_header') && firstBlockIsBanner && overlayHeaderCompatible);
     const megaFooterEnabled = Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled);
 
     const openDesignToggle = (setting) => {
@@ -6592,7 +6640,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }
             }
             if (response.theme_key && lunaAssistantSurface !== 'contextual_popup' && !contextualBlockBoundary) {
-                setGlobalSelections((current)=>({...current,primary:response.theme_key}));
+                const lunaChangedTheme = String(response.theme_key) !== String(globalSelections?.primary || '');
+                setGlobalSelections((current)=>({
+                    ...current,
+                    primary:response.theme_key,
+                    ...(lunaChangedTheme && hasRealBrandLogo ? {
+                        logo_theme_sync_state:'theme_changed',
+                        logo_theme_sync_source:'luna_theme_change',
+                        logo_theme_synced_theme:null,
+                    } : {}),
+                }));
+                if (lunaChangedTheme && hasRealBrandLogo) setLogoSyncState('theme_changed');
                 setHasUnsavedTheme(true);
             }
             if (lunaAssistantSurface !== 'contextual_popup' && !contextualBlockBoundary && response.brand_color_family && typeof response.brand_color_family === 'object') {
@@ -6637,6 +6695,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     brand_palette:customTheme.palette,
                     brand_source:'luna',
                     logo_theme_sync_state:'theme_changed',
+                    logo_theme_sync_source:'luna_theme_change',
+                    logo_theme_synced_theme:null,
                     components:{
                         ...(current?.components || {}),
                         button_primary_bg:family.buttonPrimary || family.primary,
@@ -6650,6 +6710,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         link_hover:family.primaryHover,
                     },
                 }));
+                if (hasRealBrandLogo) setLogoSyncState('theme_changed');
                 setHasUnsavedTheme(true);
             }
             if (lunaAssistantSurface !== 'contextual_popup' && response.typography_settings && typeof response.typography_settings === 'object') {
@@ -6935,6 +6996,28 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 ...(['left','center','right'].includes(design.text_align)?{'--luna-text-align':design.text_align}:{}),
             };
 
+            const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
+            const emberPaletteVars = isEmberMarketplace ? {
+                '--cosmic-primary':'#1a1a16',
+                '--cosmic-accent':'#d6a151',
+                '--cosmic-bg-primary':'#1a1a16',
+                '--cosmic-local-bg-primary':'#1a1a16',
+                '--cosmic-bg-primary-surface':'#25251a',
+                '--cosmic-local-bg-primary-surface':'#25251a',
+                '--cosmic-bg-surface':'#f5f0e7',
+                '--cosmic-local-bg-surface':'#f5f0e7',
+                '--cosmic-bg-white':'#fffaf3',
+                '--cosmic-local-bg-white':'#fffaf3',
+                '--cosmic-on-primary':'#f5eddf',
+                '--cosmic-on-primary-muted':'rgba(245,237,223,.66)',
+                '--cosmic-on-surface':'#2c211a',
+                '--cosmic-on-surface-muted':'#65594f',
+                '--cosmic-color-on-dark':'#f5eddf',
+                '--cosmic-color-on-primary':'#f5eddf',
+                '--cosmic-button-primary-bg':'#d6a151',
+                '--cosmic-button-primary-text':'#17150e',
+            } : {};
+
             return (
                 <div
                     key={block._renderKey || index}
@@ -6944,6 +7027,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-design-system="1"
                     data-cosmic-block-index={index}
                     data-cosmic-block-type={block.type}
+                    data-cosmic-marketplace-family={isEmberMarketplace ? 'ember' : undefined}
                     data-cosmic-page-style={normalizedPageStyle}
                     data-cosmic-tailwind-schema={hasSparkTailwindSchema(block) ? 'schema_backed' : 'legacy_fallback'}
                     data-cosmic-resolved-theme={resolvedTheme}
@@ -6956,7 +7040,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
                     data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
                     className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
-                    style={designVars}
+                    style={{...designVars,...emberPaletteVars}}
                 >
                     {universalEnabled && universalType==='video' ? <>
                         {universalVideoProvider.type==='file'
@@ -7312,7 +7396,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
   {lunaScope.type==='page' && !lunaElementTarget ? <div className="cosmic-luna-premium__quick-actions" aria-label="Luna suggestions">
     <button type="button" disabled={pageAiBusy} onClick={()=>fillLunaQuickActionPrompt('full-page')}>✦ {lunaPageHasContent ? 'Rebuild Full Page' : 'Build Full Page'}</button>
-    <button type="button" disabled={pageAiBusy} onClick={()=>fillLunaQuickActionPrompt('theme')}>◐ Change Theme</button>
+    {!marketplaceWebsite && <button type="button" disabled={pageAiBusy} onClick={()=>fillLunaQuickActionPrompt('theme')}>◐ Change Theme</button>}
     <button type="button" disabled={pageAiBusy} onClick={()=>fillLunaQuickActionPrompt('style')}>◇ Change Page Style</button>
   </div> : null}
 
@@ -7486,6 +7570,57 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 trialMode={trialMode}
                 darkMode={appDark}
             />
+            <HeaderFooterVariantsModal
+                open={headerFooterVariantsOpen}
+                currentHeader={data.global_header || {}}
+                currentFooter={data.global_footer || {}}
+                globalTheme={globalSelections || {}}
+                websiteName={website?.name || data.global_header?.logo_text || 'Your Website'}
+                onClose={() => setHeaderFooterVariantsOpen(false)}
+                onApplyHeader={async (variant) => {
+                    if (variant === 'overlay_hero_header' && !firstBlockIsBanner) {
+                        showCosmicNotification({
+                            title: 'Overlay Hero needs a hero or banner',
+                            message: 'Add or build a hero/banner as the first section before applying the Overlay Hero header.',
+                            tone: 'warning',
+                        });
+                        return;
+                    }
+                    const nextHeader = {
+                        ...(data.global_header || {}),
+                        type: variant,
+                        overlay_header_on_banner: variant === 'overlay_hero_header',
+                        logo_tone: variant === 'overlay_hero_header' ? 'light' : 'dark',
+                    };
+                    setData('global_header', nextHeader);
+                    setPageStatus('draft');
+                    showCosmicNotification({
+                        title: 'Header variation applied',
+                        message: 'Your logo, navigation and current theme colors were preserved. Save Draft or Publish when ready.',
+                        tone: 'success',
+                    });
+                }}
+                onApplyFooter={async (variant) => {
+                    const currentFooter = normalizeGlobalFooterBlock(data.global_footer || {});
+                    setData('global_footer', {
+                        ...currentFooter,
+                        mega_enabled: true,
+                        mega_footer: {
+                            ...(currentFooter.mega_footer || {}),
+                            enabled: true,
+                            variant,
+                            logo_tone: variant === 'newsletter' ? 'dark' : 'light',
+                        },
+                        logo_tone: variant === 'newsletter' ? 'dark' : 'light',
+                    });
+                    setPageStatus('draft');
+                    showCosmicNotification({
+                        title: 'Footer variation applied',
+                        message: 'Your footer content and dynamic theme colors were preserved. Save Draft or Publish when ready.',
+                        tone: 'success',
+                    });
+                }}
+            />
             <DesignToggleModal
                 open={designToggleModal === 'overlay_header'}
                 title="Overlay Header"
@@ -7585,16 +7720,41 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                                 )}
                                             </>
                                         )}
+                                        {hasRealBrandLogo && (logoMatchPending || brandMatchNeeded) && (
+                                            <>
+                                                <div className={`mx-2 my-2 h-px ${trialMode ? 'bg-violet-200' : 'bg-violet-400/20'}`} />
+                                                <button
+                                                    type="button"
+                                                    role="menuitem"
+                                                    disabled={logoBusy}
+                                                    onClick={() => {
+                                                        setBuilderToolbarMenu(null);
+                                                        if (logoMatchPending) matchLogoToTheme();
+                                                        else matchThemeToLogo();
+                                                    }}
+                                                    className={`cosmic-design-brand-sync-cta group mx-1.5 mb-1 flex w-[calc(100%_-_0.75rem)] items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition disabled:cursor-wait disabled:opacity-60 ${trialMode ? 'cosmic-design-brand-sync-cta--light' : 'cosmic-design-brand-sync-cta--dark'}`}
+                                                >
+                                                    <span className="min-w-0">
+                                                        <span className="flex items-center gap-2">
+                                                            <span className="cosmic-design-brand-sync-spark" aria-hidden="true">✦</span>
+                                                            <span className="truncate text-xs font-extrabold">{logoMatchPending ? 'Redesign Logo to Match Theme' : 'Match Theme to Logo'}</span>
+                                                        </span>
+                                                        <span className="mt-1 block text-[10px] font-medium leading-4 opacity-80">{logoMatchPending ? 'Luna can redesign the logo for your new theme.' : 'Luna can build a site palette from your new logo.'}</span>
+                                                    </span>
+                                                    <span className="shrink-0 rounded-full border border-current/20 px-2 py-1 text-[8px] font-black uppercase tracking-[.12em]">Recommended</span>
+                                                </button>
+                                            </>
+                                        )}
                                     </BuilderToolbarDropdown>
 
                                     <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
                                         <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Create</div>
-                                        {(capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
+                                        {!marketplaceWebsite && (capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
                                             <button type="button" role="menuitem" data-cosmic-build-action="add-section" onClick={() => { setBuilderToolbarMenu(null); setSparkInsertTarget(null); setIsModalOpen(true); }} className={`cosmic-add-spark-button flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                 <span className="inline-flex items-center gap-2"><span aria-hidden="true">＋</span> Add Section</span><span aria-hidden="true" className="text-emerald-400">✦</span>
                                             </button>
                                         )}
-                                        {(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
+                                        {!marketplaceWebsite && (capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
                                             <button type="button" role="menuitem" data-cosmic-build-action="templates" onClick={() => { setBuilderToolbarMenu(null); setIsTemplatesOpen(true); }} className={`cosmic-templates-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                 <span className="inline-flex items-center gap-2"><span aria-hidden="true">▣</span> Choose Template</span><span className="rounded-full bg-fuchsia-300 px-1.5 py-0.5 text-[8px] font-bold tracking-wide text-fuchsia-950">NEW</span>
                                             </button>
@@ -7604,7 +7764,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                                 <span className="inline-flex items-center gap-2"><span className="cosmic-generate-page-icon" aria-hidden="true">✦</span> Generate Page</span><span aria-hidden="true" className="opacity-50">→</span>
                                             </button>
                                         )}
-                                        {!trialMode && capabilities.canManageBlocks && (
+                                        {capabilities.canEditGlobalShell && (
+                                            <>
+                                                <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
+                                                <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Site Shell</div>
+                                                <button type="button" role="menuitem" data-cosmic-build-action="header-footer-variants" onClick={() => { setBuilderToolbarMenu(null); setHeaderFooterVariantsOpen(true); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">▤</span> Header & Footer</span><span aria-hidden="true" className="opacity-50">→</span>
+                                                </button>
+                                            </>
+                                        )}
+                                        {!marketplaceWebsite && !trialMode && capabilities.canManageBlocks && (
                                             <>
                                                 <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
                                                 <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Sparks</div>
@@ -7642,6 +7811,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
                                     <button type="button" role="menuitem" data-cosmic-build-action="build-full-page" onClick={() => { setBuilderToolbarMenu(null); setCustomSparkOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Build Full Page</span><span className="rounded bg-emerald-400/15 px-1.5 py-0.5 text-[9px] text-emerald-300">FREE</span></button>
                                     <button type="button" role="menuitem" data-cosmic-build-action="ask-page" onClick={() => { setBuilderToolbarMenu(null); setPageAiError(''); setPageAiOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Ask Cosmic Page</span><span aria-hidden="true" className="opacity-50">→</span></button>
+                                    {capabilities.canEditGlobalShell && <button type="button" role="menuitem" data-cosmic-build-action="header-footer-variants" onClick={() => { setBuilderToolbarMenu(null); setHeaderFooterVariantsOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>▤ Header & Footer</span><span aria-hidden="true" className="opacity-50">→</span></button>}
                                     {!trialMode && capabilities.canManageBlocks && <button type="button" role="menuitem" data-cosmic-build-action="sparks-marketplace" onClick={openSparksMarketplace} title="Open the Sparks Marketplace" className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>◇ Sparks Marketplace</span><span aria-hidden="true" className="opacity-50">›</span></button>}
                                     <button type="button" role="menuitem" data-cosmic-build-action="saved-sparks" onClick={() => { setBuilderToolbarMenu(null); openSavedSparks(); }} disabled={savedSparksBusy} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-40"><span>▣ Saved Sparks</span><span aria-hidden="true" className="opacity-50">→</span></button>
                                 </BuilderToolbarDropdown>
@@ -7674,7 +7844,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
 
 
-                            {!customWebsiteMode && capabilities.canChangeTheme && (
+                            {!marketplaceWebsite && !customWebsiteMode && capabilities.canChangeTheme && (
                                 <div data-cosmic-theme-selector-host className="absolute h-px w-px overflow-hidden opacity-0 pointer-events-none">
                                 <ThemeSelector
                                     compact
@@ -7950,6 +8120,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     onNavAi={openLunaForHeaderNavigation}
                                     navManualOpenSignal={headerNavManualOpenSignal}
                                 />
+                            )}
+                            {['classic_header','centered_header','split_navigation_header','floating_glass_header','overlay_hero_header','minimal_header'].includes(data.global_header.type) && (
+                                <PremiumHeaderVariant block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={builderPageTargets} onLogoClick={openLunaForLogo} onLogoManual={openHeaderLogoManual} onCtaAi={openLunaForHeaderCta} onNavAi={openLunaForHeaderNavigation} navManualOpenSignal={headerNavManualOpenSignal} />
                             )}
                         </div>
                     )}
@@ -8466,22 +8639,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
             {/* AI MODAL INJECTOR CONFIG */}
             
-            {pendingThemeLogoAdapt && (
+            {false && pendingThemeLogoAdapt && (
                 <div className="fixed inset-0 z-[245] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                         <div className="border-b border-slate-200 px-6 py-5">
                             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Instant Brand Adaptation</p>
                             <h3 className="mt-1 text-xl font-semibold text-slate-900">Adapt logo to {pendingThemeLogoAdapt.themeName}?</h3>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">Your new theme is already selected. Cosmic can instantly tint your existing logo to the active theme using CSS and update both the header and footer automatically.</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">Your new theme is already selected. Luna can prepare a brand-safe logo redesign for the active palette, with preview before apply.</p>
                         </div>
                         <div className="p-6">
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-sm font-semibold text-slate-800">Keep the original or match it instantly</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">Both options are free. Matching uses a reversible CSS treatment, so your original logo file is preserved.</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">Your original logo remains preserved while Luna prepares a preview. Nothing changes until you apply the redesign.</p>
                             </div>
                             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                 <button type="button" disabled={themeLogoAdaptBusy} onClick={keepCurrentLogoForSelectedTheme} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Keep Current Logo</button>
-                                <button type="button" disabled={themeLogoAdaptBusy} onClick={adaptLogoToSelectedTheme} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{themeLogoAdaptBusy ? 'Matching…' : 'Match Logo · Free'}</button>
+                                <button type="button" disabled={themeLogoAdaptBusy} onClick={adaptLogoToSelectedTheme} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{themeLogoAdaptBusy ? 'Redesigning…' : 'Redesign Logo'}</button>
                             </div>
                         </div>
                     </div>
@@ -8492,9 +8665,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 <div className="fixed inset-0 z-[10100] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
                     <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
                         <div className="border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">{logoCropEntryPrompt ? 'Logo check' : 'Logo framing'}</p>
-                            <h3 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl">{logoCropEntryPrompt ? 'Make your logo fit the header' : 'Crop & position your logo'}</h3>
-                            <p className="mt-1 text-sm text-slate-500">{logoCropEntryPrompt ? 'Your complete generated logo is contained inside the 650 × 200 header frame with safety padding. Adjust only if you want to fine-tune it, then save.' : 'Your full logo is contained inside the 650 × 200 header frame at 100%. Drag or zoom only if you want to fine-tune its position.'}</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">{logoCropSourceKind === 'theme_match' ? 'Luna logo preview' : (logoCropEntryPrompt ? 'Logo check' : 'Logo framing')}</p>
+                            <h3 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl">{logoCropSourceKind === 'theme_match' ? 'Preview redesigned logo' : (logoCropEntryPrompt ? 'Make your logo fit the header' : 'Crop & position your logo')}</h3>
+                            <p className="mt-1 text-sm text-slate-500">{logoCropSourceKind === 'theme_match' ? 'Luna redesigned the logo for the active theme while preserving the brand identity. Review the complete mark below, fine-tune its framing if needed, then Apply or Cancel. Your current logo stays active until you apply this preview.' : (logoCropEntryPrompt ? 'Your complete generated logo is contained inside the 650 × 200 header frame with safety padding. Adjust only if you want to fine-tune it, then save.' : 'Your full logo is contained inside the 650 × 200 header frame at 100%. Drag or zoom only if you want to fine-tune its position.')}</p>
                         </div>
 
                         <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
@@ -8587,7 +8760,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         disabled={logoCropSaving || !logoCropNatural.width}
                                         className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        {logoCropSaving ? 'Saving Crop…' : 'Save Logo'}
+                                        {logoCropSaving ? (logoCropSourceKind === 'theme_match' ? 'Applying…' : 'Saving Crop…') : (logoCropSourceKind === 'theme_match' ? 'Apply Redesigned Logo' : 'Save Logo')}
                                     </button>
                                 </div>
                             </div>
@@ -8596,22 +8769,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 </div>
             )}
 
-            {pendingSvgLogoMatch && !logoBusy && (
+            {false && pendingSvgLogoMatch && !logoBusy && (
                 <div className="fixed inset-0 z-[10045] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
                     <div id="cosmic-svg-logo-match-modal" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">SVG logo uploaded</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-950">Match this logo to the current theme?</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">Your original SVG is already saved. Keep it exactly as uploaded, or apply an instant reversible CSS color treatment for the active website theme.</p>
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">Match Logo to Theme is instant and free. Your original SVG remains unchanged.</div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">Your original SVG is preserved. Keep it exactly as uploaded, or let Luna prepare a brand-safe redesign for the active website theme.</p>
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">Luna previews the redesigned logo first. Your original SVG remains unchanged until Apply.</div>
                         <div className="mt-6 grid gap-3 sm:grid-cols-2">
                             <button type="button" onClick={() => { setPendingSvgLogoMatch(null); setLogoSyncState('logo_changed'); }} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Keep Original · Free</button>
-                            <button type="button" onClick={() => matchLogoToTheme(true)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Match Logo · Free</button>
+                            <button type="button" onClick={() => matchLogoToTheme(true)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Redesign Logo</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {!trialMode && pendingUploadedLogoThemeChoice && !logoBusy && (
+            {false && !trialMode && pendingUploadedLogoThemeChoice && !logoBusy && (
                 <div className="fixed inset-0 z-[10040] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Logo saved</p>
@@ -8685,11 +8858,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-violet-200 border-t-violet-500 border-r-cyan-300 border-b-emerald-400" />
                             <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-xl text-emerald-600 shadow-lg">✦</div>
                         </div>
-                        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cosmic AI</p>
+                        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">{['logo_to_theme', 'theme_to_logo'].includes(logoAiAction) ? 'Luna Brand Sync' : 'Cosmic AI'}</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
                             {logoAiAction === 'generate' && 'Creating your logo'}
                             {logoAiAction === 'regenerate' && 'Regenerating your logo'}
-                            {logoAiAction === 'logo_to_theme' && 'Matching logo to theme'}
+                            {logoAiAction === 'logo_to_theme' && 'Redesigning logo for theme'}
                             {logoAiAction === 'theme_to_logo' && 'Matching theme to logo'}
                         </h3>
                         <p className="mt-3 min-h-5 text-sm text-slate-600">{logoAiStage}</p>
@@ -8881,11 +9054,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             }}
                                             className="cosmic-logo-match-pending sm:col-span-2 min-h-[84px] w-full rounded-xl border px-5 py-4 text-left transition disabled:cursor-not-allowed"
                                         >
-                                            <span className="cosmic-logo-match-pending-title block text-sm font-extrabold">✨ Match Logo to Theme</span>
-                                            <span className="cosmic-logo-match-pending-help mt-1.5 block text-xs leading-5">Pending after keeping the original logo. Apply a free CSS color treatment to the active theme without changing the saved crop or size.</span>
+                                            <span className="cosmic-logo-match-pending-title block text-sm font-extrabold">✨ Redesign Logo to Match Theme</span>
+                                            <span className="cosmic-logo-match-pending-help mt-1.5 block text-xs leading-5">Luna will create a brand-safe redesign for the active theme while preserving your core identity. You’ll preview it before anything is applied.</span>
                                         </button>
                                     )}
-                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Match Logo to Theme is free and instant. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
+                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `Luna logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `Luna logo generation and redesign use Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -9032,7 +9205,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-violet-200 border-t-violet-500 border-r-cyan-300 border-b-emerald-400" />
                             <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-xl text-emerald-600 shadow-lg">✦</div>
                         </div>
-                        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cosmic AI</p>
+                        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">{['logo_to_theme', 'theme_to_logo'].includes(logoAiAction) ? 'Luna Brand Sync' : 'Cosmic AI'}</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Regenerating your page</h3>
                         <p className="mt-3 text-sm text-slate-600">{regenerateStage}</p>
                         <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">

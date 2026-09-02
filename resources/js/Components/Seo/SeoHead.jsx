@@ -14,10 +14,11 @@ export default function SeoHead({
     type = 'website',
     noIndex = false,
     schema = null,
+    baseUrl = 'https://www.cosmiccms.com',
 }) {
-    const baseUrl = 'https://www.cosmiccms.com';
-    const canonical = absoluteUrl(path, baseUrl);
-    const socialImage = absoluteUrl(image, baseUrl);
+    const normalizedBaseUrl = String(baseUrl || 'https://www.cosmiccms.com').replace(/\/$/, '');
+    const canonical = absoluteUrl(path, normalizedBaseUrl);
+    const socialImage = absoluteUrl(image, normalizedBaseUrl);
     const schemas = Array.isArray(schema) ? schema : (schema ? [schema] : []);
 
     return (

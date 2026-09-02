@@ -19,7 +19,7 @@ class PaymentCheckoutService
     )
     {
     }
-    public function create(User $user, string $provider, string $productType, string $productKey): array
+    public function create(User $user, string $provider, string $productType, string $productKey, array $context = []): array
     {
         $product = match ($productType) {
             'credits' => CreditPackageRegistry::get($productKey),
@@ -86,7 +86,7 @@ class PaymentCheckoutService
             'currency' => $currency,
             'credits' => (int) ($product['credits'] ?? 0),
             'status' => 'pending',
-            'metadata' => array_filter([
+            'metadata' => array_merge(array_filter([
                 'country_routed' => true,
                 'previous_subscription_id' => $previousSubscription?->external_subscription_id,
                 'previous_plan_key' => $previousSubscription?->product_key,
@@ -95,7 +95,7 @@ class PaymentCheckoutService
                     : null,
                 'plan_switch_status' => $previousSubscription ? 'awaiting_approval' : null,
                 'plan_switch_started_at' => $previousSubscription ? now()->toIso8601String() : null,
-            ]),
+            ]), array_filter($context, static fn ($value) => $value !== null && $value !== '')),
         ]);
 
         try {
@@ -145,8 +145,8 @@ class PaymentCheckoutService
                 'brand_name' => 'Cosmic CMS',
                 'landing_page' => 'NO_PREFERENCE',
                 'user_action' => 'PAY_NOW',
-                'return_url' => route('payments.success').'?provider=paypal&order='.$order->reference,
-                'cancel_url' => route('payments.cancel').'?provider=paypal&order='.$order->reference,
+                'return_url' => $this->corePaymentUrl('payments/success').'?provider=paypal&order='.$order->reference,
+                'cancel_url' => $this->corePaymentUrl('payments/cancel').'?provider=paypal&order='.$order->reference,
             ],
         ]);
 
@@ -202,8 +202,8 @@ class PaymentCheckoutService
                 'locale' => 'en-US',
                 'shipping_preference' => 'NO_SHIPPING',
                 'user_action' => 'SUBSCRIBE_NOW',
-                'return_url' => route('payments.success').'?provider=paypal&order='.$order->reference,
-                'cancel_url' => route('payments.cancel').'?provider=paypal&order='.$order->reference,
+                'return_url' => $this->corePaymentUrl('payments/success').'?provider=paypal&order='.$order->reference,
+                'cancel_url' => $this->corePaymentUrl('payments/cancel').'?provider=paypal&order='.$order->reference,
             ],
         ];
 
@@ -237,6 +237,12 @@ class PaymentCheckoutService
         ];
     }
 
+
+    private function corePaymentUrl(string $path): string
+    {
+        $base = rtrim((string) config('cosmic_marketplace.core_url', config('app.url')), '/');
+        return $base.'/'.ltrim($path, '/');
+    }
 
     private function paypalClient(): PendingRequest
     {

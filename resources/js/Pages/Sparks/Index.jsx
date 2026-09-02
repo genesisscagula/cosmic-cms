@@ -7,6 +7,7 @@ import { ActualSparkPreview } from "../Websites/Components/AddSectionModal";
 import CreditBalanceBadge from "../../Components/CosmicCredits/CreditBalanceBadge";
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { showCosmicNotification } from "../../Components/CosmicNotification";
+import { compareSparkMarketplacePriority } from "../../Utils/sparkMarketplaceSort";
 
 const tones = [
     "from-violet-500/30 via-indigo-500/10 to-cyan-400/20",
@@ -62,7 +63,9 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
         if (aiResults && !aiResultMap.has(spark.key)) return false;
         if (aiResults) return true;
         return `${spark.name} ${spark.description} ${spark.category}`.toLowerCase().includes(query.toLowerCase());
-    }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [catalogItems, view, category, query, aiResults, aiResultMap]);
+    }).sort((a, b) => aiResults
+        ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) || compareSparkMarketplacePriority(a, b)
+        : compareSparkMarketplacePriority(a, b)), [catalogItems, view, category, query, aiResults, aiResultMap]);
 
     const standaloneRevealKey = `${view}|${category}|${query.trim().toLowerCase()}|${aiResults ? "ai" : "browse"}`;
     const standaloneVisibleCount = useTimedReveal(filtered.length, standaloneRevealKey, {
@@ -168,7 +171,7 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                     <div className="flex items-center gap-2 text-xs text-slate-400"><span>Preview appearance</span>{["primary", "white", "surface"].map((variant) => <button key={variant} type="button" aria-pressed={previewVariant === variant} data-active={previewVariant === variant ? "true" : "false"} onClick={() => setPreviewVariant(variant)} className="cosmic-spark-variant-toggle rounded-full px-2.5 py-1 font-semibold capitalize transition">{variant}</button>)}</div>
-                    <div className="flex gap-2"><button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{!previewSpark.owned && <button type="button" disabled={busyKey === previewSpark.key} onClick={() => unlock(previewSpark)} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : `Add to My Sparks · ⚡${previewSpark.credits}`}</button>}</div>
+                    <div className="flex gap-2"><button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{!previewSpark.owned && (previewSpark.can_install === false && previewSpark.usage_state?.upgrade_url ? <Link href={previewSpark.usage_state.upgrade_url} className="rounded-xl bg-amber-200 px-5 py-2.5 text-sm font-bold text-slate-950">{previewSpark.usage_state?.actionLabel || "View upgrade"}</Link> : <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : previewSpark.usage_state?.actionLabel || `Add to My Sparks · ⚡${previewSpark.credits}`}</button>)}</div>
                 </footer>
             </section>
         </div>}

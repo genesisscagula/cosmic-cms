@@ -32,12 +32,16 @@ final class LunaFullPageComposerService
     }
 
     /** @return array{slots:array<int,array<string,mixed>>,model_department:string,composer:string} */
-    public function plan(string $request, array $theme, array $currentBlocks, array $bundleContext = []): array
+    public function plan(string $request, array $theme, array $currentBlocks, array $bundleContext = [], ?array $allowedSparkKeys = null): array
     {
         $apiKey=(string)config('openai.api_key');
         if($apiKey==='') throw new \RuntimeException('OpenAI API key is not configured.');
 
-        $catalog=collect(SparkCatalog::all())->filter(fn($s)=>is_array($s)&&!empty($s['key']))
+        $allowedSparkMap=is_array($allowedSparkKeys)
+            ? array_flip(array_values(array_filter(array_map('strval',$allowedSparkKeys))))
+            : null;
+        $catalog=collect(SparkCatalog::all())
+            ->filter(fn($s)=>is_array($s)&&!empty($s['key'])&&(!is_array($allowedSparkMap)||isset($allowedSparkMap[(string)$s['key']])))
             ->map(fn($s)=>array_filter([
                 'key'=>$s['key']??null,'name'=>$s['name']??null,'category'=>$s['category']??null,
                 'description'=>$s['description']??null,'aliases'=>$s['aliases']??null,

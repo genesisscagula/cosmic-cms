@@ -15,6 +15,8 @@ use App\Services\AiPageGenerationService;
 use App\Services\CreditService;
 use App\Services\LunaCategoryPageService;
 use App\Services\LunaPexelsVideoService;
+use App\Services\PlanEntitlementService;
+use App\Services\SparkCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -77,6 +79,16 @@ class AIController extends Controller
         }
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
+
+        // Template + Spark plan access are both authoritative. A client cannot
+        // submit a locked Growth/Pro design_plan directly to bypass Marketplace.
+        $this->assertPageTemplatePlanAccess($request, (string) data_get($designPlan, 'template_key', ''));
+
+        // The AI endpoint must obey the exact same Spark entitlement contract as
+        // Marketplace. Permanent ownership is honored after a downgrade, but Luna
+        // cannot generate/install a Growth or Pro marketplace Spark that the user
+        // has never owned.
+        $this->assertSparkPlanAccess($request, $validated['sections']);
         // Luna chooses the website color family once: on the first real page build.
         // Existing websites keep their saved theme unless the user explicitly asks
         // for a color/theme change through the dedicated theme controls/Luna flow.
@@ -367,7 +379,7 @@ TEXT;
         );
 
         if (! empty($validated['design_seed'])) {
-            $plan = $this->lunaCategoryPages->planDetailed($prompt);
+            $plan = $this->lunaCategoryPages->planDetailed($prompt, $this->allowedPageTemplateKeys($request));
 
             return response()->json([
                 'sections' => $plan['sections'],
@@ -420,7 +432,7 @@ TEXT;
             }
         }
 
-        $plan = $this->lunaCategoryPages->planDetailed($prompt);
+        $plan = $this->lunaCategoryPages->planDetailed($prompt, $this->allowedPageTemplateKeys($request));
 
         return response()->json([
             'sections' => $plan['sections'],
@@ -454,6 +466,60 @@ TEXT;
             )
         );
     }
+    /** @return array<int,string>|null */
+    private function allowedPageTemplateKeys(Request $request): ?array
+    {
+        $user = $request->user();
+        return $user ? app(PlanEntitlementService::class)->accessiblePageTemplateKeys($user) : null;
+    }
+
+    private function assertPageTemplatePlanAccess(Request $request, string $templateKey): void
+    {
+        $templateKey = trim($templateKey);
+        $user = $request->user();
+        if ($templateKey === '' || ! $user) return;
+
+        // Purchased Page Templates remain usable after a downgrade.
+        $owned = $user->cosmicUnlocks()
+            ->where('unlock_type', 'template')
+            ->where('unlock_key', $templateKey)
+            ->exists();
+        if ($owned) return;
+
+        $entitlements = app(PlanEntitlementService::class);
+        $access = $entitlements->pageTemplateAccess($user, $templateKey);
+        if ((bool) ($access['allowed'] ?? false)) return;
+
+        $upgrade = (array) ($access['upgrade'] ?? []);
+        $target = (string) ($upgrade['label'] ?? ucfirst((string) ($access['required_level'] ?? 'pro')));
+        abort(403, sprintf('This Template requires %s. Upgrade to %s to use it with Luna.', ucfirst((string) ($access['required_level'] ?? 'pro')), $target));
+    }
+
+    private function assertSparkPlanAccess(Request $request, array $sections): void
+    {
+        $user = $request->user();
+        if (! $user) return;
+
+        $owned = $user->cosmicUnlocks()
+            ->where('unlock_type', 'spark')
+            ->pluck('unlock_key')
+            ->map(fn ($key) => (string) $key)
+            ->flip();
+        $entitlements = app(PlanEntitlementService::class);
+
+        foreach (array_values(array_unique(array_filter($sections, 'is_string'))) as $key) {
+            $spark = SparkCatalog::find($key);
+            if (! $spark || $owned->has($key)) continue;
+
+            $access = $entitlements->sparkAccess($user, (string) ($spark['access_level'] ?? 'starter'));
+            if ((bool) ($access['allowed'] ?? false)) continue;
+
+            $upgrade = $entitlements->recommendedSparkUpgrade($user, (string) ($spark['access_level'] ?? 'starter'));
+            $target = (string) ($upgrade['label'] ?? ($access['required_label'] ?? 'a higher plan'));
+            abort(403, sprintf('%s requires %s. Upgrade to %s to use this Spark with Luna.', (string) ($spark['name'] ?? $key), (string) ($access['required_label'] ?? $target), $target));
+        }
+    }
+
     /**
      * A newly-created website may already contain a blank Home page. Treat it as
      * "first build" until any standard page has actual Spark blocks.

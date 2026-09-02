@@ -86,6 +86,7 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
     const areaLabel=component.split('/').filter(Boolean).pop()?.replace(/([a-z])([A-Z])/g,'$1 $2')||'Cosmic CMS';
 
     const builderOwned=/Websites\/Builder$/i.test(component);
+    const marketplaceOwned=/^Marketplace\//i.test(component);
 
     useEffect(()=>{
         const remove=router.on('success',(event)=>{
@@ -507,7 +508,7 @@ useEffect(()=>{
                 ? 'Build, explore, or ask a question'
                 : 'Explore Cosmic CMS with Luna';
 
-    if(builderOwned)return null;
+    if(builderOwned||marketplaceOwned)return null;
 
     return <>
         {!open&&<button

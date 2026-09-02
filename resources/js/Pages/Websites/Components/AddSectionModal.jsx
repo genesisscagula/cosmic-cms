@@ -5,6 +5,7 @@ import { Link } from "@inertiajs/react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
+import { compareSparkMarketplacePriority, sortSparkMarketplaceItems } from '../../../Utils/sparkMarketplaceSort';
 import BlockPreviewCard from "./BlockPreviewCard";
 import { BlockRegistry } from "./SparkRegistry";
 import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
@@ -75,6 +76,34 @@ function SectionTypeIcon({ icon = "sparkles" }) {
 // The Builder registry schema/defaults are the source of truth; curated previews
 // still win when present. This removes the old 229/329 visibility ceiling without
 // creating a second rendering contract.
+const sparkPlanLabel = (spark) => {
+    const level = String(spark?.access_level || 'starter').toLowerCase();
+    if (level === 'pro' || level === 'agency_pro') return 'Pro';
+    if (level === 'growth' || level === 'agency_growth') return 'Growth';
+    return 'Starter';
+};
+
+// Marketplace actions intentionally use different semantic colors so users can
+// distinguish an available install, a credit purchase, and a plan upgrade at a glance.
+const sparkUpgradeActionClass = (spark) => sparkPlanLabel(spark) === 'Pro'
+    ? 'cosmic-spark-upgrade-pro-action'
+    : 'cosmic-spark-upgrade-growth-action';
+
+const sparkAcquireActionClass = (spark) => Number(spark?.credits || 0) === 0
+    ? 'cosmic-spark-install-action'
+    : 'cosmic-spark-buy-action';
+
+// Removed Sparks remain permanently owned. They should restore with the Install
+// semantic (green) instead of looking like a second credit purchase after a
+// downgrade or manual removal.
+const sparkNeedsRestore = (spark) => Boolean(
+    spark?.owned_permanently && !spark?.owned
+    || spark?.usage_state?.key === 'removed'
+    || spark?.acquisition?.action === 'restore'
+);
+
+const sparkPlanBadgeClass = (spark) => `cosmic-spark-plan-badge--${sparkPlanLabel(spark).toLowerCase()}`;
+
 const createBuilderRegistryFallback = (spark) => {
     const builderEntry = BuilderBlockRegistry[spark?.key];
     if (!spark?.key || !builderEntry?.component || !builderEntry?.schema || typeof builderEntry.schema !== "object") return null;
@@ -771,7 +800,9 @@ export default function AddSectionModal({
         if (aiResults) return true;
         const haystack = `${item.name} ${item.description} ${item.category} ${item.collection || ""}`.toLowerCase();
         return haystack.includes(query.trim().toLowerCase());
-    }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [displayItems, tab, category, query, aiResults, aiResultMap]);
+    }).sort((a, b) => aiResults
+        ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) || compareSparkMarketplacePriority(a, b)
+        : compareSparkMarketplacePriority(a, b)), [displayItems, tab, category, query, aiResults, aiResultMap]);
 
     const categorySparkItems = useMemo(() => {
         if (category === "All") {
@@ -780,7 +811,7 @@ export default function AddSectionModal({
                 .filter((item) => aiResultMap.has(item.key))
                 .sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999));
         }
-        return displayItems.filter((item) => (categoryFor(item.key, item.category)) === category);
+        return sortSparkMarketplaceItems(displayItems.filter((item) => (categoryFor(item.key, item.category)) === category));
     }, [displayItems, category, aiResults, aiResultMap]);
 
     const pickerSpark = useMemo(() => {
@@ -848,7 +879,7 @@ export default function AddSectionModal({
     const chooseCategory = (name) => {
         // Category cards always remain visible so users can discover section types,
         // but the next screen is their owned/shared collection only.
-        const matches = displayItems.filter((item) => (categoryFor(item.key, item.category)) === name);
+        const matches = sortSparkMarketplaceItems(displayItems.filter((item) => (categoryFor(item.key, item.category)) === name));
         const initial = matches.find((item) => !item.trial_locked) || matches[0] || null;
         setCategory(name);
         setPickerSparkKey(initial?.key || null);
@@ -878,7 +909,7 @@ export default function AddSectionModal({
                 const payload = JSON.parse(event.newValue);
                 const sparkKey = String(payload?.key || '');
                 if (!sparkKey || payload?.owned === false) return;
-                setCatalog((current) => current.map((item) => item.key === sparkKey ? { ...item, owned: true } : item));
+                setCatalog((current) => current.map((item) => item.key === sparkKey ? { ...item, owned: true, installed: true, owned_permanently: true } : item));
                 onOwnershipChanged?.(sparkKey);
             } catch (_) {}
         };
@@ -930,7 +961,8 @@ export default function AddSectionModal({
         setBusyKey(spark.key);
         try {
             const { data } = await axios.post(trialMode && trialToken ? `/trial-assets/${trialToken}/sparks/${spark.key}/unlock` : `/sparks/${spark.key}/unlock`);
-            setCatalog((current) => current.map((item) => item.key === spark.key ? { ...item, owned: true } : item));
+            setCatalog((current) => current.map((item) => item.key === spark.key ? { ...item, owned: true, installed: true, owned_permanently: true, usage_state: { ...(item.usage_state || {}), key: 'owned', label: 'Owned', action: 'use', actionLabel: 'Add to page' } } : item));
+            setPreviewSpark((current) => current?.key === spark.key ? { ...current, owned: true, installed: true, owned_permanently: true, usage_state: { ...(current.usage_state || {}), key: 'owned', label: 'Owned', action: 'use', actionLabel: 'Add to page' } } : current);
             onOwnershipChanged?.(spark.key);
             setBalance(data.credit_balance);
             showCosmicNotification({ title: "Added to My Sparks", message: data.message, tone: "success" });
@@ -1077,8 +1109,10 @@ export default function AddSectionModal({
                                     <div className="px-1 pb-1 pt-4">
                                         <div className="mb-3 flex flex-wrap items-center gap-2">
                                             {spark.owned ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700'}`}>✓ Owned</span> : null}
-                                            {!spark.owned && Number(spark.credits || 0) === 0 ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-sky-400/10 text-sky-200' : 'bg-sky-50 text-sky-700'}`}>Free</span> : null}
-                                            {!spark.owned && Number(spark.credits || 0) > 0 ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>⚡ {spark.credits} Credits</span> : null}
+                                            {sparkNeedsRestore(spark) ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-emerald-400/10 text-emerald-200' : 'bg-emerald-50 text-emerald-700'}`}>↻ Owned · Removed</span> : null}
+                                            {!spark.owned_permanently && !spark.owned && Number(spark.credits || 0) === 0 ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-sky-400/10 text-sky-200' : 'bg-sky-50 text-sky-700'}`}>Free</span> : null}
+                                            {!spark.owned_permanently && !spark.owned && Number(spark.credits || 0) > 0 ? <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${appDark ? 'bg-amber-400/10 text-amber-200' : 'bg-amber-50 text-amber-700'}`}>⚡ {spark.credits} Credits</span> : null}
+                                            <span className={`cosmic-spark-plan-badge ${sparkPlanBadgeClass(spark)} rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]`}>{sparkPlanLabel(spark)}</span>
                                         </div>
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
@@ -1093,9 +1127,13 @@ export default function AddSectionModal({
                                             {spark.trial_locked ? (
                                                 <Link href={trialSignupUrl} className="cosmic-spark-marketplace-action rounded-2xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500">Sign up</Link>
                                             ) : spark.owned ? (
-                                                <button type="button" onClick={() => { setSelected(spark); setMode('quick'); setInstruction(''); }} className="cosmic-spark-marketplace-action rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700">Install</button>
+                                                <button type="button" onClick={() => { setSelected(spark); setMode('quick'); setInstruction(''); }} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm">Install</button>
+                                            ) : sparkNeedsRestore(spark) ? (
+                                                <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50">{busyKey === spark.key ? 'Restoring…' : 'Restore'}</button>
+                                            ) : spark.can_install === false && spark.usage_state?.key === 'plan_locked' && spark.usage_state?.upgrade_url ? (
+                                                <Link href={spark.usage_state.upgrade_url} className={`cosmic-spark-marketplace-action ${sparkUpgradeActionClass(spark)} rounded-2xl px-4 py-3 text-center text-sm font-bold text-white shadow-sm`}>{spark.usage_state?.actionLabel || `Upgrade to ${sparkPlanLabel(spark)}`}</Link>
                                             ) : (
-                                                <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="cosmic-spark-marketplace-action cosmic-spark-buy-action rounded-2xl bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50">{busyKey === spark.key ? 'Buying…' : Number(spark.credits || 0) === 0 ? 'Add Free Spark' : `Buy · ⚡ ${spark.credits}`}</button>
+                                                <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className={`cosmic-spark-marketplace-action ${sparkAcquireActionClass(spark)} rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50`}>{busyKey === spark.key ? (Number(spark.credits || 0) === 0 ? 'Adding…' : 'Buying…') : spark.slot_blocked ? 'Owned Spark slots full' : spark.can_install === false ? (spark.usage_state?.actionLabel || 'Unavailable') : Number(spark.credits || 0) === 0 ? 'Add Free Spark' : `Buy · ⚡ ${spark.credits}`}</button>
                                             )}
                                         </div>
                                     </div>
@@ -1311,7 +1349,15 @@ export default function AddSectionModal({
                         </div>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={onClose} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${appDark ? 'border-white/10 text-slate-300' : 'border-slate-300 text-slate-700'}`}>Cancel</button>
-                            {pickerSpark?.trial_locked ? <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link> : pickerSpark?.owned ? <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button> : (!ownedOnly && pickerSpark) ? <button type="button" disabled={busyKey === pickerSpark.key || pickerSpark.can_install === false} onClick={() => unlock(pickerSpark)} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-40">{busyKey === pickerSpark.key ? 'Adding…' : Number(pickerSpark.credits || 0) === 0 ? 'Add Free Spark' : `Unlock · ⚡ ${pickerSpark.credits}`}</button> : null}
+                            {pickerSpark?.trial_locked ? (
+                                <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link>
+                            ) : pickerSpark?.owned ? (
+                                <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button>
+                            ) : (!ownedOnly && pickerSpark?.can_install === false && pickerSpark?.usage_state?.key === 'plan_locked' && pickerSpark?.usage_state?.upgrade_url) ? (
+                                <Link href={pickerSpark.usage_state.upgrade_url} className={`cosmic-spark-marketplace-action ${sparkUpgradeActionClass(pickerSpark)} rounded-xl px-5 py-2 text-sm font-bold text-white`}>{pickerSpark.usage_state.actionLabel || pickerSpark.usage_state.action_label || 'Upgrade plan'}</Link>
+                            ) : (!ownedOnly && pickerSpark) ? (
+                                <button type="button" disabled={busyKey === pickerSpark.key || pickerSpark.can_install === false} onClick={() => unlock(pickerSpark)} className={`cosmic-spark-marketplace-action ${sparkAcquireActionClass(pickerSpark)} rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-40`}>{busyKey === pickerSpark.key ? 'Adding…' : pickerSpark.can_install === false ? (pickerSpark.usage_state?.actionLabel || pickerSpark.usage_state?.action_label || 'Unavailable') : Number(pickerSpark.credits || 0) === 0 ? 'Add Free Spark' : `Unlock · ⚡ ${pickerSpark.credits}`}</button>
+                            ) : null}
                         </div>
                     </footer>
                 </>
@@ -1362,10 +1408,14 @@ export default function AddSectionModal({
                         {previewSpark.trial_locked ? (
                             <Link href={trialSignupUrl} className="rounded-xl bg-violet-400 px-5 py-2.5 text-sm font-bold text-slate-950">Sign up to unlock</Link>
                         ) : previewSpark.owned ? (
-                            <button type="button" onClick={() => { const spark = previewSpark; setPreviewSpark(null); if (isMarketplaceContext) { setSelected(spark); setMode('quick'); setInstruction(''); } else { addPickerSparkQuick(spark); } }} className="rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-violet-600 hover:to-indigo-600">{isMarketplaceContext ? 'Install Spark' : 'Customize Section'}</button>
+                            <button type="button" onClick={() => { const spark = previewSpark; setPreviewSpark(null); if (isMarketplaceContext) { setSelected(spark); setMode('quick'); setInstruction(''); } else { addPickerSparkQuick(spark); } }} className={`rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition ${isMarketplaceContext ? 'cosmic-spark-marketplace-action cosmic-spark-install-action' : 'bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600'}`}>{isMarketplaceContext ? 'Install Spark' : 'Customize Section'}</button>
+                        ) : sparkNeedsRestore(previewSpark) ? (
+                            <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition disabled:opacity-50">{busyKey === previewSpark.key ? 'Restoring…' : 'Restore Spark'}</button>
+                        ) : previewSpark.can_install === false && previewSpark.usage_state?.key === 'plan_locked' && previewSpark.usage_state?.upgrade_url ? (
+                            <Link href={previewSpark.usage_state.upgrade_url} className={`cosmic-spark-marketplace-action ${sparkUpgradeActionClass(previewSpark)} rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition`}>{previewSpark.usage_state?.actionLabel || `Upgrade to ${sparkPlanLabel(previewSpark)}`}</Link>
                         ) : (
-                            <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-violet-600 hover:to-indigo-600 disabled:opacity-50">
-                                {busyKey === previewSpark.key ? "Buying..." : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? "Upgrade to add" : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Buy Spark · ⚡ ${previewSpark.credits}`}
+                            <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className={`cosmic-spark-marketplace-action ${sparkAcquireActionClass(previewSpark)} rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition disabled:opacity-50`}>
+                                {busyKey === previewSpark.key ? (Number(previewSpark.credits || 0) === 0 ? "Adding..." : "Buying...") : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? (previewSpark.usage_state?.actionLabel || "Unavailable") : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Buy · ⚡ ${previewSpark.credits}`}
                             </button>
                         )}
                     </div>

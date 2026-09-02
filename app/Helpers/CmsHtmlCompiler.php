@@ -1224,6 +1224,18 @@ JS;
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
+                case 'marketplace_ember_hero':
+                case 'marketplace_ember_feature':
+                case 'marketplace_ember_story':
+                case 'marketplace_ember_menu':
+                case 'marketplace_ember_private_dining':
+                case 'marketplace_ember_reviews':
+                case 'marketplace_ember_gallery':
+                case 'marketplace_ember_reservation':
+                case 'marketplace_ember_location':
+                    $html .= self::marketplaceEmberHomeHtml($type, $block);
+                    break;
+
                 case 'content_editorial_image_stack_premium':
                 case 'content_asymmetric_story_premium':
                 case 'content_media_manifesto_premium':
@@ -2285,15 +2297,28 @@ HTML;
 
                 case 'dark_cyan_header':
                 case 'glassmorphism_header':
+                case 'classic_header':
+                case 'centered_header':
+                case 'split_navigation_header':
+                case 'floating_glass_header':
+                case 'overlay_hero_header':
+                case 'minimal_header':
                 $logoText = e($block['logo_text'] ?? 'Your Website');
-                $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
+                $preHeaderType = (string) ($block['type'] ?? 'glassmorphism_header');
+                $preHeaderOverlay = (bool) ($block['overlay_header_on_banner'] ?? false) || $preHeaderType === 'overlay_hero_header';
+                $preHeaderTone = $preHeaderOverlay || (($block['logo_tone'] ?? '') === 'light') || (($block['custom_style']['logo_tone'] ?? '') === 'light') ? 'light' : 'dark';
+                [$rawLogoImageUrl, $explicitToneLogo] = self::resolveLogoForTone($block, $preHeaderTone);
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
-                $logoFilter = e($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                $logoFilter = e($explicitToneLogo
+                    ? 'none'
+                    : ($preHeaderTone === 'light'
+                        ? 'brightness(0) saturate(100%) invert(1)'
+                        : ($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
                     ? $explicitLogoFilter
                     : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
                         ? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight'))
-                        : 'none'));
+                        : 'none'))));
                 $headerLogoHeight = max(44, min(60, (int) ($block['logo_height'] ?? 48)));
                 $headerLogoMaxWidth = max(180, min(300, (int) ($block['logo_max_width'] ?? 240)));
                 $logo = $logoImageUrl !== ''
@@ -2316,7 +2341,9 @@ HTML;
                 $customCtaRadius = max(0, min(999, (int) ($customStyle['cta_radius'] ?? 8)));
                 $customPhone = trim((string) ($block['phone_text'] ?? ''));
                 $customPhoneEnabled = $customShell && (bool) ($block['phone_enabled'] ?? false) && $customPhone !== '';
-                $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false);
+                $headerVariantType = (string) ($block['type'] ?? 'glassmorphism_header');
+                $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false) || $headerVariantType === 'overlay_hero_header';
+                $headerVariantClass = 'cosmic-header-variant-' . str_replace('_header', '', str_replace('_', '-', $headerVariantType));
                 // Explicit overlay state must render consistently in Builder and Export Live.
                 // Contrast is handled below; do not silently disable overlay because of
                 // page-style or theme-family defaults.
@@ -2444,6 +2471,14 @@ HTML;
                 $html .= "
                 <style>
                     .cosmic-static-header .menu-node > a > span[aria-hidden='true'] { display: none; }
+                    .cosmic-header-variant-centered { flex-wrap:wrap; justify-content:center !important; text-align:center; }
+                    .cosmic-header-variant-centered > a { width:100%; display:flex; justify-content:center; }
+                    .cosmic-header-variant-centered > nav { margin-left:auto; margin-right:auto; }
+                    .cosmic-header-variant-split-navigation > a { order:2; position:absolute; left:50%; transform:translateX(-50%); }
+                    .cosmic-header-variant-split-navigation > nav { order:3; margin-left:auto; }
+                    .cosmic-header-variant-floating-glass { width:calc(100% - 2rem) !important; max-width:1480px; margin:1rem auto 0; border:1px solid rgba(148,163,184,.28) !important; border-radius:1rem; background:rgba(255,255,255,.82) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); box-shadow:0 18px 55px rgba(15,23,42,.12); }
+                    .cosmic-header-variant-minimal { box-shadow:none !important; border-bottom-color:rgba(148,163,184,.18) !important; }
+                    @media(max-width:767px){ .cosmic-header-variant-split-navigation > a { position:static; transform:none; order:0; } .cosmic-header-variant-centered > a { width:auto; } .cosmic-header-variant-centered { justify-content:space-between !important; text-align:left; } }
                     .cosmic-static-header .menu-node > a::after {
                         content: '';
                         width: .35rem;
@@ -2594,7 +2629,7 @@ HTML;
                     }
                 </style>
 
-                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 {$headerDividerClass} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$headerVariantClass} {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 {$headerDividerClass} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
                     <a href='/' style='{$overlayLogoSurfaceStyle}' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
@@ -2807,16 +2842,23 @@ HTML;
                 $contactPhone = e(trim((string)($contact['phone'] ?? '')));
                 $contactAddress = e(trim((string)($contact['address'] ?? '')));
                 $socialLinks = is_array($block['social_links'] ?? null) ? array_slice(array_values($block['social_links']), 0, 6) : [];
-                $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
+                $preMega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
+                $preFooterVariant = (string) ($preMega['variant'] ?? 'classic');
+                $preFooterTone = (($block['logo_tone'] ?? '') === 'light') || (($preMega['logo_tone'] ?? '') === 'light') || (($block['custom_style']['logo_tone'] ?? '') === 'light') || $preFooterVariant !== 'newsletter' ? 'light' : 'dark';
+                [$rawLogoImageUrl, $explicitToneLogo] = self::resolveLogoForTone($block, $preFooterTone);
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
                 $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
                 $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
-                $logoFilter = e($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                $logoFilter = e($explicitToneLogo
+                    ? 'none'
+                    : ($preFooterTone === 'light'
+                        ? 'brightness(0) saturate(100%) invert(1)'
+                        : ($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
                     ? $explicitLogoFilter
                     : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
                         ? self::logoFilter($logoFilterKey)
-                        : 'none'));
+                        : 'none'))));
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
                     : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
@@ -2827,6 +2869,7 @@ HTML;
                 $customFooterText = e((string) ($customFooterStyle['text_color'] ?? '#ffffff'));
                 $customFooterMuted = e((string) ($customFooterStyle['muted_color'] ?? '#b8c4d6'));
                 $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
+                $footerVariant = in_array(($mega['variant'] ?? 'classic'), ['classic','cta','brand','contact','newsletter'], true) ? ($mega['variant'] ?? 'classic') : 'classic';
                 $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
                 $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
                 $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($primaryColor ?: 'midnight');
@@ -2840,9 +2883,7 @@ HTML;
                     ];
                 }
                 $megaLogoHeight = max(44, min(64, $logoHeight + 10));
-                $megaLogoFilter = $customFooterShell && ($customFooterStyle['logo_tone'] ?? '') === 'light'
-                    ? 'brightness(0) invert(1)'
-                    : ($megaResolvedTheme === 'primary' ? 'brightness(0) invert(1)' : $logoFilter);
+                $megaLogoFilter = $explicitToneLogo ? 'none' : (($customFooterShell && ($customFooterStyle['logo_tone'] ?? '') === 'light') || $megaResolvedTheme === 'primary' ? 'brightness(0) saturate(100%) invert(1)' : $logoFilter);
                 $megaBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$megaLogoHeight}px;max-height:64px;filter:{$megaLogoFilter}' class='w-auto max-w-[300px] object-contain'>"
                     : "<div class='text-xl font-bold " . ($megaResolvedTheme === 'primary' ? 'text-white' : $primaryTheme['text']) . "'>{$brand}</div>";
@@ -2890,7 +2931,15 @@ HTML;
                     }
                     if ($socialHtml !== '') $socialHtml = "<div class='mt-4 flex flex-wrap gap-3 text-xs'>{$socialHtml}</div>";
 
-                    $html .= "<section {$footerSectionStyle} class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16'><div class='min-w-0'>{$megaBrand}<p {$footerMutedStyle} class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a>{$contactHtml}{$socialHtml}</div><div class='grid gap-7 lg:ml-auto lg:w-full lg:max-w-[820px] {$gridClass}'>{$columnHtml}</div></div></section>";
+                    $variantShellClass = match ($footerVariant) {
+                        'brand' => 'lg:grid-cols-[minmax(380px,1.15fr)_minmax(520px,.85fr)] lg:gap-20',
+                        'contact' => 'lg:grid-cols-[minmax(360px,.8fr)_minmax(600px,1.2fr)] lg:gap-14',
+                        'cta', 'newsletter' => 'lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16',
+                        default => 'lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16',
+                    };
+                    $variantColumnsClass = $footerVariant === 'brand' ? 'lg:max-w-[760px]' : ($footerVariant === 'contact' ? 'lg:max-w-[900px]' : 'lg:max-w-[860px]');
+                    $variantCtaClass = in_array($footerVariant, ['cta','newsletter'], true) ? 'rounded-full border border-current/25 px-5 py-3' : '';
+                    $html .= "<section data-cosmic-footer-variant='{$footerVariant}' {$footerSectionStyle} class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 {$variantShellClass}'><div class='min-w-0'>{$megaBrand}<p {$footerMutedStyle} class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75 {$variantCtaClass}'>{$primaryLabel}</a>{$contactHtml}{$socialHtml}</div><div class='grid gap-7 lg:ml-auto lg:w-full {$variantColumnsClass} {$gridClass}'>{$columnHtml}</div></div></section>";
                 }
 
                 $legalLeft = $megaEnabled
@@ -3306,6 +3355,11 @@ HTML;
                 $description = e($block['description'] ?? 'Helping businesses grow through strategy, design and technology.');
 
                 $services = $block['services'] ?? [];
+                $surfaceTheme = self::getTheme('stone');
+                $surfaceCard = "cosmic-surface-contrast cosmic-bg-surface {$surfaceTheme['text']}";
+                $surfaceBorder = $surfaceTheme['border'];
+                $surfaceText = $surfaceTheme['text'];
+                $surfaceMuted = $surfaceTheme['sub'];
 
                 $html .= "
                 <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
@@ -3335,16 +3389,16 @@ HTML;
                     $icon  = e($service['icon'] ?? '⚡');
                     $title = e($service['title'] ?? 'Service Title');
                     $desc  = e($service['desc'] ?? 'Service description.');
-                    $itemCard = self::sparkTwItem($block, 'services', $serviceIndex, 'card', "{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1");
-                    $itemIcon = self::sparkTwItem($block, 'services', $serviceIndex, 'icon', "w-20 h-20 rounded-3xl bg-white/5 border {$theme['border']} flex items-center justify-center text-4xl shrink-0");
+                    $itemCard = self::sparkTwItem($block, 'services', $serviceIndex, 'card', "{$surfaceCard} border {$surfaceBorder} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1");
+                    $itemIcon = self::sparkTwItem($block, 'services', $serviceIndex, 'icon', "w-20 h-20 rounded-3xl cosmic-adaptive-icon-tile border {$surfaceBorder} flex items-center justify-center text-4xl shrink-0");
                     $itemContent = self::sparkTwItem($block, 'services', $serviceIndex, 'content', 'flex-grow');
-                    $itemTitle = self::sparkTwItem($block, 'services', $serviceIndex, 'title', "text-3xl font-bold {$theme['text']}");
-                    $itemDesc = self::sparkTwItem($block, 'services', $serviceIndex, 'desc', "mt-3 text-lg leading-8 {$theme['sub']}");
+                    $itemTitle = self::sparkTwItem($block, 'services', $serviceIndex, 'title', "text-3xl font-bold {$surfaceText}");
+                    $itemDesc = self::sparkTwItem($block, 'services', $serviceIndex, 'desc', "mt-3 text-lg leading-8 {$surfaceMuted}");
                     $itemCtaWrap = self::sparkTwItem($block, 'services', $serviceIndex, 'cta_wrap', 'shrink-0');
-                    $itemCta = self::sparkTwItem($block, 'services', $serviceIndex, 'cta', "inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}");
+                    $itemCta = self::sparkTwItem($block, 'services', $serviceIndex, 'cta', "inline-flex items-center gap-2 text-sm font-semibold {$surfaceText}");
 
                     $html .= "
-                        <div class='{$itemCard}'>
+                        <div data-cosmic-card='1' data-cosmic-card-surface='light' class='{$itemCard}'>
 
                             <div class='{$itemIcon}'>
                                 {$icon}
@@ -6244,6 +6298,7 @@ HTML;
             $canonicalLocalComponent = is_array($block['luna_component_overrides'] ?? null) ? $block['luna_component_overrides'] : [];
             $blockTypeLower = Str::lower((string)($block['type'] ?? ''));
             $heroNeedsDefaultPadding = (($index === 0) || Str::contains($blockTypeLower, ['hero','banner']))
+                && !Str::startsWith($blockTypeLower, 'marketplace_')
                 && !Str::contains($blockTypeLower, ['fullscreen','cinematic'])
                 && !array_key_exists('section_padding_y', $design);
             if ($fragment !== '' && (!empty($design) || $heroNeedsDefaultPadding)) {
@@ -6551,7 +6606,7 @@ section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cos
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']{--cosmic-current-text:var(--cosmic-on-primary);--cosmic-current-muted:var(--cosmic-on-primary-muted)}
 section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']){--cosmic-current-text:var(--cosmic-on-surface);--cosmic-current-muted:var(--cosmic-on-surface-muted)}
 section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']) :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]):not([class*='text-white']):not([class*='-50']):not([class*='-100']):not([class*='-200']):not(:where([class*='text-white'] *,[class*='text-blue-50'] *,[class*='text-slate-50'] *,[class*='text-gray-50'] *,[class*='text-zinc-50'] *,[class*='text-neutral-50'] *,[class*='text-'][class*='-50'] *,[class*='text-'][class*='-100'] *,[class*='text-'][class*='-200'] *)){color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-heading-primary,#243447)))!important}
-section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]){color:var(--cosmic-color-on-primary,var(--cosmic-on-primary,#F8FAFC))!important}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]):not(:where([data-cosmic-card-surface='light'] *)){color:var(--cosmic-color-on-primary,var(--cosmic-on-primary,#F8FAFC))!important}
 /* Exact class-token matching avoids treating unrelated opacity/transition
    utilities on light cards as dark highlighted foregrounds. */
 section[data-cosmic-spark='1'] article:not(.cosmic-surface-contrast):is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50']) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li){color:var(--cosmic-color-on-secondary,var(--cosmic-color-on-dark,#FFFFFF))!important}
@@ -7505,6 +7560,21 @@ HTML;
         return '/' . ltrim($path, '/') === '/storage/branding/your-logo.png';
     }
 
+    /** @return array{0:string,1:bool} */
+    private static function resolveLogoForTone(array $branding, string $tone): array
+    {
+        $keys = $tone === 'light'
+            ? ['logo_light_image_url', 'logo_image_url_light', 'light_logo_url']
+            : ['logo_dark_image_url', 'logo_image_url_dark', 'dark_logo_url'];
+
+        foreach ($keys as $key) {
+            $candidate = trim((string) ($branding[$key] ?? ''));
+            if ($candidate !== '') return [$candidate, true];
+        }
+
+        return [trim((string) ($branding['logo_image_url'] ?? '')), false];
+    }
+
     private static function logoFilter(string $theme): string
     {
         return match ($theme) {
@@ -7937,6 +8007,136 @@ CSS;
         return "<section id='{$id}' class='cosmic-b4 b4-".e($family)." b4-".e($variant)."'><div class='b4-shell'><div class='b4-head'><span class='b4-eyebrow'>{$eyebrow}</span><span class='b4-heading'>{$heading}</span><span class='b4-intro'>{$intro}</span></div><div class='b4-grid'>{$cards}</div><div class='b4-actions'><a class='b4-primary' href='{$buttonUrl}'>{$button}</a><a class='b4-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
     }
 
+
+    /**
+     * Marketplace Ember & Olive owns a fixed editorial restaurant design kit.
+     * Keep the exported/live HTML visually equivalent to its React Marketplace
+     * renderer instead of falling through the generic Spark compiler (which
+     * would otherwise emit nothing for Marketplace-only Spark keys).
+     */
+    private static function marketplaceEmberHomeHtml(string $type, array $block): string
+    {
+        $text = static fn ($value): string => e((string) $value);
+        $url = static fn ($value): string => e(trim((string) $value) !== '' ? (string) $value : '#');
+        $image = static fn ($value): string => e(self::staticAssetUrl((string) $value));
+        $multiline = static fn ($value): string => nl2br(e((string) $value), false);
+        $id = 'marketplace-ember-'.substr(sha1($type.'|'.json_encode($block)), 0, 12);
+
+        $baseCss = <<<CSS
+<style>
+#{$id}{--ember-dark:#171713;--ember-dark-2:#1f2016;--ember-olive:#34321b;--ember-cream:#f5f0e7;--ember-ink:#2c211a;--ember-gold:#d5a153;--ember-copper:#9f633f;--ember-border:rgba(222,190,130,.18);box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#{$id} *,#{$id} *:before,#{$id} *:after{box-sizing:border-box}#{$id} h1,#{$id} h2,#{$id} h3,#{$id} .ember-serif{font-family:Georgia,"Times New Roman",serif}#{$id} a{text-decoration:none}#{$id} img{display:block;width:100%;height:100%;object-fit:cover}#{$id} .ember-shell{width:min(1360px,calc(100% - 48px));margin:0 auto}#{$id} .ember-eyebrow{font-size:10px;font-weight:800;letter-spacing:.24em;text-transform:uppercase}#{$id} .ember-gold-button{display:inline-flex;min-height:48px;align-items:center;justify-content:center;border-radius:3px;padding:0 28px;background:linear-gradient(180deg,#e7bd71,#c98d36);color:#17140f;font-size:13px;font-weight:800}#{$id} .ember-outline-button{display:inline-flex;min-height:48px;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:0 28px;background:rgba(0,0,0,.15);color:#fff;font-size:13px;font-weight:700}#{$id} .ember-muted{color:rgba(255,255,255,.62)}
+@media(max-width:760px){#{$id} .ember-shell{width:min(100% - 32px,1360px)}}
+</style>
+CSS;
+
+        if ($type === 'marketplace_ember_hero') {
+            $eyebrow = $text($block['eyebrow'] ?? 'EMBER & OLIVE · PORTLAND');
+            $heading = $text($block['heading'] ?? 'Fire-crafted food.');
+            $accent = $text($block['accent_heading'] ?? 'Gathered moments.');
+            $copy = $text($block['text'] ?? 'Seasonal ingredients, open flames, and warm hospitality. A dining experience rooted in craft and connection.');
+            $primaryLabel = $text($block['primary_label'] ?? 'Reserve a Table');
+            $primaryUrl = $url($block['primary_url'] ?? '/contact');
+            $secondaryLabel = $text($block['secondary_label'] ?? 'View Menu');
+            $secondaryUrl = $url($block['secondary_url'] ?? '/menu');
+            $heroImage = $image($block['image_url'] ?? 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=2000&q=90');
+            $css = <<<CSS
+<style>
+#{$id}{position:relative;min-height:690px;overflow:hidden;background:#171713;color:#f5f0e7}#{$id} .ember-hero-bg{position:absolute;inset:0}#{$id} .ember-hero-bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(12,12,9,.99) 0%,rgba(16,16,11,.94) 30%,rgba(18,18,12,.72) 49%,rgba(16,15,10,.18) 76%,rgba(9,9,7,.08) 100%)}#{$id} .ember-hero-copy{position:relative;z-index:2;display:flex;min-height:690px;align-items:center;padding:76px 0}#{$id} .ember-copy-inner{max-width:680px}#{$id} .ember-kicker{display:flex;align-items:center;gap:16px;color:rgba(255,255,255,.6)}#{$id} .ember-kicker:before{content:"";width:48px;height:1px;background:#d7a14f}#{$id} h1{margin:30px 0 0;font-size:clamp(58px,6.1vw,108px);font-weight:400;line-height:.92;letter-spacing:-.045em;color:#fff}#{$id} .ember-hero-accent{display:block;font-size:clamp(58px,6.1vw,108px);line-height:.92;letter-spacing:-.045em;color:#e0ad58}#{$id} .ember-ornament{display:flex;align-items:center;gap:12px;margin-top:28px;color:#d7a14f}#{$id} .ember-ornament:before{content:"";width:48px;height:1px;background:#d7a14f}#{$id} .ember-copy{max-width:500px;margin:22px 0 0;color:rgba(255,255,255,.7);font-size:16px;line-height:1.75}#{$id} .ember-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+@media(max-width:760px){#{$id},#{$id} .ember-hero-copy{min-height:610px}#{$id} .ember-hero-copy{padding:60px 0}#{$id} h1,#{$id} .ember-hero-accent{font-size:clamp(48px,15vw,70px)}#{$id} .ember-actions{flex-direction:column;align-items:stretch}#{$id} .ember-actions a{width:100%}}
+</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='hero' data-ember-tone='dark' class='cosmic-tw-own-section-y marketplace-ember-home ember-hero'><div class='ember-hero-bg'><img src='{$heroImage}' alt='' loading='eager' fetchpriority='high'></div><div class='ember-shell ember-hero-copy'><div class='ember-copy-inner'><div class='ember-kicker ember-eyebrow'>{$eyebrow}</div><h1>{$heading}</h1><span class='ember-serif ember-hero-accent'>{$accent}</span><div class='ember-ornament'>✦</div><p class='ember-copy'>{$copy}</p><div class='ember-actions'><a class='ember-gold-button' href='{$primaryUrl}'>{$primaryLabel}</a><a class='ember-outline-button' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_feature') {
+            $defaults = [
+                ['icon'=>'◌','title'=>'Seasonal Ingredients','text'=>'Thoughtfully sourced from local farms and trusted producers.'],
+                ['icon'=>'♨','title'=>'Chef-Driven Menu','text'=>'Creative dishes inspired by fire, flavor, and the changing seasons.'],
+                ['icon'=>'◇','title'=>'Private Events','text'=>'Intimate gatherings and celebrations, beautifully tailored.'],
+                ['icon'=>'⌁','title'=>'Handcrafted Cocktails','text'=>'Curated pours and original creations, mixed with care.'],
+            ];
+            $items = is_array($block['items'] ?? null) && count($block['items']) ? array_slice(array_values($block['items']), 0, 4) : $defaults;
+            $cards = '';
+            foreach ($items as $i => $item) {
+                if (!is_array($item)) continue;
+                $icon = $text($item['icon'] ?? '✦'); $title = $text($item['title'] ?? 'Experience'); $copy = $text($item['text'] ?? '');
+                $cards .= "<article class='ember-feature-card'><span class='ember-feature-icon'>{$icon}</span><h3>{$title}</h3><p>{$copy}</p></article>";
+            }
+            $css = <<<CSS
+<style>#{$id}{border-top:1px solid rgba(215,161,79,.22);border-bottom:1px solid rgba(215,161,79,.22);background:linear-gradient(90deg,#292819,#34321b 45%,#292819);color:#f5f0e7}#{$id} .ember-feature-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));max-width:1480px;margin:0 auto}#{$id} .ember-feature-card{position:relative;padding:32px 28px;text-align:center}#{$id} .ember-feature-card+article:before{content:"";position:absolute;left:0;top:22%;width:1px;height:56%;background:rgba(238,211,158,.18)}#{$id} .ember-feature-icon{display:block;color:#d5a153;font-size:30px;line-height:1}#{$id} h3{margin:14px 0 0;color:#fff;font-size:18px;font-weight:400}#{$id} p{max-width:280px;margin:8px auto 0;color:rgba(255,255,255,.6);font-size:12px;line-height:1.6}@media(max-width:900px){#{$id} .ember-feature-grid{grid-template-columns:repeat(2,1fr)}#{$id} .ember-feature-card:nth-child(3):before{display:none}}@media(max-width:560px){#{$id} .ember-feature-grid{grid-template-columns:1fr}#{$id} .ember-feature-card+article:before{left:15%;top:0;width:70%;height:1px}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='feature' data-ember-tone='dark' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-feature-grid'>{$cards}</div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_story') {
+            $eyebrow=$text($block['eyebrow']??'OUR STORY'); $heading=$text($block['heading']??'Rooted in fire. Inspired by tradition.'); $copy=$text($block['text']??'Ember & Olive is where timeless techniques meet modern flair.'); $storyImage=$image($block['image_url']??'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1500&q=90'); $quote=$text($block['quote']??'Good food brings people together. Great food leaves a lasting impression.'); $quoteBy=$text($block['quote_by']??'Chef & Founder, Marcus Hale');
+            $css = <<<CSS
+<style>#{$id}{padding:82px 0;background:#f5f0e7;color:#221b16}#{$id} .ember-story-grid{display:grid;grid-template-columns:.78fr 1.22fr;gap:64px;align-items:center}#{$id} .ember-eyebrow{color:#9e6539}#{$id} h2{max-width:560px;margin:14px 0 0;font-size:clamp(43px,4vw,72px);font-weight:400;line-height:.98;letter-spacing:-.035em}#{$id} .ember-story-rule{display:flex;align-items:center;gap:12px;margin-top:26px;color:#b47b43}#{$id} .ember-story-rule:before{content:"";width:48px;height:1px;background:#b47b43}#{$id} .ember-story-copy{max-width:560px;margin:20px 0 0;color:#62574f;font-size:14px;line-height:1.9}#{$id} .ember-story-quote{max-width:540px;margin-top:24px;border-left:2px solid #b47b43;padding-left:18px}#{$id} .ember-story-quote p{margin:0;color:#7b4b2e;font-family:Georgia,"Times New Roman",serif;font-size:18px;font-style:italic;line-height:1.55}#{$id} .ember-story-quote span{display:block;margin-top:8px;color:#8b8077;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}#{$id} .ember-story-image{overflow:hidden;border-radius:3px;aspect-ratio:5/3;box-shadow:0 26px 70px rgba(45,32,22,.14)}@media(max-width:900px){#{$id}{padding:64px 0}#{$id} .ember-story-grid{grid-template-columns:1fr;gap:36px}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='cream' data-ember-tone='light' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-shell ember-story-grid'><div><span class='ember-eyebrow'>{$eyebrow}</span><h2>{$heading}</h2><div class='ember-story-rule'>✦</div><p class='ember-story-copy'>{$copy}</p><div class='ember-story-quote'><p>“{$quote}”</p><span>— {$quoteBy}</span></div></div><div class='ember-story-image'><img src='{$storyImage}' alt='' loading='lazy'></div></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_menu') {
+            $defaults = [
+                ['title'=>'Wood-Fired Octopus','text'=>'Smoked paprika · charred lemon · olive relish','price'=>'$28','image_url'=>'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=88'],
+                ['title'=>'Herb-Roasted Chicken','text'=>'Baby carrots · romesco · rosemary jus','price'=>'$32','image_url'=>'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=900&q=88'],
+                ['title'=>'Seared Scallops','text'=>'Cauliflower puree · brown butter · crispy capers','price'=>'$36','image_url'=>'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=88'],
+                ['title'=>'Handmade Pappardelle','text'=>'Wild mushrooms · truffle cream · parmigiano','price'=>'$30','image_url'=>'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=88'],
+                ['title'=>'Olive Oil Cake','text'=>'Citrus · mascarpone · rosemary honey','price'=>'$14','image_url'=>'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=88'],
+            ];
+            $items = is_array($block['items'] ?? null) && count($block['items']) ? array_slice(array_values($block['items']),0,5) : $defaults;
+            $cards=''; foreach($items as $item){if(!is_array($item))continue;$src=$image($item['image_url']??'');$title=$text($item['title']??'Dish');$copy=$text($item['text']??'');$price=$text($item['price']??'');$cards.="<article class='ember-menu-card'><div class='ember-menu-image'><img src='{$src}' alt='' loading='lazy'></div><div class='ember-menu-copy'><h3>{$title}</h3><p>{$copy}</p><span>{$price}</span></div></article>";}
+            $eyebrow=$text($block['eyebrow']??'SIGNATURE EXPERIENCE');$heading=$text($block['heading']??'From our kitchen to your table.');$buttonLabel=$text($block['button_label']??'View Full Menu');$buttonUrl=$url($block['button_url']??'/menu');
+            $css=<<<CSS
+<style>#{$id}{position:relative;overflow:hidden;padding:80px 0;background:linear-gradient(115deg,#151612,#1f2016 68%,#2b2b19);color:#f3ecdf}#{$id}:after{content:"❧";position:absolute;right:-55px;bottom:-45px;color:#fff;font-family:Georgia,serif;font-size:220px;opacity:.045}#{$id} .ember-menu-head{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}#{$id} .ember-eyebrow{color:#d5a153}#{$id} h2{margin:10px 0 0;color:#fff;font-size:clamp(42px,4vw,72px);font-weight:400;line-height:.96;letter-spacing:-.035em}#{$id} .ember-menu-link{display:inline-flex;min-height:40px;align-items:center;border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:0 20px;color:#fff;font-size:12px;font-weight:700}#{$id} .ember-menu-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:36px}#{$id} .ember-menu-card{overflow:hidden;border:1px solid rgba(222,190,130,.18);border-radius:3px;background:#1a1b16}#{$id} .ember-menu-image{aspect-ratio:5/3;overflow:hidden}#{$id} .ember-menu-copy{padding:15px}#{$id} h3{margin:0;color:#fff;font-size:17px;font-weight:400}#{$id} .ember-menu-copy p{min-height:42px;margin:7px 0 0;color:rgba(255,255,255,.6);font-size:11px;line-height:1.65}#{$id} .ember-menu-copy span{display:block;margin-top:10px;color:#d4a257;font-family:Georgia,serif;font-size:14px}@media(max-width:1050px){#{$id} .ember-menu-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){#{$id}{padding:64px 0}#{$id} .ember-menu-head{align-items:flex-start;flex-direction:column}#{$id} .ember-menu-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:470px){#{$id} .ember-menu-grid{grid-template-columns:1fr}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='menu' data-ember-tone='dark' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-shell'><div class='ember-menu-head'><div><span class='ember-eyebrow'>{$eyebrow}</span><h2>{$heading}</h2></div><a class='ember-menu-link' href='{$buttonUrl}'>{$buttonLabel}</a></div><div class='ember-menu-grid'>{$cards}</div></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_private_dining') {
+            $eyebrow=$text($block['eyebrow']??'PRIVATE DINING');$heading=$text($block['heading']??'Celebrate in our space.');$copy=$text($block['text']??'From intimate dinners to milestone celebrations, our private dining experiences are tailored to you.');$buttonLabel=$text($block['button_label']??'Inquire About Events');$buttonUrl=$url($block['button_url']??'/private-dining');$src=$image($block['image_url']??'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1500&q=90');
+            $css=<<<CSS
+<style>#{$id}{display:grid;grid-template-columns:.96fr 1.04fr;background:#3a3a20;color:#f5ecdd}#{$id} .ember-private-image{min-height:390px;overflow:hidden}#{$id} .ember-private-copy{position:relative;display:flex;align-items:center;padding:58px 64px}#{$id} .ember-private-copy:after{content:"❧";position:absolute;right:18px;bottom:-34px;color:#fff;font-family:Georgia,serif;font-size:190px;opacity:.055}#{$id} .ember-private-inner{position:relative;z-index:1;max-width:650px}#{$id} .ember-eyebrow{color:#d8a352}#{$id} h2{margin:10px 0 0;color:#fff;font-size:clamp(44px,4vw,75px);font-weight:400;line-height:.96}#{$id} p{max-width:610px;margin:18px 0 0;color:rgba(255,255,255,.62);font-size:14px;line-height:1.85}#{$id} .ember-gold-button{margin-top:26px;min-height:44px;font-size:12px}@media(max-width:900px){#{$id}{grid-template-columns:1fr}#{$id} .ember-private-copy{padding:52px 32px}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='private' data-ember-tone='dark' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-private-image'><img src='{$src}' alt='' loading='lazy'></div><div class='ember-private-copy'><div class='ember-private-inner'><span class='ember-eyebrow'>{$eyebrow}</span><h2>{$heading}</h2><p>{$copy}</p><a class='ember-gold-button' href='{$buttonUrl}'>{$buttonLabel}</a></div></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_reviews') {
+            $quote=$text($block['quote']??'Every detail was perfect. The food, the service, the ambience—Ember & Olive is our new favorite place.');$name=$text($block['name']??'Jessica L.');$role=$text($block['role']??'Guest');
+            $css=<<<CSS
+<style>#{$id}{padding:44px 24px 50px;background:#f5f0e7;color:#2c211a;text-align:center}#{$id} .ember-review{max-width:980px;margin:0 auto}#{$id} .ember-quote-mark{height:43px;color:#9f633f;font-family:Georgia,serif;font-size:52px;line-height:1}#{$id} blockquote{max-width:900px;margin:0 auto;font-family:Georgia,"Times New Roman",serif;font-size:clamp(24px,2.3vw,39px);line-height:1.18}#{$id} cite{display:block;margin-top:18px;color:#9f633f;font-size:9px;font-style:normal;font-weight:800;letter-spacing:.16em;text-transform:uppercase}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='cream' data-ember-tone='light' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-review'><div class='ember-quote-mark'>“</div><blockquote>“{$quote}”</blockquote><cite>— {$name}, {$role}</cite></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_gallery') {
+            $defaults=['https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=88','https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=88','https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=900&q=88','https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=88','https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=88','https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=88'];
+            $raw=is_array($block['images']??null)&&count($block['images'])?array_slice(array_values($block['images']),0,6):$defaults;$imgs='';foreach($raw as $item){$src=is_array($item)?($item['image_url']??''):$item;$src=$image($src);$imgs.="<div class='ember-gallery-item'><img src='{$src}' alt='' loading='lazy'></div>";}
+            $css=<<<CSS
+<style>#{$id}{padding:0 22px 22px;background:#f5f0e7}#{$id} .ember-gallery-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;max-width:1480px;margin:0 auto}#{$id} .ember-gallery-item{overflow:hidden;border-radius:2px;aspect-ratio:4/3}#{$id} .ember-gallery-item img{transition:transform .5s ease}#{$id} .ember-gallery-item:hover img{transform:scale(1.03)}@media(max-width:900px){#{$id} .ember-gallery-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:560px){#{$id}{padding:0 16px 16px}#{$id} .ember-gallery-grid{grid-template-columns:repeat(2,1fr)}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='cream' data-ember-tone='light' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-gallery-grid'>{$imgs}</div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_reservation') {
+            $eyebrow=$text($block['eyebrow']??'RESERVATIONS');$heading=$text($block['heading']??'We’ll save you a seat.');$copy=$text($block['text']??'Join us for an unforgettable dining experience. Reserve your table and let the evening begin.');$phone=$text($block['phone']??'(555) 123-4567');$email=$text($block['email']??'hello@emberandolive.com');$buttonLabel=$text($block['button_label']??'Find a Table');$src=$image($block['image_url']??'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=88');
+            $fields='';foreach(['Date','Time','Party Size','Your Name','Email','Phone'] as $placeholder){$ph=$text($placeholder);$fields.="<div class='ember-res-field'>{$ph}</div>";}
+            $css=<<<CSS
+<style>#{$id}{display:grid;grid-template-columns:.78fr 1.22fr;background:#f8f3ea;color:#2a241b}#{$id} .ember-res-image{min-height:370px;overflow:hidden}#{$id} .ember-res-body{display:grid;grid-template-columns:.8fr 1.2fr;gap:38px;padding:52px 58px;align-items:center}#{$id} .ember-eyebrow{color:#b77d2f}#{$id} h2{margin:10px 0 0;color:#2a241b;font-size:clamp(42px,3.7vw,66px);font-weight:400;line-height:.98}#{$id} .ember-res-copy{max-width:430px;margin:18px 0 0;color:#6b6255;font-size:14px;line-height:1.7}#{$id} .ember-res-contact{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:22px;color:#b77d2f;font-size:12px;font-weight:700}#{$id} .ember-res-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}#{$id} .ember-res-field{display:flex;min-height:44px;align-items:center;border:1px solid #cfc3b4;border-radius:2px;padding:0 14px;background:#fffaf3;color:#5f5549;font-size:12px}#{$id} .ember-res-submit{grid-column:1/-1;display:flex;min-height:44px;align-items:center;justify-content:center;border-radius:2px;background:linear-gradient(180deg,#e7bb6d,#c98e37);color:#17150e;font-size:12px;font-weight:800}@media(max-width:1050px){#{$id}{grid-template-columns:1fr}#{$id} .ember-res-body{grid-template-columns:1fr 1fr}}@media(max-width:720px){#{$id} .ember-res-body{grid-template-columns:1fr;padding:42px 28px}#{$id} .ember-res-fields{grid-template-columns:1fr}#{$id} .ember-res-submit{grid-column:auto}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='reservation' data-ember-tone='light' class='cosmic-tw-own-section-y marketplace-ember-home' data-anchor='reserve'><div class='ember-res-image'><img src='{$src}' alt='' loading='lazy'></div><div class='ember-res-body'><div><span class='ember-eyebrow'>{$eyebrow}</span><h2>{$heading}</h2><p class='ember-res-copy'>{$copy}</p><div class='ember-res-contact'><span>☎ {$phone}</span><span>✉ {$email}</span></div></div><div class='ember-res-fields'>{$fields}<a class='ember-res-submit' href='#reserve'>{$buttonLabel}</a></div></div>{$baseCss}{$css}</section>";
+        }
+
+        if ($type === 'marketplace_ember_location') {
+            $addressHeading=$text($block['address_heading']??'Find Us');$address=$multiline($block['address']??"123 Hearthwood Lane\nPortland, OR 97201");$directions=$text($block['directions_label']??'Get Directions');$hoursHeading=$text($block['hours_heading']??'Hours');$hours=$multiline($block['hours']??"Mon – Thu     5:00pm – 10:00pm\nFri – Sat       5:00pm – 11:00pm\nSunday          Closed");$src=$image($block['image_url']??'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1000&q=88');
+            $css=<<<CSS
+<style>#{$id}{padding:36px 0;background:#f5f0e7;color:#332820}#{$id} .ember-location-grid{display:grid;grid-template-columns:.8fr 1.05fr .85fr;gap:34px;align-items:center}#{$id} .ember-location-item{display:flex;gap:16px;min-width:0}#{$id} .ember-location-icon{color:#a8663d;font-size:21px}#{$id} h3{margin:0;font-size:20px;font-weight:400}#{$id} .ember-location-copy{margin-top:7px;color:#65594f;font-size:12px;line-height:1.7}#{$id} .ember-location-link{display:block;margin-top:7px;color:#9d5e38;font-size:12px;font-weight:800}#{$id} .ember-hours{border-left:1px solid #cfc3b4;border-right:1px solid #cfc3b4;padding:0 36px}#{$id} .ember-location-image{overflow:hidden;border-radius:2px;aspect-ratio:16/8}@media(max-width:900px){#{$id} .ember-location-grid{grid-template-columns:1fr 1fr}#{$id} .ember-location-image{grid-column:1/-1}#{$id} .ember-hours{border-right:0}}@media(max-width:620px){#{$id} .ember-location-grid{grid-template-columns:1fr}#{$id} .ember-hours{border-left:0;border-top:1px solid #cfc3b4;border-bottom:1px solid #cfc3b4;padding:24px 0}#{$id} .ember-location-image{grid-column:auto}}</style>
+CSS;
+            return "<section id='{$id}' data-ember-surface='cream' data-ember-tone='light' class='cosmic-tw-own-section-y marketplace-ember-home'><div class='ember-shell ember-location-grid'><div class='ember-location-item'><span class='ember-location-icon'>⌖</span><div><h3>{$addressHeading}</h3><div class='ember-location-copy'>{$address}</div><span class='ember-location-link'>{$directions}</span></div></div><div class='ember-location-item ember-hours'><span class='ember-location-icon'>◷</span><div><h3>{$hoursHeading}</h3><div class='ember-location-copy'>{$hours}</div></div></div><div class='ember-location-image'><img src='{$src}' alt='' loading='lazy'></div></div>{$baseCss}{$css}</section>";
+        }
+
+        return '';
+    }
 
     private static function premiumExpansionBatch5Html(string $type,array $block,array $theme): string
     {

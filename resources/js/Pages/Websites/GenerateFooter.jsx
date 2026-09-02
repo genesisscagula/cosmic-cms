@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EditableText } from "./Blocks/Shared/EditableText";
 import themeCatalog from "../../../theme/theme-families.json";
-import { logoFilterForImage } from '@/Branding/logoFilters';
+import { logoStyleForTone } from '@/Branding/logoFilters';
 
 export const themeConfig = themeCatalog.legacyFooterFamilies;
 
@@ -46,7 +46,8 @@ const IconButton = ({ children, title, onClick, danger = false, disabled = false
 );
 
 function FooterLogo({ block, dark = false, mega = false, forceWhite = false, editorMode=false, onManual=null, onAi=null }) {
-    const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
+    const resolvedLogo = logoStyleForTone(block, forceWhite || dark ? 'light' : 'dark', block.logo_filter_key || block.theme || 'midnight');
+    const logoImageUrl = resolvedLogo.url;
     const baseHeight = Number(block.logo_height || 36);
     const logoHeight = mega ? Math.min(64, Math.max(44, baseHeight + 10)) : Math.min(56, Math.max(24, baseHeight));
     const content=logoImageUrl ? (
@@ -56,7 +57,7 @@ function FooterLogo({ block, dark = false, mega = false, forceWhite = false, edi
             style={{
                 height: `${logoHeight}px`,
                 maxHeight: mega ? '64px' : '56px',
-                filter: forceWhite ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter),
+                filter: resolvedLogo.filter,
             }}
             className={`w-auto object-contain ${mega ? "max-w-[300px]" : "max-w-[250px]"}`}
         />
@@ -75,7 +76,9 @@ const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <butto
 
 export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
     const megaEnabled = Boolean(block.mega_enabled ?? block.mega_footer?.enabled ?? false);
+    const footerVariant = ['classic','cta','brand','contact','newsletter'].includes(block.mega_footer?.variant) ? block.mega_footer.variant : 'classic';
     const mega = {
+        variant: footerVariant,
         tagline: block.mega_footer?.tagline || 'A premium information-rich footer.',
         primary_label: block.mega_footer?.primary_label || 'Get in touch',
         primary_url: block.mega_footer?.primary_url || '#contact',
@@ -187,6 +190,17 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
     };
     const removeSocial = (itemIndex) => onUpdate({social_links:socialLinks.filter((_,index)=>index!==itemIndex)});
 
+    const megaShellClass = footerVariant === 'brand'
+        ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(380px,1.15fr)_minmax(520px,.85fr)] lg:items-start lg:gap-20'
+        : footerVariant === 'contact'
+            ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(360px,.8fr)_minmax(600px,1.2fr)] lg:items-start lg:gap-14'
+            : footerVariant === 'newsletter'
+                ? 'mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16'
+                : footerVariant === 'cta'
+                    ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16'
+                    : 'mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16';
+    const megaColumnsClass = footerVariant === 'brand' ? 'lg:max-w-[760px]' : footerVariant === 'contact' ? 'lg:max-w-[900px]' : 'lg:max-w-[860px]';
+
     return (
         <div data-cosmic-shell-element="footer" data-cosmic-shell-path="footer" className="group/footer-editor relative w-full">
             {editorMode ? <div className="pointer-events-none absolute right-4 top-3 z-[80] flex gap-1 opacity-0 transition group-hover/footer-editor:opacity-100 group-focus-within/footer-editor:opacity-100">
@@ -194,8 +208,8 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 {onAiTarget ? <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer">✦</button> : null}
             </div> : null}
             {megaEnabled && (
-                <section data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className={`cosmic-mega-footer-section w-full ${customShell ? '' : (megaTheme?.bg || 'bg-slate-800')} ${customShell ? '' : (megaTheme?.text || 'text-white')} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
-                    <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16">
+                <section data-cosmic-footer-variant={footerVariant} data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className={`cosmic-mega-footer-section w-full ${customShell ? '' : (megaTheme?.bg || 'bg-slate-800')} ${customShell ? '' : (megaTheme?.text || 'text-white')} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
+                    <div className={megaShellClass}>
                         <div className="min-w-0">
                             <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={customShell ? customStyle.logo_tone === 'light' : effectiveMegaTheme === 'primary'} editorMode={editorMode} onManual={onLogoManual} onAi={onLogoAi} />
                             {editorMode ? (
@@ -214,7 +228,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                             ) : (
                                 <>
                                     <p className={`mt-4 max-w-sm text-sm leading-6 ${megaTheme?.sub || 'text-slate-300'}`}>{mega.tagline}</p>
-                                    <a href={mega.primary_url || '#contact'} className="mt-5 inline-flex text-sm font-semibold text-current hover:opacity-75">{mega.primary_label}</a>
+                                    <a href={mega.primary_url || '#contact'} className={`mt-5 inline-flex text-sm font-semibold text-current hover:opacity-75 ${['cta','newsletter'].includes(footerVariant) ? 'rounded-full border border-current/25 px-5 py-3' : ''}`}>{mega.primary_label}</a>
                                 </>
                             )}
                             {editorMode ? <div className="mt-5 space-y-2 text-xs">
@@ -245,7 +259,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                             </>}
                         </div>
 
-                        <div className="group/columns ml-auto w-full lg:max-w-[860px]">
+                        <div className={`group/columns ml-auto w-full ${megaColumnsClass}`}>
                             <div className={`grid gap-x-8 gap-y-7 ${mega.columns.length === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                                 {mega.columns.map((column, columnIndex) => (
                                     <div key={`${column.title}-${columnIndex}`} data-cosmic-shell-path={`footer.mega_footer.columns.${columnIndex}`} className="group/column group/footer-field relative min-w-0">

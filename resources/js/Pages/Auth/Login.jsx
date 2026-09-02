@@ -7,8 +7,8 @@ import { Link, useForm } from '@inertiajs/react';
 
 const fieldClass = 'mt-2 block w-full rounded-xl border border-slate-400 bg-[#0f1013] px-3.5 py-3 text-sm text-white shadow-sm placeholder:text-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25';
 
-export default function Login({ status, canResetPassword }) {
-    const { data, setData, post, processing, errors, reset } = useForm({ email: '', password: '', remember: false });
+export default function Login({ status, canResetPassword, marketplaceTemplate = '' }) {
+    const { data, setData, post, processing, errors, reset } = useForm({ email: '', password: '', remember: false, marketplace_template: marketplaceTemplate || '' });
     const submit = (event) => {
         event.preventDefault();
         post(route('login'), { onFinish: () => reset('password') });
@@ -39,7 +39,7 @@ export default function Login({ status, canResetPassword }) {
                     {processing ? 'Signing in…' : 'Sign in'}
                 </button>
             </form>
-            <p className="mt-6 text-center text-sm text-slate-400">New to Cosmic CMS? <Link href={route('register')} className="font-medium text-emerald-300 hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">Create an account</Link></p>
+            <p className="mt-6 text-center text-sm text-slate-400">New to Cosmic CMS? <Link href={marketplaceTemplate ? `${route('register')}?marketplace_template=${encodeURIComponent(marketplaceTemplate)}&source=marketplace` : route('register')} className="font-medium text-emerald-300 hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">Create an account</Link></p>
         </GuestLayout>
     );
 }

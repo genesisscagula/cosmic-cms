@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getEffectiveTheme } from '../../theme/Theme';
-import { logoFilterForImage } from '@/Branding/logoFilters';
+import { logoStyleForTone } from '@/Branding/logoFilters';
 import { colorFamilies } from '../../theme/colorFamilies';
 import { EditableText as SharedEditableText } from './Blocks/Shared/EditableText';
 
@@ -74,7 +74,8 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
     const accent = overlay ? (overlayDarkText ? 'text-slate-950' : 'text-white') : 'text-emerald-600';
 
     const overlayVisuals = overlayThemeVisuals(globalTheme);
-    const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
+    const resolvedLogo = logoStyleForTone(block, overlay && !overlayDarkText ? 'light' : 'dark', block.logo_filter_key || block.theme || 'midnight');
+    const logoImageUrl = resolvedLogo.url;
     const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
     const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
 
@@ -91,7 +92,7 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
                 <HeaderLogoEditor
                     imageUrl={logoImageUrl}
                     alt={block.logo_text || 'Website logo'}
-                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }}
+                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: resolvedLogo.filter }}
                     imageClassName="w-auto object-contain"
                     onManual={onLogoManual}
                     onAi={onLogoClick}
@@ -180,7 +181,8 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
         '--cosmic-overlay-cta-border': overlayVisuals.primary,
     } : undefined);
 
-    const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
+    const resolvedLogo = logoStyleForTone(block, (customShell && customStyle.logo_tone === 'light') || (overlay && !overlayDarkText) ? 'light' : 'dark', block.logo_filter_key || block.theme || 'midnight');
+    const logoImageUrl = resolvedLogo.url;
     const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
     const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
 
@@ -190,7 +192,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                 <HeaderLogoEditor
                     imageUrl={logoImageUrl}
                     alt={block.logo_text || 'Website logo'}
-                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: customShell && customStyle.logo_tone === 'light' ? 'brightness(0) invert(1)' : (overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter)) }}
+                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: resolvedLogo.filter }}
                     imageClassName="w-auto object-contain"
                     onManual={onLogoManual}
                     onAi={onLogoClick}
@@ -198,7 +200,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
-                    className={`text-xl font-extrabold tracking-wide ${overlay ? 'text-white' : textColor} cursor-pointer`}
+                    className={`text-xl font-extrabold tracking-wide ${customShell ? 'text-[color:var(--cosmic-custom-text)]' : (overlay ? 'text-white' : textColor)} cursor-pointer`}
                     onSave={(val) => onUpdate({ logo_text: val })}
                 />
             )}
@@ -228,6 +230,46 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
             </nav>
         </header>
     );
+}
+
+
+const HEADER_VARIANT_CONFIG = {
+    classic_header: { shell: 'classic', nav: 'right' },
+    centered_header: { shell: 'centered', nav: 'center' },
+    split_navigation_header: { shell: 'split', nav: 'split' },
+    floating_glass_header: { shell: 'floating', nav: 'right' },
+    overlay_hero_header: { shell: 'overlay', nav: 'right' },
+    minimal_header: { shell: 'minimal', nav: 'right' },
+};
+
+/** Batch 1 premium header family. Layout changes; brand/theme tokens remain authoritative. */
+export function PremiumHeaderVariant({ block, overlay = false, overlayTone = 'light', globalTheme, onUpdate, pageTargets = [], onLogoClick = null, onLogoManual = null, onCtaAi = null, onNavAi = null, navManualOpenSignal = 0 }) {
+    const config = HEADER_VARIANT_CONFIG[block.type] || HEADER_VARIANT_CONFIG.classic_header;
+    const menuItems = block.menu || [{label:'Home',url:'#'},{label:'About',url:'#'},{label:'Services',url:'#'}];
+    const familyKey = typeof globalTheme === 'string' ? globalTheme : (globalTheme?.primary || 'midnight');
+    const family = colorFamilies[familyKey] || colorFamilies.midnight;
+    const palette = family?.palette || {};
+    const primary = palette.primary || '#0f766e';
+    const surface = palette.surface || palette.background || '#ffffff';
+    const ink = palette.text || palette.foreground || '#0f172a';
+    const muted = palette.muted || '#64748b';
+    const forceOverlay = config.shell === 'overlay' || overlay;
+    const darkOverlayText = forceOverlay && overlayTone === 'dark';
+    const navColor = forceOverlay ? (darkOverlayText ? '#0f172a' : '#ffffff') : ink;
+    const shellStyle = forceOverlay ? {background:'transparent', color:navColor} : {backgroundColor:surface, color:ink, borderColor:`color-mix(in srgb, ${ink} 14%, transparent)`};
+    const logoTone = forceOverlay && !darkOverlayText ? 'light' : (block.logo_tone === 'light' ? 'light' : 'dark');
+    const resolvedLogo = logoStyleForTone(block, logoTone, familyKey);
+    const logoImageUrl = resolvedLogo.url;
+    const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
+    const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
+    const logo = logoImageUrl ? <HeaderLogoEditor imageUrl={logoImageUrl} alt={block.logo_text || 'Website logo'} imageStyle={{height:`${logoHeight}px`,maxHeight:'64px',maxWidth:`${logoMaxWidth}px`,filter:resolvedLogo.filter}} imageClassName="w-auto object-contain" onManual={onLogoManual} onAi={onLogoClick}/> : <EditableText value={block.logo_text || 'Your Website'} className="cursor-pointer text-xl font-extrabold tracking-tight" onSave={(logo_text)=>onUpdate({logo_text})}/>;
+    const nav = <HeaderNavigation items={menuItems} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(menu)=>onUpdate({menu})} pageTargets={pageTargets} onAi={onNavAi} manualOpenSignal={navManualOpenSignal}/>;
+    const cta = <HeaderCtaEditor block={block} onUpdate={onUpdate} onAi={onCtaAi} style={{backgroundColor:primary,color:'#fff',borderRadius: config.shell === 'minimal' ? '10px' : '999px'}} className="shrink-0 px-6 py-3 text-sm font-semibold shadow-sm transition hover:opacity-90" textClass="font-semibold text-white"/>;
+
+    if (config.shell === 'centered') return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={shellStyle} className={`w-full border-b px-5 py-5 sm:px-8 ${forceOverlay?'border-transparent':' '} transition-colors`}><div className="mx-auto grid max-w-[1480px] grid-cols-[1fr_auto_1fr] items-center gap-5"><div>{logo}</div><nav className="hidden justify-self-center lg:block">{nav}</nav><div className="justify-self-end">{cta}</div><div className="col-span-3 lg:hidden">{nav}</div></div></header>;
+    if (config.shell === 'split') { const half=Math.ceil(menuItems.length/2); const left=menuItems.slice(0,half), right=menuItems.slice(half); return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={shellStyle} className={`w-full border-b px-5 py-5 sm:px-8 ${forceOverlay?'border-transparent':''}`}><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-5 lg:flex-nowrap"><nav className="order-2 w-full lg:order-1 lg:w-auto"><HeaderNavigation items={left} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(next)=>onUpdate({menu:[...next,...right]})} pageTargets={pageTargets} onAi={onNavAi} manualOpenSignal={navManualOpenSignal}/></nav><div className="order-1 lg:order-2">{logo}</div><div className="order-3 flex items-center gap-5"><nav className="hidden lg:block"><HeaderNavigation items={right} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(next)=>onUpdate({menu:[...left,...next]})} pageTargets={pageTargets} onAi={onNavAi}/></nav>{cta}</div></div></header>; }
+    const floating = config.shell === 'floating';
+    return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={floating?{...shellStyle,backgroundColor:`color-mix(in srgb, ${surface} 82%, transparent)`,backdropFilter:'blur(18px)',WebkitBackdropFilter:'blur(18px)'}:shellStyle} className={`${floating?'mx-auto mt-5 w-[calc(100%-2rem)] max-w-[1480px] rounded-2xl border shadow-lg':'w-full border-b'} ${forceOverlay?'border-transparent':''} px-5 py-4 sm:px-8`}><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-4 lg:flex-nowrap"><div>{logo}</div><nav className="order-3 w-full lg:order-none lg:w-auto">{nav}</nav><div>{cta}</div></div></header>;
 }
 
 function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets = [], onAi=null, manualOpenSignal=0 }) {

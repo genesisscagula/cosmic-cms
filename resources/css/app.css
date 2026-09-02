@@ -1936,53 +1936,53 @@ html[data-theme] .cosmic-app-shell main {
    Patch 15 full-audit hotfix v3 — navigation and solid-action contrast
    ================================================================== */
 /* Any genuinely solid action background must keep readable white copy. */
-:root[data-theme="light"] button[class*="bg-emerald-5"],
-:root[data-theme="light"] button[class*="bg-emerald-6"],
-:root[data-theme="light"] button[class*="bg-emerald-7"],
-:root[data-theme="light"] button[class*="bg-green-5"],
-:root[data-theme="light"] button[class*="bg-green-6"],
-:root[data-theme="light"] button[class*="bg-green-7"],
-:root[data-theme="light"] button[class*="bg-violet-5"],
-:root[data-theme="light"] button[class*="bg-violet-6"],
-:root[data-theme="light"] button[class*="bg-violet-7"],
-:root[data-theme="light"] button[class*="bg-blue-5"],
-:root[data-theme="light"] button[class*="bg-blue-6"],
-:root[data-theme="light"] button[class*="bg-blue-7"],
-:root[data-theme="light"] button[class*="bg-red-5"],
-:root[data-theme="light"] button[class*="bg-red-6"],
-:root[data-theme="light"] button[class*="bg-red-7"],
-:root[data-theme="light"] a[class*="bg-emerald-5"],
-:root[data-theme="light"] a[class*="bg-emerald-6"],
-:root[data-theme="light"] a[class*="bg-green-5"],
-:root[data-theme="light"] a[class*="bg-green-6"],
-:root[data-theme="light"] a[class*="bg-violet-5"],
-:root[data-theme="light"] a[class*="bg-violet-6"],
-:root[data-theme="light"] a[class*="bg-blue-5"],
-:root[data-theme="light"] a[class*="bg-blue-6"],
-:root[data-theme="light"] a[class*="bg-red-5"],
-:root[data-theme="light"] a[class*="bg-red-6"] {
+:root[data-theme="light"] button[class~="bg-emerald-500"],
+:root[data-theme="light"] button[class~="bg-emerald-600"],
+:root[data-theme="light"] button[class~="bg-emerald-700"],
+:root[data-theme="light"] button[class~="bg-green-500"],
+:root[data-theme="light"] button[class~="bg-green-600"],
+:root[data-theme="light"] button[class~="bg-green-700"],
+:root[data-theme="light"] button[class~="bg-violet-500"],
+:root[data-theme="light"] button[class~="bg-violet-600"],
+:root[data-theme="light"] button[class~="bg-violet-700"],
+:root[data-theme="light"] button[class~="bg-blue-500"],
+:root[data-theme="light"] button[class~="bg-blue-600"],
+:root[data-theme="light"] button[class~="bg-blue-700"],
+:root[data-theme="light"] button[class~="bg-red-500"],
+:root[data-theme="light"] button[class~="bg-red-600"],
+:root[data-theme="light"] button[class~="bg-red-700"],
+:root[data-theme="light"] a[class~="bg-emerald-500"],
+:root[data-theme="light"] a[class~="bg-emerald-600"],
+:root[data-theme="light"] a[class~="bg-green-500"],
+:root[data-theme="light"] a[class~="bg-green-600"],
+:root[data-theme="light"] a[class~="bg-violet-500"],
+:root[data-theme="light"] a[class~="bg-violet-600"],
+:root[data-theme="light"] a[class~="bg-blue-500"],
+:root[data-theme="light"] a[class~="bg-blue-600"],
+:root[data-theme="light"] a[class~="bg-red-500"],
+:root[data-theme="light"] a[class~="bg-red-600"] {
     color: #fff !important;
 }
-:root[data-theme="light"] button[class*="bg-emerald-5"] *,
-:root[data-theme="light"] button[class*="bg-emerald-6"] *,
-:root[data-theme="light"] button[class*="bg-green-5"] *,
-:root[data-theme="light"] button[class*="bg-green-6"] *,
-:root[data-theme="light"] button[class*="bg-violet-5"] *,
-:root[data-theme="light"] button[class*="bg-violet-6"] *,
-:root[data-theme="light"] button[class*="bg-blue-5"] *,
-:root[data-theme="light"] button[class*="bg-blue-6"] *,
-:root[data-theme="light"] button[class*="bg-red-5"] *,
-:root[data-theme="light"] button[class*="bg-red-6"] *,
-:root[data-theme="light"] a[class*="bg-emerald-5"] *,
-:root[data-theme="light"] a[class*="bg-emerald-6"] *,
-:root[data-theme="light"] a[class*="bg-green-5"] *,
-:root[data-theme="light"] a[class*="bg-green-6"] *,
-:root[data-theme="light"] a[class*="bg-violet-5"] *,
-:root[data-theme="light"] a[class*="bg-violet-6"] *,
-:root[data-theme="light"] a[class*="bg-blue-5"] *,
-:root[data-theme="light"] a[class*="bg-blue-6"] *,
-:root[data-theme="light"] a[class*="bg-red-5"] *,
-:root[data-theme="light"] a[class*="bg-red-6"] * {
+:root[data-theme="light"] button[class~="bg-emerald-500"] *,
+:root[data-theme="light"] button[class~="bg-emerald-600"] *,
+:root[data-theme="light"] button[class~="bg-green-500"] *,
+:root[data-theme="light"] button[class~="bg-green-600"] *,
+:root[data-theme="light"] button[class~="bg-violet-500"] *,
+:root[data-theme="light"] button[class~="bg-violet-600"] *,
+:root[data-theme="light"] button[class~="bg-blue-500"] *,
+:root[data-theme="light"] button[class~="bg-blue-600"] *,
+:root[data-theme="light"] button[class~="bg-red-500"] *,
+:root[data-theme="light"] button[class~="bg-red-600"] *,
+:root[data-theme="light"] a[class~="bg-emerald-500"] *,
+:root[data-theme="light"] a[class~="bg-emerald-600"] *,
+:root[data-theme="light"] a[class~="bg-green-500"] *,
+:root[data-theme="light"] a[class~="bg-green-600"] *,
+:root[data-theme="light"] a[class~="bg-violet-500"] *,
+:root[data-theme="light"] a[class~="bg-violet-600"] *,
+:root[data-theme="light"] a[class~="bg-blue-500"] *,
+:root[data-theme="light"] a[class~="bg-blue-600"] *,
+:root[data-theme="light"] a[class~="bg-red-500"] *,
+:root[data-theme="light"] a[class~="bg-red-600"] * {
     color: #fff !important;
 }
 /* Explicit app actions that use custom/inline solid fills. */
@@ -8201,6 +8201,44 @@ body .cosmic-start-quick-idea.rounded-full.border {
     /* Tailwind preflight uses border-box, so padding lives inside this fold. */
     --cosmic-hero-fold-height: calc(100svh - 84px);
 }
+
+/* Marketplace website typography hierarchy. Keep this scoped to rendered
+   template sites so headings in the Marketplace shell remain unchanged. */
+[data-marketplace-surface="1"] :is(h1, h2, [data-cosmic-type="h1"], [data-cosmic-type="h2"]),
+[data-marketplace-template-preview="1"] :is(h1, h2, [data-cosmic-type="h1"], [data-cosmic-type="h2"]) {
+    font-weight: 900 !important;
+}
+
+[data-marketplace-surface="1"] :is(h3, h4, h5, h6, .font-bold, .font-extrabold, .font-black):not(h1):not(h2),
+[data-marketplace-template-preview="1"] :is(h3, h4, h5, h6, .font-bold, .font-extrabold, .font-black):not(h1):not(h2) {
+    font-weight: 600 !important;
+}
+
+/* Marketplace industry facets must stay readable when the host app's global
+   light/dark text and WebKit fill-color compatibility layers are active. */
+[data-marketplace-surface="1"] [data-marketplace-industry-card="1"] {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+
+[data-marketplace-surface="1"] [data-marketplace-industry-label] {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+}
+
+[data-marketplace-surface="1"] [data-marketplace-industry-count] {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}
+
+[data-marketplace-surface="1"] [data-marketplace-industry-icon] {
+    color: #7c3aed !important;
+    -webkit-text-fill-color: #7c3aed !important;
+    background-color: #f5f3ff !important;
+    opacity: 1 !important;
+}
 .cosmic-template-readonly-preview section[data-cosmic-hero-theme],
 .cosmic-template-readonly-preview section[data-cosmic-media-banner="true"] {
     padding-top: var(--cosmic-template-preview-hero-pad) !important;
@@ -8621,8 +8659,8 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: currentColor !important;
 }
 
-.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
-.cosmic-render-shell[data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]) {
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]):not(:where([data-cosmic-card-surface="light"] *)),
+.cosmic-render-shell[data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]):not(:where([data-cosmic-card-surface="light"] *)) {
     color: var(--cosmic-color-on-primary,#fff) !important;
     -webkit-text-fill-color: currentColor !important;
 }
@@ -8632,14 +8670,15 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: currentColor !important;
 }
 
-/* A PRIMARY section may contain a deliberately light card surface. Do not let
-   the section-wide on-primary foreground leak through WebKit text fill into
-   that nested surface. Components opt in with this semantic marker. */
-.cosmic-render-shell:is([data-cosmic-resolved-theme="primary"],[data-cosmic-background-state="primary"])
-    [data-cosmic-card-surface="light"]
-    :is(h1,h2,h3,h4,h5,h6,p,li,span,[data-luna-target="heading"],[data-luna-target="text"],[data-luna-target="label"]) {
-    color: var(--cosmic-color-on-secondary,var(--cosmic-on-secondary,#172033)) !important;
-    -webkit-text-fill-color: currentColor !important;
+/* A PRIMARY section may contain a deliberately light/surface card. The card
+   owns its surface tokens so the section-wide on-primary foreground cannot
+   leak into it. This is also the compatibility contract used by Services Bento
+   and any future Spark that opts in with data-cosmic-card-surface="light". */
+.cosmic-render-shell [data-cosmic-card-surface="light"] {
+    --cosmic-local-card-bg: var(--cosmic-color-surface,#fff);
+    --cosmic-local-card-text: var(--cosmic-color-on-surface,var(--cosmic-color-body,#172033));
+    --cosmic-local-card-heading: var(--cosmic-color-heading,var(--cosmic-color-on-surface,#172033));
+    --cosmic-local-card-border: var(--cosmic-color-border,#e2e8f0);
 }
 
 /* Mega footer editor: one compact contextual toolbar per column or menu row. */
@@ -14467,15 +14506,86 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     color: inherit !important;
     -webkit-text-fill-color: currentColor !important;
 }
-:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-buy-action {
+
+/* Batch 2 — marketplace semantic action palette.
+   Keep each commerce meaning visually distinct: install = green, credit buy =
+   violet, Growth upgrade = indigo, Pro upgrade = premium gold. */
+.cosmic-spark-marketplace-action {
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.cosmic-spark-install-action {
+    background: #24b47e !important;
+    background-image: none !important;
+    border-color: #24b47e !important;
+    color: #ffffff !important;
+}
+.cosmic-spark-install-action:hover:not(:disabled) {
+    background: #199b6b !important;
+    border-color: #199b6b !important;
+}
+.cosmic-spark-buy-action {
     background: #7c3aed !important;
     background-image: none !important;
     border-color: #7c3aed !important;
+    color: #ffffff !important;
 }
-:root[data-theme="light"] .cosmic-add-spark-modal .cosmic-spark-buy-action:hover:not(:disabled) {
+.cosmic-spark-buy-action:hover:not(:disabled) {
     background: #6d28d9 !important;
-    background-image: none !important;
     border-color: #6d28d9 !important;
+}
+.cosmic-spark-upgrade-growth-action {
+    background: #4f46e5 !important;
+    background-image: none !important;
+    border-color: #4f46e5 !important;
+    color: #ffffff !important;
+}
+.cosmic-spark-upgrade-growth-action:hover {
+    background: #4338ca !important;
+    border-color: #4338ca !important;
+}
+.cosmic-spark-upgrade-pro-action {
+    background: #a16207 !important;
+    background-image: none !important;
+    border-color: #a16207 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(161, 98, 7, .16);
+}
+.cosmic-spark-upgrade-pro-action:hover {
+    background: #854d0e !important;
+    border-color: #854d0e !important;
+}
+.cosmic-spark-plan-badge {
+    border: 1px solid transparent;
+}
+.cosmic-add-spark-modal[data-appearance="light"] .cosmic-spark-plan-badge--starter {
+    background: #ecfdf5 !important;
+    border-color: #bbf7d0 !important;
+    color: #047857 !important;
+}
+.cosmic-add-spark-modal[data-appearance="light"] .cosmic-spark-plan-badge--growth {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4338ca !important;
+}
+.cosmic-add-spark-modal[data-appearance="light"] .cosmic-spark-plan-badge--pro {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #a16207 !important;
+}
+.cosmic-add-spark-modal[data-appearance="dark"] .cosmic-spark-plan-badge--starter {
+    background: rgba(16,185,129,.12) !important;
+    border-color: rgba(52,211,153,.2) !important;
+    color: #a7f3d0 !important;
+}
+.cosmic-add-spark-modal[data-appearance="dark"] .cosmic-spark-plan-badge--growth {
+    background: rgba(79,70,229,.18) !important;
+    border-color: rgba(129,140,248,.24) !important;
+    color: #c7d2fe !important;
+}
+.cosmic-add-spark-modal[data-appearance="dark"] .cosmic-spark-plan-badge--pro {
+    background: rgba(180,119,21,.18) !important;
+    border-color: rgba(245,158,11,.24) !important;
+    color: #fde68a !important;
 }
 
 /* The generic light-dialog button normalizer has higher specificity than the
@@ -14568,4 +14678,199 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 }
 @media (prefers-reduced-motion: reduce) {
     .cosmic-theme-luna-preloader > span { animation: none; opacity: .8; }
+}
+
+/* Batch 3 — Luna Brand Sync recommendation in Builder > Design. */
+.cosmic-design-brand-sync-cta {
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(124, 58, 237, .14);
+}
+.cosmic-design-brand-sync-cta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(139,92,246,.16), rgba(59,130,246,.08) 52%, rgba(16,185,129,.10));
+}
+.cosmic-design-brand-sync-cta > * { position: relative; z-index: 1; }
+.cosmic-design-brand-sync-cta--light {
+    border-color: rgba(124,58,237,.26) !important;
+    background: #faf7ff !important;
+    color: #4c1d95 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-design-brand-sync-cta--light:hover:not(:disabled) {
+    border-color: rgba(109,40,217,.55) !important;
+    background: #f5f0ff !important;
+    transform: translateY(-1px);
+}
+.cosmic-design-brand-sync-cta--dark {
+    border-color: rgba(167,139,250,.32) !important;
+    background: rgba(91,33,182,.15) !important;
+    color: #ede9fe !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-design-brand-sync-cta--dark:hover:not(:disabled) {
+    border-color: rgba(196,181,253,.55) !important;
+    background: rgba(109,40,217,.22) !important;
+    transform: translateY(-1px);
+}
+.cosmic-design-brand-sync-spark {
+    display: inline-flex;
+    height: 22px;
+    width: 22px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(124,58,237,.14);
+    font-size: 12px;
+    font-weight: 900;
+}
+.cosmic-design-brand-sync-cta--dark .cosmic-design-brand-sync-spark { background: rgba(196,181,253,.14); }
+
+
+/* Marketplace Ember & Olive — fixed design-kit palette lock (home).
+   These custom Marketplace Sparks own their section surfaces and heading
+   contrast; normal Cosmic color-family semantic overrides must not recolor them. */
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="hero"] { background-color:#171713 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="feature"] { background-color:#292819 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="menu"] { background-color:#151612 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="private"] { background-color:#3a3a20 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="reservation"] { background-color:#1a1a16 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-surface="cream"] { background-color:#f5f0e7 !important; }
+.cosmic-render-shell .marketplace-ember-home[data-ember-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
+    color:#f5f0e7 !important;
+    -webkit-text-fill-color:currentColor !important;
+}
+.cosmic-render-shell .marketplace-ember-home[data-ember-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
+    color:#221b16 !important;
+    -webkit-text-fill-color:currentColor !important;
+}
+
+/* ============================================================================
+   Marketplace — Ember & Olive dedicated design family
+   Marketplace Ember blocks own their authored palette. They must not inherit the
+   generic PRIMARY/Midnight family normalization used by flexible Studio Sparks.
+   ============================================================================ */
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] {
+    --cosmic-primary:#1a1a16;
+    --cosmic-accent:#d6a151;
+    --cosmic-bg-primary:#1a1a16;
+    --cosmic-local-bg-primary:#1a1a16;
+    --cosmic-bg-primary-surface:#25251a;
+    --cosmic-local-bg-primary-surface:#25251a;
+    --cosmic-bg-surface:#f5f0e7;
+    --cosmic-local-bg-surface:#f5f0e7;
+    --cosmic-bg-white:#fffaf3;
+    --cosmic-local-bg-white:#fffaf3;
+    --cosmic-on-primary:#f5eddf;
+    --cosmic-on-primary-muted:rgba(245,237,223,.66);
+    --cosmic-on-surface:#2c211a;
+    --cosmic-on-surface-muted:#65594f;
+    --cosmic-color-on-dark:#f5eddf;
+    --cosmic-color-on-primary:#f5eddf;
+    --cosmic-button-primary-bg:#d6a151;
+    --cosmic-button-primary-text:#17150e;
+}
+
+/* Authored Ember section surfaces beat the global primary surface normalizer. */
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="hero"] {
+    background-color:#17110e !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="feature"] {
+    background-color:#2d2c1b !important;
+    background-image:linear-gradient(90deg,#292819,#34321b 45%,#292819) !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="menu"] {
+    background-color:#1a1b16 !important;
+    background-image:linear-gradient(115deg,#151612,#1f2016 68%,#2b2b19) !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="private"] {
+    background-color:#3a3a20 !important;
+    background-image:none !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="reservation"] {
+    background-color:#1a1a16 !important;
+    background-image:none !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-surface="cream"] {
+    background-color:#f5f0e7 !important;
+    background-image:none !important;
+}
+
+/* Preserve Ember's authored dark/light contrast instead of generic PRIMARY text. */
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-tone="dark"] {
+    color:#f5eddf !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#f5eddf !important;
+    -webkit-text-fill-color:#f5eddf !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-tone="light"] {
+    color:#2c211a !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] > .cosmic-render-content > section[data-ember-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#2c211a !important;
+    -webkit-text-fill-color:#2c211a !important;
+}
+
+/* Explicit Ember accents and muted copy remain readable even when the shell's
+   legacy fallback marks a block PRIMARY. */
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] [style*="color: rgb(214, 161, 81)"],
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] [style*="color:#d6a151"],
+.cosmic-render-shell[data-cosmic-marketplace-family="ember"] [style*="color: #d6a151"] {
+    -webkit-text-fill-color:currentColor !important;
+}
+
+/* Batch 8 — public marketing-site polish and responsive safety rails. */
+.cosmic-public-site {
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+.cosmic-public-site :where(section, article, aside, div, nav, main) {
+    min-width: 0;
+}
+.cosmic-public-site :where(img, video, iframe, svg, canvas) {
+    max-width: 100%;
+}
+.cosmic-public-site :where(h1, h2, h3, h4, p, a, button, label, span) {
+    overflow-wrap: break-word;
+}
+.cosmic-public-site :where(a, button, input, select, textarea):focus-visible {
+    outline-offset: 3px;
+}
+.cosmic-public-site :where(input, select, textarea) {
+    font-size: 16px;
+}
+.cosmic-public-site [data-public-scroll-region] {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+.cosmic-public-site [data-public-scroll-region]::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+.cosmic-public-site [data-public-scroll-region]::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #cbd5e1;
+}
+@media (max-width: 639px) {
+    .cosmic-public-site :where(table) {
+        font-size: 0.75rem;
+    }
+    .cosmic-public-site :where([class*="rounded-[30px]"], [class*="rounded-[28px]"]) {
+        border-radius: 22px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-public-site *,
+    .cosmic-public-site *::before,
+    .cosmic-public-site *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

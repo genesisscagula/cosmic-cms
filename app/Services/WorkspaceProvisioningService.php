@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CreditTransaction;
+use App\Models\MarketplaceCheckout;
 use App\Models\CosmicUnlock;
 use App\Models\CosmicSparkFavorite;
 use App\Models\CosmicTemplateFavorite;
@@ -183,6 +184,30 @@ class WorkspaceProvisioningService
                 $onboarding->user->forceFill([
                     'onboarding_status' => 'complete',
                 ])->save();
+
+                $marketplaceCheckoutId = (int) data_get($order->metadata, 'marketplace_checkout_id', 0);
+                if ($marketplaceCheckoutId > 0) {
+                    $marketplaceCheckout = MarketplaceCheckout::query()->lockForUpdate()->find($marketplaceCheckoutId);
+                    if ($marketplaceCheckout) {
+                        $marketplaceCheckout->forceFill([
+                            'status' => MarketplaceCheckout::STATUS_SUBSCRIPTION_READY,
+                            'metadata' => array_merge($marketplaceCheckout->metadata ?? [], [
+                                'workspace_id' => $workspace->id,
+                                'website_id' => $website->id,
+                                'subscription_ready_at' => now()->toIso8601String(),
+                                'provisioning_id' => $provisioning->id,
+                            ]),
+                        ])->save();
+
+                        // The normal onboarding pipeline owns website creation. Batch 6
+                        // overlays the selected Marketplace template onto that exact site
+                        // and primes Luna, keeping retries idempotent.
+                        app(MarketplaceWebsiteProvisioningService::class)->provision(
+                            $marketplaceCheckout->fresh(),
+                            $website,
+                        );
+                    }
+                }
 
                 $this->log($provisioning, 'provisioning_completed', WorkspaceProvisioning::STATUS_COMPLETED, 'Workspace provisioning completed.', [
                     'workspace_id' => $workspace->id,

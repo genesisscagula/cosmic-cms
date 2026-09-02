@@ -9,6 +9,7 @@ use App\Models\TrialGeneration;
 use App\Models\User;
 use App\Models\Website;
 use App\Models\WorkspaceProvisioning;
+use App\Services\MarketplaceCheckoutService;
 use App\Services\WorkspaceProvisioningService;
 use App\Support\SubscriptionStatus;
 use Illuminate\Auth\Events\Registered;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
@@ -27,7 +29,7 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    public function create(Request $request): Response|RedirectResponse
+    public function create(Request $request, MarketplaceCheckoutService $marketplaceCheckouts): Response|RedirectResponse
     {
         $trial = null;
         $validPlans = ['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'];
@@ -40,7 +42,18 @@ class RegisteredUserController extends Controller
                 ->first();
         }
 
-        $selectedPlan = $trial?->selected_plan ?: $request->string('plan')->toString();
+        $marketplaceTemplate = null;
+        $marketplaceSlug = trim($request->string('marketplace_template')->toString());
+
+        if ($marketplaceSlug !== '') {
+            try {
+                $marketplaceTemplate = $marketplaceCheckouts->publishedTemplate($marketplaceSlug);
+            } catch (\Throwable) {
+                return redirect()->route('pricing');
+            }
+        }
+
+        $selectedPlan = $marketplaceTemplate?->plan ?: ($trial?->selected_plan ?: $request->string('plan')->toString());
 
         if (! in_array($selectedPlan, $validPlans, true)) {
             return redirect()->route('pricing');
@@ -50,6 +63,14 @@ class RegisteredUserController extends Controller
             'trialToken' => $trial?->token,
             'trialEmail' => $trial?->email,
             'trialPlan' => $selectedPlan,
+            'marketplaceTemplate' => $marketplaceTemplate ? [
+                'slug' => $marketplaceTemplate->slug,
+                'name' => $marketplaceTemplate->name,
+                'industry' => $marketplaceTemplate->industry_label,
+                'plan' => (string) $marketplaceTemplate->plan,
+                'pages' => (int) $marketplaceTemplate->page_count,
+                'price' => $marketplaceCheckouts->planSummary((string) $marketplaceTemplate->plan)['price'],
+            ] : null,
         ]);
     }
 
@@ -58,7 +79,7 @@ class RegisteredUserController extends Controller
      * Paid access, credits, workspace creation, and trial claiming happen only
      * after verified payment in the following onboarding patches.
      */
-    public function store(Request $request)
+    public function store(Request $request, MarketplaceCheckoutService $marketplaceCheckouts)
     {
         // A new registration must never inherit checkout state from a previous
         // account in the same browser session.
@@ -79,6 +100,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'trial_token' => ['nullable', 'uuid'],
+            'marketplace_template' => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9-]+$/'],
             'selected_plan' => ['required', Rule::in(['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'])],
             'website_name' => ['required', 'string', 'max:255'],
             'website_url' => [
@@ -94,7 +116,19 @@ class RegisteredUserController extends Controller
             'website_url.regex' => 'Use lowercase letters, numbers, and single hyphens only.',
         ]);
 
-        $user = DB::transaction(function () use ($validated) {
+        $marketplaceTemplate = null;
+        if (! empty($validated['marketplace_template'])) {
+            try {
+                $marketplaceTemplate = $marketplaceCheckouts->publishedTemplate($validated['marketplace_template']);
+                $marketplaceCheckouts->assertPlanCoversTemplate($validated['selected_plan'], (string) $marketplaceTemplate->plan);
+            } catch (\Throwable $exception) {
+                throw ValidationException::withMessages([
+                    'marketplace_template' => $exception->getMessage() ?: 'The selected Marketplace website is unavailable.',
+                ]);
+            }
+        }
+
+        $user = DB::transaction(function () use ($validated, $marketplaceTemplate, $marketplaceCheckouts) {
             $trial = null;
 
             if (! empty($validated['trial_token'])) {
@@ -135,22 +169,30 @@ class RegisteredUserController extends Controller
             // first available numeric suffix (example: cosmic-cms-2).
             $websiteSlug = $this->resolveAvailableWebsiteSlug($validated['website_url']);
 
-            PendingOnboarding::create([
+            $onboarding = PendingOnboarding::create([
                 'user_id' => $user->id,
                 'trial_generation_id' => $trial?->id,
                 'selected_plan' => $validated['selected_plan'],
                 'website_name' => trim($validated['website_name']),
                 'website_slug' => $websiteSlug,
-                'industry' => $validated['industry'],
+                'industry' => $marketplaceTemplate?->industry_label ?: $validated['industry'],
                 'business_description' => trim($validated['business_description']),
                 'location' => trim($validated['location']),
                 'status' => 'pending_payment',
                 'expires_at' => now()->addDays(7),
-                'metadata' => [
+                'metadata' => array_filter([
                     'trial_token_present' => (bool) $trial,
                     'created_from_ip_hash' => hash('sha256', request()->ip().'|'.config('app.key')),
-                ],
+                    'checkout_source' => $marketplaceTemplate ? 'marketplace' : null,
+                    'marketplace_template_id' => $marketplaceTemplate?->id,
+                    'marketplace_template_slug' => $marketplaceTemplate?->slug,
+                    'marketplace_template_version' => $marketplaceTemplate?->version,
+                ], static fn ($value) => $value !== null),
             ]);
+
+            if ($marketplaceTemplate) {
+                $marketplaceCheckouts->createForOnboarding($user, $onboarding, $marketplaceTemplate);
+            }
 
             return $user;
         });
@@ -206,7 +248,7 @@ class RegisteredUserController extends Controller
             ->exists();
     }
 
-    public function pending(Request $request): Response|RedirectResponse
+    public function pending(Request $request, MarketplaceCheckoutService $marketplaceCheckouts): Response|RedirectResponse
     {
         $user = $request->user();
 
@@ -275,6 +317,11 @@ class RegisteredUserController extends Controller
             ->latest('id')
             ->first();
 
+        $marketplaceCheckout = Schema::hasTable('marketplace_checkouts')
+            ? $marketplaceCheckouts->forOnboarding($onboarding)
+            : null;
+        $marketplaceCheckout?->loadMissing('template');
+
         return Inertia::render('Onboarding/Pending', [
             'onboarding' => [
                 'plan_key' => $onboarding->selected_plan,
@@ -295,6 +342,14 @@ class RegisteredUserController extends Controller
                 'can_retry_provisioning' => (bool) ($provisioning && in_array($provisioning->status, ['failed', 'processing'], true)),
                 'next_retry_at' => $provisioning?->next_retry_at?->toIso8601String(),
             ],
+            'marketplaceTemplate' => $marketplaceCheckout?->template ? [
+                'slug' => $marketplaceCheckout->template->slug,
+                'name' => $marketplaceCheckout->template->name,
+                'industry' => $marketplaceCheckout->template->industry_label,
+                'pages' => (int) $marketplaceCheckout->template->page_count,
+                'plan' => (string) $marketplaceCheckout->selected_plan,
+                'status' => $marketplaceCheckout->status,
+            ] : null,
             'status' => session('status'),
             'paymentError' => session('payment_error'),
             'autoCheckout' => $request->string('checkout')->toString() === 'auto',

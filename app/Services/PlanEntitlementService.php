@@ -102,6 +102,102 @@ class PlanEntitlementService
     }
 
 
+
+    /**
+     * Canonical access decision for the 535-template Page Template marketplace.
+     * Purchased templates are handled by the controller as permanent ownership;
+     * this method answers whether the current plan can newly purchase/use a tier.
+     *
+     * @return array<string,mixed>
+     */
+    public function pageTemplateAccess(User $user, string $templateKey, ?array $template = null): array
+    {
+        $template ??= PageTemplateCatalog::find($templateKey);
+        $accountLevel = (string) ($this->plans->capabilities($user->effectivePlanKey())['template_access_level'] ?? 'starter');
+        $requiredLevel = (string) ($template['access_level'] ?? 'pro');
+
+        // Agency tiers mirror the personal Starter/Growth/Pro template ladder for
+        // this shared page-template marketplace while retaining their own website
+        // template limits elsewhere.
+        $normalizedAccountLevel = match ($accountLevel) {
+            'agency_starter' => 'starter',
+            'agency_growth' => 'growth',
+            'agency_pro', 'all' => 'pro',
+            default => $accountLevel,
+        };
+
+        $allowed = $template && $this->levelAllows($normalizedAccountLevel, $requiredLevel, self::TEMPLATE_LEVELS);
+        $upgrade = $allowed || ! $template ? null : $this->recommendedPageTemplateUpgrade($user, $requiredLevel);
+
+        return [
+            'allowed' => (bool) $allowed,
+            'template' => $templateKey,
+            'required_level' => $template ? $requiredLevel : null,
+            'required_label' => $template ? ucfirst($requiredLevel) : null,
+            'account_level' => $accountLevel,
+            'account_label' => ucfirst(str_replace('_', ' ', $accountLevel)),
+            'catalog_index' => $template['catalog_index'] ?? null,
+            'reason' => $template ? ($allowed ? null : 'template_access_level') : 'unknown_template',
+            'message' => ! $template
+                ? 'The selected page Template is not available.'
+                : ($allowed ? null : sprintf('This Template requires the %s plan.', ucfirst($requiredLevel))),
+            'upgrade' => $upgrade,
+        ];
+    }
+
+    /** @return array<int,string> */
+    public function accessiblePageTemplateKeys(User $user): array
+    {
+        $owned = $user->cosmicUnlocks()
+            ->where('unlock_type', 'template')
+            ->pluck('unlock_key')
+            ->map(fn ($key) => (string) $key)
+            ->flip();
+
+        return collect(PageTemplateCatalog::all())
+            ->filter(function (array $template) use ($user, $owned): bool {
+                $key = (string) ($template['key'] ?? '');
+                if ($key !== '' && $owned->has($key)) return true;
+
+                return (bool) ($this->pageTemplateAccess($user, $key, $template)['allowed'] ?? false);
+            })
+            ->pluck('key')
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string,mixed>|null */
+    public function recommendedPageTemplateUpgrade(User $user, string $requiredLevel): ?array
+    {
+        $current = $this->plans->normalizeKey($user->effectivePlanKey());
+        $currentPlan = $this->plans->find($current) ?? [];
+        $currentFamily = (string) ($currentPlan['family'] ?? 'personal');
+
+        $candidates = collect($this->plans->all())
+            ->filter(function (array $plan, string $key) use ($current, $currentFamily, $requiredLevel): bool {
+                if ($key === $current || (string) ($plan['family'] ?? 'personal') !== $currentFamily) {
+                    return false;
+                }
+
+                $level = (string) (($plan['capabilities']['template_access_level'] ?? 'starter'));
+                $level = match ($level) {
+                    'agency_starter' => 'starter',
+                    'agency_growth' => 'growth',
+                    'agency_pro', 'all' => 'pro',
+                    default => $level,
+                };
+
+                return $this->levelAllows($level, $requiredLevel, self::TEMPLATE_LEVELS);
+            })
+            ->sortBy(fn (array $plan) => (int) ($plan['price_usd'] ?? PHP_INT_MAX));
+
+        $key = $candidates->keys()->first();
+        $plan = $key ? $candidates->get($key) : null;
+
+        return $key && is_array($plan) ? $this->upgradePayload($key, $plan) : null;
+    }
+
     /**
      * Find the least expensive plan that can use the requested template.
      *
@@ -232,10 +328,13 @@ class PlanEntitlementService
     public function recommendedSparkUpgrade(User $user, string $requiredLevel, bool $requireFullPreview = false): ?array
     {
         $current = $this->plans->normalizeKey($user->effectivePlanKey());
+        $currentPlan = $this->plans->find($current) ?? [];
+        $currentFamily = (string) ($currentPlan['family'] ?? 'personal');
         $levels = $this->sparkLevelRanks();
         $candidates = collect($this->plans->all())
-            ->filter(function (array $plan, string $key) use ($current, $requiredLevel, $requireFullPreview, $levels) {
+            ->filter(function (array $plan, string $key) use ($current, $currentFamily, $requiredLevel, $requireFullPreview, $levels) {
                 if ($key === $current) return false;
+                if ((string) ($plan['family'] ?? 'personal') !== $currentFamily) return false;
                 $capabilities = (array) ($plan['capabilities'] ?? []);
                 if (! $this->levelAllows((string) ($capabilities['spark_access_level'] ?? 'free'), $requiredLevel, $levels)) return false;
                 if ($requireFullPreview && ($capabilities['marketplace_preview_limit'] ?? null) !== null) return false;
@@ -252,9 +351,19 @@ class PlanEntitlementService
     public function recommendedSparkSlotUpgrade(User $user): ?array
     {
         $current = $this->plans->normalizeKey($user->effectivePlanKey());
+        $currentPlan = $this->plans->find($current) ?? [];
+        $currentFamily = (string) ($currentPlan['family'] ?? 'personal');
         $currentLimit = $this->plans->capabilities($current)['max_owned_sparks'] ?? 0;
         $candidates = collect($this->plans->all())
-            ->filter(fn (array $plan, string $key) => $key !== $current && (($plan['capabilities']['max_owned_sparks'] ?? 0) === null || (int) ($plan['capabilities']['max_owned_sparks'] ?? 0) > (int) $currentLimit))
+            ->filter(function (array $plan, string $key) use ($current, $currentFamily, $currentLimit): bool {
+                if ($key === $current || (string) ($plan['family'] ?? 'personal') !== $currentFamily) {
+                    return false;
+                }
+
+                $limit = $plan['capabilities']['max_owned_sparks'] ?? 0;
+
+                return $limit === null || (int) $limit > (int) $currentLimit;
+            })
             ->sortBy(fn (array $plan) => (int) ($plan['price_usd'] ?? PHP_INT_MAX));
         $key = $candidates->keys()->first();
         $plan = $key ? $candidates->get($key) : null;

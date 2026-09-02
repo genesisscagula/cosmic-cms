@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\SavedPageTemplate;
 use App\Services\CreditService;
 use App\Services\PageTemplateCatalog;
+use App\Services\PlanEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,16 +16,26 @@ use Illuminate\Support\Str;
 
 class PageTemplateController extends Controller
 {
-    public function catalog(Request $request): JsonResponse
+    public function catalog(Request $request, PlanEntitlementService $entitlements): JsonResponse
     {
         $purchased = $request->user()->cosmicUnlocks()->where('unlock_type', 'template')->get()->keyBy('unlock_key');
         $favorites = $request->user()->templateFavorites()->pluck('template_key');
 
-        $marketplace = collect(PageTemplateCatalog::all())->map(function ($template) use ($purchased, $favorites) {
+        $marketplace = collect(PageTemplateCatalog::all())->map(function ($template) use ($purchased, $favorites, $entitlements, $request) {
             $unlock = $purchased->get($template['key']);
             // Template ownership is permanent once an unlock record exists.
             // `is_installed` is a workspace state used by Sparks and must not make a paid Template look unowned.
             $isPurchased = (bool) $unlock;
+            $access = $entitlements->pageTemplateAccess($request->user(), (string) $template['key'], $template);
+            $upgrade = (array) ($access['upgrade'] ?? []);
+            $planLocked = ! $isPurchased && ! (bool) ($access['allowed'] ?? false);
+            $upgradeUrl = $planLocked && ! empty($upgrade['plan_key'])
+                ? '/credits?'.http_build_query([
+                    'family' => $upgrade['family'] ?? 'personal',
+                    'plan' => $upgrade['plan_key'],
+                    'source' => 'template',
+                ])
+                : null;
 
             return [...$template,
                 'credits' => PageTemplateCatalog::price($template['key']),
@@ -37,6 +48,13 @@ class PageTemplateController extends Controller
                 'template_type' => 'page',
                 'status' => 'active',
                 'saved' => false,
+                'plan_locked' => $planLocked,
+                'can_purchase' => ! $planLocked,
+                'access' => $access,
+                'upgrade_url' => $upgradeUrl,
+                'upgrade_label' => $planLocked
+                    ? 'Upgrade to '.(string) ($upgrade['label'] ?? ucfirst((string) ($template['access_level'] ?? 'pro')))
+                    : null,
             ];
         });
 
@@ -228,13 +246,19 @@ class PageTemplateController extends Controller
             'template_type' => $template->template_type ?: SavedPageTemplate::TYPE_PAGE,
             'status' => $template->status ?: SavedPageTemplate::STATUS_ACTIVE,
             'saved' => true,
+            'access_level' => 'starter',
+            'access_label' => 'Saved',
+            'plan_locked' => false,
+            'can_purchase' => true,
+            'upgrade_url' => null,
+            'upgrade_label' => null,
         ];
     }
 
-    public function unlock(Request $request, string $key, CreditService $credits): JsonResponse
+    public function unlock(Request $request, string $key, CreditService $credits, PlanEntitlementService $entitlements): JsonResponse
     {
         $template = PageTemplateCatalog::find($key); abort_unless($template, 404);
-        return DB::transaction(function () use ($request, $key, $template, $credits) {
+        return DB::transaction(function () use ($request, $key, $template, $credits, $entitlements) {
             $user = User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $existing = $user->cosmicUnlocks()->where('unlock_type', 'template')->where('unlock_key', $key)->lockForUpdate()->first();
             if ($existing) {
@@ -246,6 +270,21 @@ class PageTemplateController extends Controller
                     'credit_balance' => $credits->balance($user),
                 ]);
             }
+
+            $access = $entitlements->pageTemplateAccess($user, $key);
+            if (! (bool) ($access['allowed'] ?? false)) {
+                $upgrade = (array) ($access['upgrade'] ?? []);
+                return response()->json([
+                    'message' => $access['message'] ?? 'Upgrade your plan to purchase this Template.',
+                    'reason' => 'template_access_level',
+                    'required_level' => $access['required_level'] ?? ($template['access_level'] ?? 'pro'),
+                    'upgrade' => $upgrade ?: null,
+                    'upgrade_url' => ! empty($upgrade['plan_key'])
+                        ? '/credits?'.http_build_query(['family' => $upgrade['family'] ?? 'personal', 'plan' => $upgrade['plan_key'], 'source' => 'template'])
+                        : null,
+                ], 403);
+            }
+
             $price = PageTemplateCatalog::price($key);
             $tx = $credits->consume($user, $price, 'Purchased Template: '.$template['name'], null, 'template-'.$key.'-'.uniqid(), ['template_key' => $key, 'product_type' => 'template_purchase']);
             CosmicUnlock::create(['user_id' => $user->id, 'unlock_type' => 'template', 'unlock_key' => $key, 'credits_paid' => $price, 'is_installed' => true]);

@@ -27,3 +27,22 @@ export const isDefaultLogoPlaceholder = (url) => {
 
 export const logoFilterForImage = (url, theme, explicitFilter = '') =>
   explicitFilter || (isDefaultLogoPlaceholder(url) ? logoFilterFor(theme) : 'none');
+
+/** Resolve an explicit contrast-safe logo first, then fall back to the primary logo. */
+export const resolveLogoForTone = (branding = {}, tone = 'dark') => {
+  const lightCandidates = [branding.logo_light_image_url, branding.logo_image_url_light, branding.light_logo_url];
+  const darkCandidates = [branding.logo_dark_image_url, branding.logo_image_url_dark, branding.dark_logo_url];
+  const preferred = tone === 'light' ? lightCandidates : darkCandidates;
+  const explicit = preferred.find((value) => typeof value === 'string' && value.trim());
+  const fallback = typeof branding.logo_image_url === 'string' ? branding.logo_image_url.trim() : '';
+  return { url: explicit?.trim() || fallback, explicitVariant: Boolean(explicit), tone };
+};
+
+export const logoStyleForTone = (branding = {}, tone = 'dark', theme = 'midnight') => {
+  const resolved = resolveLogoForTone(branding, tone);
+  const fallbackFilter = logoFilterForImage(resolved.url, branding.logo_filter_key || theme, branding.logo_filter);
+  return {
+    ...resolved,
+    filter: resolved.explicitVariant ? 'none' : (tone === 'light' ? 'brightness(0) saturate(100%) invert(1)' : fallbackFilter),
+  };
+};

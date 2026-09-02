@@ -200,7 +200,13 @@ class SparkController extends Controller
 
             return [
                 ...$spark,
-                'owned' => (bool) ($unlock?->is_installed),
+                // `owned` means currently usable from the Builder library:
+                // installed directly or shared by the workspace. Removed direct
+                // purchases stay out of Add Section while `owned_permanently`
+                // preserves their restore rights across plan changes.
+                'owned' => (bool) ($unlock?->is_installed) || $shared,
+                'installed' => (bool) ($unlock?->is_installed),
+                'owned_permanently' => $unlock !== null,
                 'purchased' => (int) ($unlock?->credits_paid ?? 0) > 0,
                 'favorited' => $favoriteKeys->contains($spark['key']),
                 'shared' => $shared,

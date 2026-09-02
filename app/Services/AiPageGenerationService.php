@@ -25,6 +25,12 @@ class AiPageGenerationService
     private const PROTECTED_SHELL_TYPES = [
         'glassmorphism_header',
         'dark_cyan_header',
+        'classic_header',
+        'centered_header',
+        'split_navigation_header',
+        'floating_glass_header',
+        'overlay_hero_header',
+        'minimal_header',
         'minimal_footer',
         'detailed_footer',
         'header',

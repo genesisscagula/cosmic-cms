@@ -28,7 +28,7 @@ return [
     'collections' => [
         'core' => [
             'label' => 'Core Collection',
-            'access_level' => 'free',
+            'access_level' => 'starter',
             'description' => 'Essential reusable sections available to every paid Cosmic plan.',
         ],
         'growth' => [
@@ -43,10 +43,144 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Personal-plan Spark tier policy
+    |--------------------------------------------------------------------------
+    |
+    | The personal library is deliberately curated instead of inferred from
+    | price or collection. Starter receives exactly 30 essential Sparks.
+    | Growth adds 70 more (100 total). Every other active Spark is Pro.
+    | New Sparks therefore default safely to Pro until explicitly curated.
+    |
+    */
+    'tier_policy' => [
+        // Exclusive tier assignments. Growth is +70 on top of Starter;
+        // Pro contains every remaining active Spark.
+        'target_counts' => [
+            'starter' => 30,
+            'growth' => 70,
+            'pro' => 224,
+        ],
+        // Cumulative product promise shown to customers and enforced by QA.
+        'access_totals' => [
+            'starter' => 30,
+            'growth' => 100,
+            'pro' => 324,
+        ],
+        'target_total_active' => 324,
+        'starter_keys' => [
+            'hero_headline',
+            'hero_centered_cta',
+            'feature_image_left',
+            'feature_image_right',
+            'services_cards',
+            'services_bento',
+            'stats_modern',
+            'testimonials_carousel',
+            'faq_accordion',
+            'image_cta_banner',
+            'pricing_cards',
+            'team_modern',
+            'contact_form_modern',
+            'contact_details',
+            'location_map',
+            'hero_background_image',
+            'hero_editorial_overlay',
+            'hero_split_image',
+            'hero_floating_cards',
+            'process_timeline',
+            'case_studies_grid',
+            'jobs_list',
+            'cta_glass_premium',
+            'cta_gradient_premium',
+            'about_founder_story',
+            'about_mission_grid',
+            'team_cards_premium',
+            'team_culture_premium',
+            'testimonials_review_grid',
+            'services_grid_premium',
+        ],
+        'growth_keys' => [
+            'content_grid_classic',
+            'content_grid_editorial',
+            'content_grid_compact',
+            'content_featured_entry',
+            'content_latest_entries',
+            'content_events_grid',
+            'events_grid',
+            'blog_mini_hero',
+            'mini_hero_minimal',
+            'mini_hero_split',
+            'mini_hero_promo',
+            'blog_hub',
+            'newsletter_cta',
+            'latest_resources',
+            'hero_slider_fade',
+            'hero_split_editorial',
+            'hero_floating_glass',
+            'hero_saas_dashboard',
+            'services_bento_premium',
+            'services_editorial_premium',
+            'services_showcase_premium',
+            'services_minimal_luxury',
+            'services_contrast_premium',
+            'services_split_premium',
+            'services_feature_premium',
+            'cta_ticket_premium',
+            'cta_newsletter_premium',
+            'cta_book_demo_premium',
+            'cta_free_trial_premium',
+            'cta_limited_offer_premium',
+            'cta_image_split_premium',
+            'cta_floating_panel_premium',
+            'cta_editorial_banner_premium',
+            'cta_media_cards_premium',
+            'contact_availability_board_premium',
+            'contact_split_premium',
+            'contact_map_premium',
+            'contact_support_center_premium',
+            'contact_faq_premium',
+            'contact_image_form_premium',
+            'contact_editorial_split_premium',
+            'contact_office_cards_premium',
+            'contact_visual_inquiry_premium',
+            'about_timeline_story',
+            'about_brand_journey',
+            'about_awards_timeline',
+            'about_story_collage_premium',
+            'about_image_manifesto_premium',
+            'about_founder_visual_premium',
+            'about_journey_gallery_premium',
+            'team_timeline_premium',
+            'team_leadership_premium',
+            'team_open_positions_premium',
+            'team_portrait_editorial_premium',
+            'team_image_grid_premium',
+            'team_leadership_split_premium',
+            'team_people_mosaic_premium',
+            'testimonials_portrait_cards_premium',
+            'testimonials_featured_story_premium',
+            'testimonials_image_wall_premium',
+            'testimonials_editorial_quotes_premium',
+            'testimonials_client_spotlight_premium',
+            'process_visual_steps_premium',
+            'process_image_timeline_premium',
+            'process_numbered_panels_premium',
+            'process_editorial_journey_premium',
+            'process_media_roadmap_premium',
+            'stats_photo_metrics_premium',
+            'stats_editorial_numbers_premium',
+            'stats_achievements_premium',
+        ],
+        'default_access_level' => 'pro',
+    ],
+
     'overrides' => [
         // Metadata is derived automatically from every Spark key. Add only special
         // semantic aliases here when a Spark's name cannot fully describe its use.
         'hero_slider_fade' => [
+            'access_level' => 'growth',
             'aliases' => ['hero slider','banner slider','homepage carousel','rotating hero'],
             'media' => 'slider',
             'position_fit' => ['top'],

@@ -29,7 +29,18 @@ final class SparkUsageStateService
             return $this->state('preview_locked', 'Preview locked', (string) ($preview['message'] ?? 'Upgrade to preview this Spark.'), 'upgrade', 'Upgrade to preview', 'warning', $this->entitlements->recommendedSparkUpgrade($user, (string) ($spark['access_level'] ?? 'free'), true));
         }
         if ($reason === 'spark_access_level') {
-            return $this->state('plan_locked', 'Higher plan', (string) ($acquisition['message'] ?? 'Upgrade your plan to install this Spark.'), 'upgrade', 'Upgrade to add', 'warning', $this->entitlements->recommendedSparkUpgrade($user, (string) ($spark['access_level'] ?? 'free')));
+            $upgrade = $this->entitlements->recommendedSparkUpgrade($user, (string) ($spark['access_level'] ?? 'starter'));
+            $upgradeLabel = $upgrade['label'] ?? ($acquisition['access']['required_label'] ?? 'a higher plan');
+
+            return $this->state(
+                'plan_locked',
+                (string) ($acquisition['access']['required_label'] ?? 'Higher plan'),
+                (string) ($acquisition['message'] ?? 'Upgrade your plan to install this Spark.'),
+                'upgrade',
+                'Upgrade to '.$upgradeLabel,
+                'warning',
+                $upgrade,
+            );
         }
         if ($reason === 'owned_spark_limit') {
             return $this->state('slots_full', 'Slots full', (string) ($acquisition['message'] ?? 'Your Owned Spark slots are full.'), 'manage_or_upgrade', 'Manage slots', 'warning', $this->entitlements->recommendedSparkSlotUpgrade($user));

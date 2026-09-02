@@ -50,6 +50,12 @@ final class LunaHeaderFooterActionService
             $type = null;
             if (preg_match('/\b(?:dark cyan|dark-cyan|cyan)\b/i', $prompt)) $type = 'dark_cyan_header';
             if (preg_match('/\b(?:glass|glassmorphism|glass morphism)\b/i', $prompt)) $type = 'glassmorphism_header';
+            if (preg_match('/\bclassic(?: header)?\b/i', $prompt)) $type = 'classic_header';
+            if (preg_match('/\bcentered(?: header)?\b/i', $prompt)) $type = 'centered_header';
+            if (preg_match('/\bsplit(?: navigation| nav)?(?: header)?\b/i', $prompt)) $type = 'split_navigation_header';
+            if (preg_match('/\bfloating(?: glass)?(?: header)?\b/i', $prompt)) $type = 'floating_glass_header';
+            if (preg_match('/\boverlay(?: hero)?(?: header)?\b/i', $prompt)) $type = 'overlay_hero_header';
+            if (preg_match('/\bminimal(?: header)?\b/i', $prompt)) $type = 'minimal_header';
             if ($type === null) return null;
             $header['type'] = $type;
             $operations[] = $this->op('header.type', $type);
@@ -128,6 +134,22 @@ final class LunaHeaderFooterActionService
             $footer['mega_footer'] = $mega;
             $operations[] = $this->op('footer.mega_enabled', $enabled);
         }
+        if ($action === 'change_footer') {
+            $variant = null;
+            if (preg_match('/\b(?:mega\s+)?classic(?:\s+footer)?\b/i', $prompt)) $variant = 'classic';
+            if (preg_match('/\b(?:mega\s+)?cta(?:\s+footer)?\b/i', $prompt)) $variant = 'cta';
+            if (preg_match('/\b(?:mega\s+)?brand(?:\s+footer)?\b/i', $prompt)) $variant = 'brand';
+            if (preg_match('/\b(?:mega\s+)?contact(?:\s+footer)?\b/i', $prompt)) $variant = 'contact';
+            if (preg_match('/\b(?:mega\s+)?newsletter(?:\s+footer)?\b/i', $prompt)) $variant = 'newsletter';
+            if ($variant !== null) {
+                $footer['mega_enabled'] = true;
+                $mega['enabled'] = true;
+                $mega['variant'] = $variant;
+                $footer['mega_footer'] = $mega;
+                $operations[] = $this->op('footer.mega_footer.variant', $variant);
+            }
+        }
+
         if (in_array($action, ['simple_footer', 'change_footer'], true)) {
             if ($action === 'change_footer' && preg_match('/\bmega\b/i', $prompt)) {
                 $footer['mega_enabled'] = true; $mega['enabled'] = true;
@@ -136,7 +158,7 @@ final class LunaHeaderFooterActionService
                 $footer['type'] = 'minimal_footer';
                 $footer['mega_enabled'] = false; $mega['enabled'] = false;
                 $operations[] = $this->op('footer.mega_enabled', false);
-            } else return null;
+            } elseif ($operations === []) return null;
             $footer['mega_footer'] = $mega;
         }
 
