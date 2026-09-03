@@ -41,8 +41,13 @@ export const resolveLogoForTone = (branding = {}, tone = 'dark') => {
 export const logoStyleForTone = (branding = {}, tone = 'dark', theme = 'midnight') => {
   const resolved = resolveLogoForTone(branding, tone);
   const fallbackFilter = logoFilterForImage(resolved.url, branding.logo_filter_key || theme, branding.logo_filter);
+  const allowLightLogoFilter = branding.allow_light_logo_filter !== false;
   return {
     ...resolved,
-    filter: resolved.explicitVariant ? 'none' : (tone === 'light' ? 'brightness(0) saturate(100%) invert(1)' : fallbackFilter),
+    filter: resolved.explicitVariant
+      ? 'none'
+      : (tone === 'light'
+        ? (allowLightLogoFilter ? 'brightness(0) saturate(100%) invert(1)' : fallbackFilter)
+        : fallbackFilter),
   };
 };

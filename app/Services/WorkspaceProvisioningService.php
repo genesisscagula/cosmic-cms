@@ -18,6 +18,7 @@ use App\Models\WorkspaceProvisioningLog;
 use App\AI\Registries\IndustryMenuRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Support\HeaderFooterVariantContract;
 use App\Support\SubscriptionStatus;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -326,7 +327,7 @@ class WorkspaceProvisioningService
             ],
             'theme_settings' => $themeSettings,
             'global_header' => [
-                'type' => 'glassmorphism_header',
+                'type' => 'classic_header',
                 'logo_text' => $onboarding->website_name,
                 'logo_image_url' => '/storage/branding/your-logo.png',
                 'logo_height' => 42,
@@ -337,9 +338,11 @@ class WorkspaceProvisioningService
             ],
             'global_footer' => [
                 'type' => 'minimal_footer',
-                'mega_enabled' => false,
+                'mega_enabled' => true,
                 'mega_footer' => [
-                    'enabled' => false,
+                    'enabled' => true,
+                    'variant' => 'classic',
+                    'theme' => 'white',
                     'tagline' => 'A premium information-rich footer.',
                     'primary_label' => 'Get in touch',
                     'primary_url' => '#contact',
@@ -713,7 +716,6 @@ class WorkspaceProvisioningService
         $header['logo_height'] = max(42, (int) data_get($themeSettings, 'logo_height', $header['logo_height'] ?? 60));
         $header['logo_max_width'] = max(220, (int) data_get($themeSettings, 'logo_max_width', $header['logo_max_width'] ?? 300));
         $header['logo_filter_key'] = data_get($themeSettings, 'primary', 'midnight');
-        $header['overlay_header_on_banner'] = (bool) data_get($themeSettings, 'overlay_header_on_banner', $header['overlay_header_on_banner'] ?? false);
 
         $footer = $website->global_footer ?? [];
         $footer['type'] = $footer['type'] ?? 'minimal_footer';
@@ -753,6 +755,11 @@ class WorkspaceProvisioningService
             'logo_theme_sync_source' => $trial->logo_theme_sync_source,
             'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
         ]);
+
+        // Purchase/provisioning may enrich branding and navigation, but it must
+        // never translate old theme toggles back into shell behavior.
+        $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
+        $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
 
         $website->forceFill([
             'settings' => $settings,

@@ -115,6 +115,13 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
     const muted = ensureContrast(valueHex(raw, ['muted'], mixHex(body, surface, 0.68)), surface);
     const buttonPrimary = valueHex(raw, ['button_primary', 'buttonPrimary'], primary);
     const buttonSecondary = valueHex(raw, ['button_secondary', 'buttonSecondary'], surfaceAlt);
+    const rawShell = customHex ? {} : (family?.palette || {});
+    const shellSecondary = valueHex(raw, ['headerFooterSecondary', 'header_footer_secondary', 'shellSecondary', 'shell_secondary'],
+        colorLuminance(brandSurface) >= 0.72 ? mixHex(primary, white, 0.10) : brandSurface);
+    const shellSecondaryText = readableForeground(shellSecondary, valueHex(raw, ['headerFooterSecondaryText', 'header_footer_secondary_text', 'shellSecondaryText', 'shell_secondary_text'], null));
+    const shellSecondaryMuted = valueHex(raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted'], mixHex(shellSecondaryText, shellSecondary, 0.68));
+    const shellSecondaryBorder = valueHex(raw, ['headerFooterSecondaryBorder', 'header_footer_secondary_border', 'shellSecondaryBorder', 'shell_secondary_border'], mixHex(shellSecondaryText, shellSecondary, 0.18));
+    const shellSecondaryTone = String(rawShell?.headerFooterSecondaryTone || rawShell?.header_footer_secondary_tone || (colorLuminance(shellSecondary) >= 0.58 ? 'light' : 'dark'));
     const palette = {
         family: familyKey,
         source_color: valueHex(raw, ['source_color', 'sourceColor'], primary),
@@ -131,6 +138,11 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
         button_text: readableForeground(buttonPrimary, valueHex(raw, ['button_text', 'buttonText', 'primary_text', 'primaryText', 'on_primary', 'onPrimary'], null)),
         button_secondary: buttonSecondary,
         button_secondary_text: readableForeground(buttonSecondary, valueHex(raw, ['button_secondary_text', 'buttonSecondaryText', 'heading'], null)),
+        shell_secondary: shellSecondary,
+        shell_secondary_text: shellSecondaryText,
+        shell_secondary_muted: shellSecondaryMuted,
+        shell_secondary_border: shellSecondaryBorder,
+        shell_secondary_tone: shellSecondaryTone === 'light' ? 'light' : 'dark',
         success: valueHex(raw, ['success'], '#237A57'), warning: valueHex(raw, ['warning'], '#A86D22'), error: valueHex(raw, ['error'], '#B44949'),
         gradient: {
             from: valueHex(rawGradient, ['from'], mixHex('#000000', primary, 0.58)),
@@ -150,5 +162,8 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
         onAccent: palette.on_accent, onSurface: palette.on_surface, onDark: palette.on_dark,
         buttonPrimary: palette.button_primary, buttonText: palette.button_text,
         buttonSecondary: palette.button_secondary, buttonSecondaryText: palette.button_secondary_text,
+        shellSecondary: palette.shell_secondary, shellSecondaryText: palette.shell_secondary_text,
+        shellSecondaryMuted: palette.shell_secondary_muted, shellSecondaryBorder: palette.shell_secondary_border,
+        shellSecondaryTone: palette.shell_secondary_tone,
     };
 }

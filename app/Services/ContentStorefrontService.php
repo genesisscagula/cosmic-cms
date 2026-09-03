@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 
 class ContentStorefrontService
 {
@@ -188,8 +189,8 @@ class ContentStorefrontService
         // Preview must mirror the current Builder shell, including the latest uploaded logo.
         // Published shell values can lag behind Builder edits until the next publish, so prefer
         // the current global blocks and only fall back to the published snapshot.
-        $header = $website->global_header ?? $website->published_global_header;
-        $footer = $website->global_footer ?? $website->published_global_footer;
+        $header = HeaderFooterVariantContract::normalizeHeader($website->global_header ?? $website->published_global_header);
+        $footer = HeaderFooterVariantContract::normalizeFooter($website->global_footer ?? $website->published_global_footer);
         if (! is_array($header) && ! is_array($footer)) return ['header' => '', 'footer' => '', 'header_overlay_enabled' => false];
 
         if (is_array($header)) {

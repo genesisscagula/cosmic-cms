@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Services\ThemeColorResolver;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Support\Str;
 
 class CmsHtmlCompiler
@@ -2298,27 +2299,39 @@ HTML;
                 case 'dark_cyan_header':
                 case 'glassmorphism_header':
                 case 'classic_header':
+                case 'primary_header':
                 case 'centered_header':
                 case 'split_navigation_header':
                 case 'floating_glass_header':
                 case 'overlay_hero_header':
+                case 'overlay_centered_header':
+                case 'secondary_header':
                 case 'minimal_header':
+                $block = HeaderFooterVariantContract::normalizeHeader($block) ?? $block;
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $preHeaderType = (string) ($block['type'] ?? 'glassmorphism_header');
-                $preHeaderOverlay = (bool) ($block['overlay_header_on_banner'] ?? false) || $preHeaderType === 'overlay_hero_header';
-                $preHeaderTone = $preHeaderOverlay || (($block['logo_tone'] ?? '') === 'light') || (($block['custom_style']['logo_tone'] ?? '') === 'light') ? 'light' : 'dark';
+                $headerBrandPalette = is_array($context['brand_palette'] ?? null) ? $context['brand_palette'] : [];
+                $headerPalette = app(ThemeColorResolver::class)->resolve($primaryColor ?: 'midnight', ['brand_palette' => $headerBrandPalette]);
+                $preHeaderOverlay = (bool) ($block['overlay_header_on_banner'] ?? false) || in_array($preHeaderType, ['overlay_hero_header','overlay_centered_header'], true);
+                $preHeaderTone = $preHeaderOverlay || $preHeaderType === 'primary_header'
+                    ? 'light'
+                    : ($preHeaderType === 'secondary_header'
+                        ? (($headerPalette['shell_secondary_tone'] ?? 'dark') === 'light' ? 'dark' : 'light')
+                        : ((($block['logo_tone'] ?? '') === 'light') || (($block['custom_style']['logo_tone'] ?? '') === 'light') ? 'light' : 'dark'));
                 [$rawLogoImageUrl, $explicitToneLogo] = self::resolveLogoForTone($block, $preHeaderTone);
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
-                $logoFilter = e($explicitToneLogo
-                    ? 'none'
-                    : ($preHeaderTone === 'light'
-                        ? 'brightness(0) saturate(100%) invert(1)'
-                        : ($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                $allowLightLogoFilter = (bool) ($block['allow_light_logo_filter'] ?? true);
+                $darkToneLogoFilter = $explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
                     ? $explicitLogoFilter
                     : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
                         ? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight'))
-                        : 'none'))));
+                        : 'none');
+                $logoFilter = e($explicitToneLogo
+                    ? 'none'
+                    : ($preHeaderTone === 'light' && $allowLightLogoFilter
+                        ? 'brightness(0) saturate(100%) invert(1)'
+                        : $darkToneLogoFilter));
                 $headerLogoHeight = max(44, min(60, (int) ($block['logo_height'] ?? 48)));
                 $headerLogoMaxWidth = max(180, min(300, (int) ($block['logo_max_width'] ?? 240)));
                 $logo = $logoImageUrl !== ''
@@ -2342,7 +2355,7 @@ HTML;
                 $customPhone = trim((string) ($block['phone_text'] ?? ''));
                 $customPhoneEnabled = $customShell && (bool) ($block['phone_enabled'] ?? false) && $customPhone !== '';
                 $headerVariantType = (string) ($block['type'] ?? 'glassmorphism_header');
-                $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false) || $headerVariantType === 'overlay_hero_header';
+                $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false) || in_array($headerVariantType, ['overlay_hero_header','overlay_centered_header'], true);
                 $headerVariantClass = 'cosmic-header-variant-' . str_replace('_header', '', str_replace('_', '-', $headerVariantType));
                 // Explicit overlay state must render consistently in Builder and Export Live.
                 // Contrast is handled below; do not silently disable overlay because of
@@ -2362,17 +2375,36 @@ HTML;
                     ? "cosmic-static-overlay-header {$overlayToneClass} absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none"
                     : 'sticky top-0 bg-white shadow-sm';
 
-                // Header always white in standard mode. Overlay mode preserves
-                // the same component while letting the first Spark sit behind it.
-                $headerBg = 'bg-white';
-                $headerBorder = $customShell ? 'border-transparent' : 'border-slate-200';
-                $headerDividerClass = $overlayHeader ? 'border-0' : "border-b {$headerBorder}";
-                $headerText = $customShell ? '' : 'text-slate-900';
-                $menuText = $customShell ? '' : 'text-slate-600';
+                $headerPrimaryColor = e((string) ($headerPalette['primary'] ?? '#243447'));
+                $headerPrimaryText = e((string) ($headerPalette['on_primary'] ?? '#FFFFFF'));
+                $headerSecondaryBg = e((string) ($headerPalette['shell_secondary'] ?? $headerPalette['secondary'] ?? '#30475E'));
+                $headerSecondaryText = e((string) ($headerPalette['shell_secondary_text'] ?? '#FFFFFF'));
+                $headerSecondaryBorder = e((string) ($headerPalette['shell_secondary_border'] ?? 'rgba(255,255,255,.16)'));
+                $headerSurfaceBg = '#FFFFFF';
+                $headerSurfaceText = e((string) ($headerPalette['heading'] ?? '#0F172A'));
+                $headerSurfaceBorder = e((string) ($headerPalette['border'] ?? '#E2E8F0'));
+                if ($headerVariantType === 'primary_header') {
+                    $headerSurfaceBg = $headerPrimaryColor;
+                    $headerSurfaceText = $headerPrimaryText;
+                    $headerSurfaceBorder = e((string) ($headerPalette['primary'] ?? '#243447'));
+                } elseif ($headerVariantType === 'secondary_header') {
+                    $headerSurfaceBg = $headerSecondaryBg;
+                    $headerSurfaceText = $headerSecondaryText;
+                    $headerSurfaceBorder = $headerSecondaryBorder;
+                }
+                if ($overlayHeader) {
+                    $headerSurfaceBg = 'transparent';
+                    $headerSurfaceText = $preHeaderTone === 'light' ? '#FFFFFF' : '#0F172A';
+                    $headerSurfaceBorder = 'transparent';
+                }
+                $headerBorder = $customShell ? 'border-transparent' : 'border-transparent';
+                $headerDividerClass = $overlayHeader ? 'border-0' : 'border-b';
+                $headerText = '';
+                $menuText = '';
                 $customHeaderInlineStyle = $customShell
                     ? "min-height:{$customHeaderHeight}px;padding-left:{$customHeaderPaddingX}px;padding-right:{$customHeaderPaddingX}px;background:".($overlayHeader ? 'transparent' : $customHeaderBg).";color:{$customHeaderText};"
-                    : '';
-                $customMenuInlineStyle = $customShell ? "color:{$customNavColor};font-size:{$customNavSize}px;" : '';
+                    : "background:{$headerSurfaceBg};color:{$headerSurfaceText};border-color:{$headerSurfaceBorder};";
+                $customMenuInlineStyle = $customShell ? "color:{$customNavColor};font-size:{$customNavSize}px;" : "color:{$headerSurfaceText};";
 
                 // CTA button follows the primary theme. Overlay mode gets a
                 // richer theme gradient so the header does not read as all-white.
@@ -2386,11 +2418,14 @@ HTML;
                 $headerGradientTo = e((string) ($headerGradient['to'] ?? $headerGradient['via'] ?? '#115e59'));
                 $headerGradientGlow = e((string) ($headerGradient['glow'] ?? $headerGradient['via'] ?? '#14b8a6'));
                 $overlayLogoSurfaceStyle = '';
+                $whiteCtaHeader = $overlayHeader || $headerVariantType === 'primary_header';
                 $overlayCtaInlineStyle = $customShell
                     ? "background:{$customCtaBg};background-color:{$customCtaBg};border:0;color:{$customCtaColor};-webkit-text-fill-color:{$customCtaColor};border-radius:{$customCtaRadius}px;box-shadow:none"
-                    : ($overlayHeader
-                        ? "background:{$headerPrimary};background-color:{$headerPrimary};border:1px solid {$headerPrimary};color:#fff;-webkit-text-fill-color:#fff;box-shadow:none"
-                        : 'background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff');
+                    : ($whiteCtaHeader
+                        ? "background:#fff;background-color:#fff;border:1px solid #fff;color:{$headerPrimary};-webkit-text-fill-color:{$headerPrimary};box-shadow:none"
+                        : "background:{$headerPrimary};background-color:{$headerPrimary};border:1px solid {$headerPrimary};color:{$headerPrimaryText};-webkit-text-fill-color:{$headerPrimaryText};box-shadow:none");
+                $showHeaderCta = ! in_array($headerVariantType, ['centered_header','overlay_centered_header'], true);
+                $splitHeaderLayout = in_array($headerVariantType, ['centered_header','split_navigation_header','overlay_centered_header'], true);
 
                 $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText, $customMenuInlineStyle): string {
                     $itemsHtml = '';
@@ -2418,8 +2453,10 @@ HTML;
                         }
 
                         $menuClass = $hasChildren ? "menu-node menu-depth-{$depth} relative" : 'menu-leaf';
+                        $linkStyle = $depth > 0 ? 'color:#0f172a;' : $customMenuInlineStyle;
+                        $linkClass = $depth > 0 ? 'text-slate-800' : $menuText;
                         $itemsHtml .= "<li class='{$menuClass}'>"
-                            . "<a href='{$url}' style='{$customMenuInlineStyle}' class='{$menuText} flex items-center gap-1 whitespace-nowrap transition hover:opacity-80'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
+                            . "<a href='{$url}' style='{$linkStyle}' class='{$linkClass} flex items-center gap-1 whitespace-nowrap transition hover:opacity-80'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
                             . $dropdown
                             . "</li>";
                     }
@@ -2465,8 +2502,21 @@ HTML;
                     return $itemsHtml;
                 };
 
-                $desktopNavHtml = $renderDesktopMenu(is_array($menuItems) ? $menuItems : []);
-                $mobileNavHtml = $renderMobileMenu(is_array($menuItems) ? $menuItems : []);
+                $normalizedMenuItems = is_array($menuItems) ? array_values($menuItems) : [];
+                $desktopNavHtml = $renderDesktopMenu($normalizedMenuItems);
+                $mobileNavHtml = $renderMobileMenu($normalizedMenuItems);
+                $menuHalf = (int) ceil(count($normalizedMenuItems) / 2);
+                $desktopNavLeftHtml = $renderDesktopMenu(array_slice($normalizedMenuItems, 0, $menuHalf));
+                $desktopNavRightHtml = $renderDesktopMenu(array_slice($normalizedMenuItems, $menuHalf));
+                $desktopCtaHtml = $showHeaderCta ? "<a href='{$ctaUrl}' class='cosmic-primary-cta shrink-0 rounded-full px-7 py-3 text-sm font-semibold transition hover:opacity-90' style='{$overlayCtaInlineStyle}'>{$ctaLabel}</a>" : '';
+                $desktopPhoneHtml = $customPhoneEnabled ? "<span style='color:{$customNavColor};font-size:{$customNavSize}px' class='hidden shrink-0 items-center gap-2 font-semibold lg:inline-flex'><span aria-hidden='true'>☎</span>".e($customPhone)."</span>" : '';
+                $logoLinkColor = $customShell ? $customHeaderText : $headerSurfaceText;
+                $logoLinkHtml = "<a href='/' class='relative z-[72] text-xl font-extrabold tracking-wide' style='color:{$logoLinkColor}' aria-label='{$logoText} home'>{$logo}</a>";
+                if ($splitHeaderLayout) {
+                    $desktopHeaderInner = "<div class='hidden w-full grid-cols-[1fr_auto_1fr] items-center gap-8 md:grid'><nav class='min-w-0 justify-self-start' aria-label='Primary navigation left'><ul class='m-0 flex list-none items-center gap-7 p-0 lg:gap-9'>{$desktopNavLeftHtml}</ul></nav><div class='justify-self-center'>{$logoLinkHtml}</div><div class='flex min-w-0 items-center justify-self-end gap-6'><nav aria-label='Primary navigation right'><ul class='m-0 flex list-none items-center gap-7 p-0 lg:gap-9'>{$desktopNavRightHtml}</ul></nav>{$desktopPhoneHtml}{$desktopCtaHtml}</div></div>";
+                } else {
+                    $desktopHeaderInner = "<div class='hidden w-full items-center justify-between gap-8 md:flex'>{$logoLinkHtml}<nav class='ml-auto flex min-w-0 items-center gap-8' aria-label='Primary navigation'><ul class='m-0 flex list-none items-center gap-7 p-0 lg:gap-9 xl:gap-10'>{$desktopNavHtml}</ul>{$desktopPhoneHtml}{$desktopCtaHtml}</nav></div>";
+                }
 
                 $html .= "
                 <style>
@@ -2566,7 +2616,7 @@ HTML;
                     }
                     .cosmic-static-overlay-header {
                         position: absolute !important;
-                        background: linear-gradient(180deg,rgba(2,6,23,.34) 0%,rgba(2,6,23,.10) 58%,rgba(2,6,23,0) 100%) !important;
+                        background: transparent !important;
                         border-bottom-color: transparent !important;
                         box-shadow: none !important;
                         -webkit-backdrop-filter: blur(3px);
@@ -2598,9 +2648,6 @@ HTML;
                         -webkit-backdrop-filter: none !important;
                         backdrop-filter: none !important;
                     }
-                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'] > a img {
-                        filter: brightness(0) invert(1) !important;
-                    }
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > nav > ul > li > a {
                         color: #fff !important;
                     }
@@ -2629,34 +2676,20 @@ HTML;
                     }
                 </style>
 
-                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$headerVariantClass} {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 {$headerDividerClass} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
-                    <a href='/' style='{$overlayLogoSurfaceStyle}' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
-                        {$logo}
-                    </a>
-
-                    <nav class='hidden min-w-0 items-center md:flex md:gap-8 lg:gap-10 xl:gap-12' aria-label='Primary navigation'>
-                        <ul class='m-0 flex list-none items-center gap-7 p-0 lg:gap-9 xl:gap-10'>
-                            {$desktopNavHtml}
-                        </ul>
-
-                        " . ($customPhoneEnabled ? "<span style='color:{$customNavColor};font-size:{$customNavSize}px' class='hidden shrink-0 items-center gap-2 font-semibold lg:inline-flex'><span aria-hidden='true'>☎</span>".e($customPhone)."</span>" : "") . "
-                        <a
-                            href='{$ctaUrl}'
-                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10' style='{$overlayCtaInlineStyle}'
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' data-cosmic-header-variant='{$headerVariantType}' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$headerVariantClass} {$overlayHeaderClass} z-50 w-full {$headerDividerClass} px-6 py-4 sm:px-[50px]'>
+                    {$desktopHeaderInner}
+                    <div class='flex w-full items-center justify-between gap-5 md:hidden'>
+                        {$logoLinkHtml}
+                        <button
+                            type='button'
+                            class='cosmic-mobile-menu-open relative z-[72] inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50'
+                            aria-expanded='false'
+                            aria-controls='cosmic-mobile-panel'
+                            aria-label='Open navigation menu'
                         >
-                            {$ctaLabel}
-                        </a>
-                    </nav>
-
-                    <button
-                        type='button'
-                        class='cosmic-mobile-menu-open relative z-[72] inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50 md:hidden'
-                        aria-expanded='false'
-                        aria-controls='cosmic-mobile-panel'
-                        aria-label='Open navigation menu'
-                    >
-                        <svg aria-hidden='true' viewBox='0 0 24 24' class='h-6 w-6'><path d='M4 7h16M4 12h16M4 17h16' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>
-                    </button>
+                            <svg aria-hidden='true' viewBox='0 0 24 24' class='h-6 w-6'><path d='M4 7h16M4 12h16M4 17h16' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>
+                        </button>
+                    </div>
                 </header>
 
                 <div class='cosmic-mobile-navigation md:hidden' aria-hidden='true'>
@@ -2831,6 +2864,7 @@ HTML;
                 break;
 
                 case 'minimal_footer':
+                $block = HeaderFooterVariantContract::normalizeFooter($block) ?? $block;
                 $brand = e($block['logo_text'] ?? 'Your Logo');
                 $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
                 $privacyLabel = e($block['privacy_label'] ?? 'Privacy Policy');
@@ -2842,51 +2876,98 @@ HTML;
                 $contactPhone = e(trim((string)($contact['phone'] ?? '')));
                 $contactAddress = e(trim((string)($contact['address'] ?? '')));
                 $socialLinks = is_array($block['social_links'] ?? null) ? array_slice(array_values($block['social_links']), 0, 6) : [];
-                $preMega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
-                $preFooterVariant = (string) ($preMega['variant'] ?? 'classic');
-                $preFooterTone = (($block['logo_tone'] ?? '') === 'light') || (($preMega['logo_tone'] ?? '') === 'light') || (($block['custom_style']['logo_tone'] ?? '') === 'light') || $preFooterVariant !== 'newsletter' ? 'light' : 'dark';
-                [$rawLogoImageUrl, $explicitToneLogo] = self::resolveLogoForTone($block, $preFooterTone);
-                $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
-                $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
-                $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
-                $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
-                $logoFilter = e($explicitToneLogo
-                    ? 'none'
-                    : ($preFooterTone === 'light'
-                        ? 'brightness(0) saturate(100%) invert(1)'
-                        : ($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
-                    ? $explicitLogoFilter
-                    : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
-                        ? self::logoFilter($logoFilterKey)
-                        : 'none'))));
-                $footerBrand = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
-                    : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
                 $mega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
+                // Footer variant selection is authoritative in Builder and published output.
+                $megaEnabled = true;
+                $footerVariant = in_array(($mega['variant'] ?? 'classic'), ['classic','primary','centered_cta','centered','split','brand','secondary'], true)
+                    ? ($mega['variant'] ?? 'classic')
+                    : 'classic';
+                $footerVariantBackground = match ($footerVariant) {
+                    'primary', 'brand' => 'primary',
+                    'split' => 'surface',
+                    'secondary' => 'secondary',
+                    default => 'white',
+                };
+                // Footer variant is the single source of truth for surface/tone.
+                // Old stored mega_footer.theme values must never override it.
+                $megaResolvedTheme = $footerVariantBackground;
+
+                $footerBrandPalette = is_array($context['brand_palette'] ?? null) ? $context['brand_palette'] : [];
+                $footerPalette = app(ThemeColorResolver::class)->resolve($primaryColor ?: 'midnight', ['brand_palette' => $footerBrandPalette]);
+                $footerPrimary = e((string) ($footerPalette['primary'] ?? '#243447'));
+                $footerOnPrimary = e((string) ($footerPalette['on_primary'] ?? '#FFFFFF'));
+                $footerHeading = e((string) ($footerPalette['heading'] ?? '#0F172A'));
+                $footerMuted = e((string) ($footerPalette['muted'] ?? '#64748B'));
+                $footerBorder = e((string) ($footerPalette['border'] ?? '#E2E8F0'));
+                $footerSurface = e((string) ($footerPalette['surface'] ?? '#F8FAFC'));
+                $footerSecondary = e((string) ($footerPalette['shell_secondary'] ?? $footerPalette['secondary'] ?? '#30475E'));
+                $footerSecondaryText = e((string) ($footerPalette['shell_secondary_text'] ?? '#FFFFFF'));
+                $footerSecondaryMuted = e((string) ($footerPalette['shell_secondary_muted'] ?? 'rgba(255,255,255,.72)'));
+                $footerSecondaryBorder = e((string) ($footerPalette['shell_secondary_border'] ?? 'rgba(255,255,255,.16)'));
+                $footerSecondaryBgTone = (string) ($footerPalette['shell_secondary_tone'] ?? 'dark');
+
+                $megaSurfaceBg = '#FFFFFF';
+                $megaSurfaceText = $footerHeading;
+                $megaSurfaceMuted = $footerMuted;
+                $megaSurfaceBorder = $footerBorder;
+                $megaLogoTone = 'dark';
+                if ($megaResolvedTheme === 'primary') {
+                    $megaSurfaceBg = $footerPrimary;
+                    $megaSurfaceText = $footerOnPrimary;
+                    $megaSurfaceMuted = $footerOnPrimary;
+                    $megaSurfaceBorder = $footerPrimary;
+                    $megaLogoTone = 'light';
+                } elseif ($megaResolvedTheme === 'surface') {
+                    $megaSurfaceBg = $footerSurface;
+                } elseif ($megaResolvedTheme === 'secondary') {
+                    $megaSurfaceBg = $footerSecondary;
+                    $megaSurfaceText = $footerSecondaryText;
+                    $megaSurfaceMuted = $footerSecondaryMuted;
+                    $megaSurfaceBorder = $footerSecondaryBorder;
+                    $megaLogoTone = $footerSecondaryBgTone === 'light' ? 'dark' : 'light';
+                }
+
                 $customFooterShell = (bool) ($block['custom_shell_mode'] ?? false);
                 $customFooterStyle = $customFooterShell && is_array($block['custom_style'] ?? null) ? $block['custom_style'] : [];
-                $customFooterBg = e((string) ($customFooterStyle['background_color'] ?? '#071a33'));
-                $customFooterText = e((string) ($customFooterStyle['text_color'] ?? '#ffffff'));
-                $customFooterMuted = e((string) ($customFooterStyle['muted_color'] ?? '#b8c4d6'));
-                $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
-                $footerVariant = in_array(($mega['variant'] ?? 'classic'), ['classic','cta','brand','contact','newsletter'], true) ? ($mega['variant'] ?? 'classic') : 'classic';
-                $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
-                $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
-                $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($primaryColor ?: 'midnight');
-                $primaryTheme = self::getTheme($megaSelectedThemeName);
-                if ($megaResolvedTheme === 'surface') {
-                    $primaryTheme = [
-                        'bg' => 'bg-[#F5F5F2]',
-                        'text' => 'text-slate-900',
-                        'sub' => 'text-slate-500',
-                        'border' => 'border-slate-200',
-                    ];
+                if ($customFooterShell) {
+                    $megaSurfaceBg = e((string) ($customFooterStyle['background_color'] ?? '#071a33'));
+                    $megaSurfaceText = e((string) ($customFooterStyle['text_color'] ?? '#ffffff'));
+                    $megaSurfaceMuted = e((string) ($customFooterStyle['muted_color'] ?? $customFooterStyle['text_color'] ?? '#b8c4d6'));
+                    $megaSurfaceBorder = 'rgba(255,255,255,.12)';
+                    $megaLogoTone = (($customFooterStyle['logo_tone'] ?? '') === 'light') ? 'light' : 'dark';
                 }
+
+                [$rawMegaLogoImageUrl, $explicitMegaToneLogo] = self::resolveLogoForTone($block, $megaLogoTone);
+                $megaLogoImageUrl = e(self::staticAssetUrl($rawMegaLogoImageUrl));
+                $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
+                $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
+                $allowLightLogoFilter = (bool) ($block['allow_light_logo_filter'] ?? true);
+                $darkLogoFilter = $explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                    ? $explicitLogoFilter
+                    : (self::isDefaultLogoPlaceholder($rawMegaLogoImageUrl) ? self::logoFilter($logoFilterKey) : 'none');
+                $megaLogoFilter = e($explicitMegaToneLogo
+                    ? 'none'
+                    : ($megaLogoTone === 'light' && $allowLightLogoFilter
+                        ? 'brightness(0) saturate(100%) invert(1)'
+                        : $darkLogoFilter));
+                $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
                 $megaLogoHeight = max(44, min(64, $logoHeight + 10));
-                $megaLogoFilter = $explicitToneLogo ? 'none' : (($customFooterShell && ($customFooterStyle['logo_tone'] ?? '') === 'light') || $megaResolvedTheme === 'primary' ? 'brightness(0) saturate(100%) invert(1)' : $logoFilter);
-                $megaBrand = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$megaLogoHeight}px;max-height:64px;filter:{$megaLogoFilter}' class='w-auto max-w-[300px] object-contain'>"
-                    : "<div class='text-xl font-bold " . ($megaResolvedTheme === 'primary' ? 'text-white' : $primaryTheme['text']) . "'>{$brand}</div>";
+                $megaBrand = $megaLogoImageUrl !== ''
+                    ? "<img src='{$megaLogoImageUrl}' alt='{$brand}' style='height:{$megaLogoHeight}px;max-height:64px;filter:{$megaLogoFilter}' class='w-auto max-w-[300px] object-contain'>"
+                    : "<div class='text-xl font-bold' style='color:{$megaSurfaceText}'>{$brand}</div>";
+
+                // The simple legal footer always uses the original/dark logo on white.
+                [$rawSimpleLogoImageUrl, $explicitSimpleToneLogo] = self::resolveLogoForTone($block, 'dark');
+                $simpleLogoImageUrl = e(self::staticAssetUrl($rawSimpleLogoImageUrl));
+                $simpleLogoFilter = e($explicitSimpleToneLogo
+                    ? 'none'
+                    : ($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                        ? $explicitLogoFilter
+                        : (self::isDefaultLogoPlaceholder($rawSimpleLogoImageUrl) ? self::logoFilter($logoFilterKey) : 'none')));
+                $footerBrand = $simpleLogoImageUrl !== ''
+                    ? "<img src='{$simpleLogoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$simpleLogoFilter}' class='w-auto max-w-[250px] object-contain'>"
+                    : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
+
                 if ($megaEnabled) {
                     $tagline = e($mega['tagline'] ?? 'A premium information-rich footer.');
                     $primaryLabel = e($mega['primary_label'] ?? 'Get in touch');
@@ -2909,18 +2990,16 @@ HTML;
                             $url = e($item['url'] ?? '#');
                             $itemsHtml .= "<a href='{$url}' class='block py-1 text-sm transition hover:opacity-70'>{$label}</a>";
                         }
-                        $columnTitleStyle = $customFooterShell ? "style='color:{$customFooterMuted}'" : '';
-                        $columnHtml .= "<div class='min-w-0'><p {$columnTitleStyle} class='text-xs font-bold uppercase tracking-[.16em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
+                        $columnHtml .= "<div class='min-w-0'><p class='text-xs font-bold uppercase tracking-[.16em]' style='color:{$megaSurfaceMuted}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
                     }
                     $columnCount = max(1, count($columns));
                     $gridClass = $columnCount === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
-                    $footerSectionStyle = $customFooterShell ? "style='background:{$customFooterBg};color:{$customFooterText}'" : '';
-                    $footerMutedStyle = $customFooterShell ? "style='color:{$customFooterMuted}'" : '';
+
                     $contactHtml = '';
                     if ($contactEmail !== '') $contactHtml .= "<a href='mailto:{$contactEmail}' class='block hover:opacity-75'>{$contactEmail}</a>";
                     if ($contactPhone !== '') $contactHtml .= "<a href='tel:{$contactPhone}' class='block hover:opacity-75'>{$contactPhone}</a>";
                     if ($contactAddress !== '') $contactHtml .= "<span class='block'>{$contactAddress}</span>";
-                    if ($contactHtml !== '') $contactHtml = "<div {$footerMutedStyle} class='mt-5 space-y-1 text-xs {$primaryTheme['sub']}'>{$contactHtml}</div>";
+                    if ($contactHtml !== '') $contactHtml = "<div class='mt-5 space-y-1 text-xs' style='color:{$megaSurfaceMuted}'>{$contactHtml}</div>";
 
                     $socialHtml = '';
                     foreach ($socialLinks as $social) {
@@ -2931,24 +3010,38 @@ HTML;
                     }
                     if ($socialHtml !== '') $socialHtml = "<div class='mt-4 flex flex-wrap gap-3 text-xs'>{$socialHtml}</div>";
 
-                    $variantShellClass = match ($footerVariant) {
-                        'brand' => 'lg:grid-cols-[minmax(380px,1.15fr)_minmax(520px,.85fr)] lg:gap-20',
-                        'contact' => 'lg:grid-cols-[minmax(360px,.8fr)_minmax(600px,1.2fr)] lg:gap-14',
-                        'cta', 'newsletter' => 'lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16',
-                        default => 'lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16',
-                    };
-                    $variantColumnsClass = $footerVariant === 'brand' ? 'lg:max-w-[760px]' : ($footerVariant === 'contact' ? 'lg:max-w-[900px]' : 'lg:max-w-[860px]');
-                    $variantCtaClass = in_array($footerVariant, ['cta','newsletter'], true) ? 'rounded-full border border-current/25 px-5 py-3' : '';
-                    $html .= "<section data-cosmic-footer-variant='{$footerVariant}' {$footerSectionStyle} class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 {$variantShellClass}'><div class='min-w-0'>{$megaBrand}<p {$footerMutedStyle} class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75 {$variantCtaClass}'>{$primaryLabel}</a>{$contactHtml}{$socialHtml}</div><div class='grid gap-7 lg:ml-auto lg:w-full {$variantColumnsClass} {$gridClass}'>{$columnHtml}</div></div></section>";
+                    $centeredFooter = in_array($footerVariant, ['centered_cta','centered'], true);
+                    $showFooterCta = $footerVariant !== 'centered';
+                    $shellClass = $centeredFooter
+                        ? 'mx-auto flex w-full flex-col items-center gap-9 text-center'
+                        : ($footerVariant === 'brand'
+                            ? 'mx-auto grid w-full gap-10 lg:grid-cols-[minmax(390px,1.18fr)_minmax(520px,.82fr)] lg:items-start lg:gap-20'
+                            : ($footerVariant === 'split'
+                                ? 'mx-auto grid w-full gap-10 lg:grid-cols-[minmax(360px,.82fr)_minmax(600px,1.18fr)] lg:items-start lg:gap-16'
+                                : 'mx-auto grid w-full gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16'));
+                    $columnsClass = $centeredFooter ? 'mx-auto w-full max-w-[1000px]' : ($footerVariant === 'brand' ? 'lg:max-w-[760px]' : 'lg:max-w-[900px]');
+                    $brandPanelClass = $centeredFooter ? 'min-w-0 flex flex-col items-center' : 'min-w-0';
+                    $ctaBg = $megaLogoTone === 'light' ? '#FFFFFF' : $footerPrimary;
+                    $ctaColor = $megaLogoTone === 'light' ? $footerPrimary : $footerOnPrimary;
+                    $ctaBorder = $megaLogoTone === 'light' ? 'rgba(255,255,255,.88)' : 'transparent';
+                    $ctaHtml = $showFooterCta
+                        ? "<a href='{$primaryUrl}' class='mt-5 inline-flex rounded-full border px-5 py-3 text-sm font-semibold shadow-sm transition hover:opacity-85' style='background:{$ctaBg};color:{$ctaColor};border-color:{$ctaBorder}'>{$primaryLabel}</a>"
+                        : '';
+                    $sectionStyle = "background:{$megaSurfaceBg};color:{$megaSurfaceText};border-color:{$megaSurfaceBorder}";
+                    $html .= "<section data-cosmic-footer-variant='{$footerVariant}' data-cosmic-mega-theme='{$megaResolvedTheme}' style='{$sectionStyle}' class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 xl:px-[50px]'><div class='{$shellClass}'><div class='{$brandPanelClass}'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6' style='color:{$megaSurfaceMuted}'>{$tagline}</p>{$ctaHtml}{$contactHtml}{$socialHtml}</div><div class='group/columns ml-auto w-full {$columnsClass}'><div class='grid gap-x-8 gap-y-7 {$gridClass}'>{$columnHtml}</div></div></div></section>";
                 }
 
-                $legalLeft = $megaEnabled
-                    ? "<div class='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm'><a href='{$privacyUrl}' class='transition hover:text-slate-900'>{$privacyLabel}</a><a href='{$termsUrl}' class='transition hover:text-slate-900'>{$termsLabel}</a></div>"
-                    : $footerBrand;
-                $legalFooterStyle = $customFooterShell ? "style='background:{$customFooterBg};color:{$customFooterMuted};border-color:rgba(255,255,255,.12)'" : '';
-                $legalFooterClass = $customFooterShell ? '' : 'border-slate-200 bg-white text-slate-500';
+                if ($megaEnabled) {
+                    $legalLeft = "<div class='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm'><a href='{$privacyUrl}' class='transition hover:opacity-75'>{$privacyLabel}</a><a href='{$termsUrl}' class='transition hover:opacity-75'>{$termsLabel}</a></div>";
+                    $legalFooterStyle = "background:{$megaSurfaceBg};color:{$megaSurfaceMuted};border-color:{$megaSurfaceBorder}";
+                    $legalFooterClass = '';
+                } else {
+                    $legalLeft = $footerBrand;
+                    $legalFooterStyle = '';
+                    $legalFooterClass = 'border-slate-200 bg-white text-slate-500';
+                }
                 $html .= "
-                <footer {$legalFooterStyle} class='flex w-full flex-col items-start gap-4 border-t {$legalFooterClass} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10'>
+                <footer style='{$legalFooterStyle}' class='flex w-full flex-col items-start gap-4 border-t {$legalFooterClass} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 xl:px-[50px]'>
                     {$legalLeft}
                     <div class='text-sm sm:whitespace-nowrap'>{$copy}</div>
                 </footer>";

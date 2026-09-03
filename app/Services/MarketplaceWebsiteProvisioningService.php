@@ -8,6 +8,7 @@ use App\Models\Page;
 use App\Models\User;
 use App\Models\Website;
 use App\Models\Workspace;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -126,8 +127,8 @@ final class MarketplaceWebsiteProvisioningService
                 (array) ($template->theme_settings ?? ['primary' => $template->theme_key ?: 'midnight']),
                 (string) ($template->theme_key ?: 'midnight'),
             ),
-            'global_header' => (array) ($template->global_header ?? []),
-            'global_footer' => (array) ($template->global_footer ?? []),
+            'global_header' => HeaderFooterVariantContract::normalizeHeader((array) ($template->global_header ?? [])),
+            'global_footer' => HeaderFooterVariantContract::normalizeFooter((array) ($template->global_footer ?? [])),
             'settings' => [
                 'marketplace' => [
                     'checkout_id' => $checkout->id,
@@ -186,7 +187,7 @@ final class MarketplaceWebsiteProvisioningService
         $header = (array) ($template->global_header ?? []);
         if ($header === []) {
             $header = [
-                'type' => 'glassmorphism_header',
+                'type' => 'classic_header',
                 'logo_text' => $website->name,
                 'logo_image_url' => '/storage/branding/your-logo.png',
                 'logo_height' => 42,
@@ -195,6 +196,7 @@ final class MarketplaceWebsiteProvisioningService
             ];
         }
         $header['menu'] = $this->navigation($template);
+        $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
 
         $footer = (array) ($template->global_footer ?? []);
         if ($footer === []) {
@@ -204,6 +206,7 @@ final class MarketplaceWebsiteProvisioningService
                 'copyright' => '© '.now()->year.' '.$website->name.'. All rights reserved.',
             ];
         }
+        $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
 
         $themeSettings = app(MyBrandThemeService::class)->ensureInSettings(
             (array) ($template->theme_settings ?? []),
@@ -220,7 +223,7 @@ final class MarketplaceWebsiteProvisioningService
                 'theme_settings' => $themeSettings,
                 'header' => $header,
                 'footer' => $footer,
-                'header_variant' => (string) ($header['type'] ?? 'glassmorphism_header'),
+                'header_variant' => (string) ($header['type'] ?? 'classic_header'),
                 'footer_variant' => (string) data_get($footer, 'mega_footer.variant', 'classic'),
                 'page_patterns' => $template->pages->map(fn ($page) => [
                     'name' => $page->name,

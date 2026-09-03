@@ -6,6 +6,7 @@ use App\Helpers\CmsHtmlCompiler;
 use App\Models\Page;
 use App\Models\Website;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 
 class PagePublisher
 {
@@ -67,8 +68,8 @@ class PagePublisher
         // Export/Live must mirror that current shell state (especially
         // overlay_header_on_banner) instead of resurrecting a stale published
         // header snapshot while the page content remains snapshot-based.
-        $header = $website->global_header ?? $website->published_global_header;
-        $footer = $website->published_global_footer ?? $website->global_footer;
+        $header = HeaderFooterVariantContract::normalizeHeader($website->global_header ?? $website->published_global_header);
+        $footer = HeaderFooterVariantContract::normalizeFooter($website->global_footer ?? $website->published_global_footer);
         $pages = $website->pages()
             ->where(function ($query) {
                 $query->where('status', 'published')
@@ -276,7 +277,7 @@ class PagePublisher
         $miniBannerImage = trim((string) data_get($template?->metadata, 'mini_banner_image_url', ''));
         $surface = $this->dynamicTemplateFirstSurface($rendered);
         $website = $type->website;
-        $header = $website?->global_header ?? $website?->published_global_header;
+        $header = HeaderFooterVariantContract::normalizeHeader($website?->global_header ?? $website?->published_global_header);
         $overlay = is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false);
 
         $contextPage = $website?->pages()->where('page_type', 'standard')->where('slug', $type->slug)->first();

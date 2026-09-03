@@ -55,8 +55,8 @@ Route::get('/v1/sync', function (Request $request) {
         'status' => 'success',
         'website_name' => $website->name,
         'theme_settings' => $website->published_theme_settings ?? $website->theme_settings,
-        'global_header' => $website->published_global_header ?? $website->global_header,
-        'global_footer' => $website->published_global_footer ?? $website->global_footer,
+        'global_header' => \App\Support\HeaderFooterVariantContract::normalizeHeader($website->global_header ?? $website->published_global_header),
+        'global_footer' => \App\Support\HeaderFooterVariantContract::normalizeFooter($website->global_footer ?? $website->published_global_footer),
         'pages' => $website->pages()
             ->where(function ($query) {
                 $query->where('status', 'published')

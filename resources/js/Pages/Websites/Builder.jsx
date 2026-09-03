@@ -15,6 +15,7 @@ import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 import GlobalStylingModal from "./Components/GlobalStylingModal";
 import HeaderFooterVariantsModal from "./Components/HeaderFooterVariantsModal";
+import { footerVariantById, headerVariantById, normalizeFooterVariantState, normalizeHeaderVariantState } from "./Components/headerFooterVariantConfig";
 
 import ThemeSelector from "./Theme/ThemeSelector";
 import PageStyleSelector from "./PageStyle/PageStyleSelector";
@@ -199,11 +200,11 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
         label:item?.label || 'Social',
         url:item?.url || '#',
     })) : [],
-    mega_enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
+    mega_enabled: true,
     mega_footer: {
-        variant: ['classic','cta','brand','contact','newsletter'].includes(footer?.mega_footer?.variant) ? footer.mega_footer.variant : 'classic',
-        theme: ['auto', 'primary', 'white', 'surface'].includes(footer?.mega_footer?.theme) ? footer.mega_footer.theme : 'auto',
-        enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
+        variant: ['classic','primary','centered_cta','centered','split','brand','secondary'].includes(footer?.mega_footer?.variant) ? footer.mega_footer.variant : 'classic',
+        theme: ['auto', 'primary', 'white', 'surface', 'secondary'].includes(footer?.mega_footer?.theme) ? footer.mega_footer.theme : 'auto',
+        enabled: true,
         tagline: footer?.mega_footer?.tagline || 'A premium information-rich footer.',
         primary_label: footer?.mega_footer?.primary_label || 'Get in touch',
         primary_url: footer?.mega_footer?.primary_url || '#contact',
@@ -455,11 +456,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         ...trialCapabilities,
     };
     const defaultHeader = {
-        type: 'glassmorphism_header',
+        type: 'classic_header',
         logo_text: trialMode ? 'Your Logo' : (website?.name || 'Your Website'),
         logo_image_url: '/storage/branding/your-logo.png',
         logo_height: 42,
         logo_filter_key: 'midnight',
+        allow_light_logo_filter: true,
         overlay_header_on_banner: false,
         cta_label: 'Get Started',
         cta_url: '#',
@@ -473,16 +475,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // Gi-apil na ang global_header sa form state
     const { data, setData, setDefaults, isDirty } = useForm({
         blocks: normalizeRenderKeys(withoutLegacyFooterSparks(page.blocks || [])),
-        global_header: props.globalHeaderBlock || page.website?.global_header || defaultHeader,
-        global_footer: normalizeGlobalFooterBlock(props.globalFooterBlock || page.website?.global_footer || { 
+        global_header: normalizeHeaderVariantState(props.globalHeaderBlock || page.website?.global_header || defaultHeader),
+        global_footer: normalizeFooterVariantState(normalizeGlobalFooterBlock(props.globalFooterBlock || page.website?.global_footer || { 
             type: 'minimal_footer',
             theme: 'white',
             logo_text: trialMode ? 'Your Logo' : (website?.name || 'Your Website'),
             logo_image_url: '/storage/branding/your-logo.png',
             logo_height: 36,
             logo_filter_key: 'midnight',
+            allow_light_logo_filter: true,
             copyright: '© 2026. All rights reserved.'
-        })
+        }))
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1996,6 +1999,50 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             showCosmicNotification({ title: 'Unable to upload logo', message: error.response?.data?.message || 'Please try another logo file.', tone: 'error' });
         } finally {
             setLogoBusy(false);
+        }
+    };
+
+    const uploadLightLogoForShell = async (file) => {
+        if (!file) return null;
+        const allowedTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showCosmicNotification({ title: 'Unsupported light logo format', message: 'Upload an SVG, PNG, JPG, or WebP logo.', tone: 'error' });
+            return null;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showCosmicNotification({ title: 'Light logo is too large', message: 'Choose a logo smaller than 2 MB.', tone: 'error' });
+            return null;
+        }
+        try {
+            const form = new FormData();
+            form.append('image', file);
+            let response;
+            if (trialMode) {
+                if (!trialToken) return null;
+                response = await axios.post(route('trial-branding.logo.upload', trialToken), form);
+            } else {
+                form.append('website_id', website.id);
+                response = await axios.post(route('websites.logo.upload'), form);
+            }
+            const url = response.data?.url;
+            if (!url) throw new Error('The uploaded light logo did not return a usable image URL.');
+            setData((current) => ({
+                ...current,
+                global_header: {
+                    ...(current.global_header || {}),
+                    logo_light_image_url: url,
+                },
+                global_footer: {
+                    ...(current.global_footer || {}),
+                    logo_light_image_url: url,
+                },
+            }));
+            setPageStatus('draft');
+            showCosmicNotification({ title: 'Light logo ready', message: 'Dark, primary and overlay shell variants will use this logo without filtering your original.', tone: 'success' });
+            return url;
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to upload light logo', message: error.response?.data?.message || error.message || 'Please try another logo file.', tone: 'error' });
+            return null;
         }
     };
 
@@ -3799,7 +3846,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const overlayCompatibilityMessage = firstBlockIsBanner
         ? 'Overlay Header is available for this hero/banner.'
         : 'Move or add a hero/banner to the first section to use Overlay Header.';
-    const overlayHeaderActive = Boolean((data.global_header?.overlay_header_on_banner || data.global_header?.type === 'overlay_hero_header') && firstBlockIsBanner && overlayHeaderCompatible);
+    const overlayHeaderActive = Boolean(['overlay_hero_header','overlay_centered_header'].includes(data.global_header?.type) && firstBlockIsBanner && overlayHeaderCompatible);
     const megaFooterEnabled = Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled);
 
     const openDesignToggle = (setting) => {
@@ -7577,49 +7624,71 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 globalTheme={globalSelections || {}}
                 websiteName={website?.name || data.global_header?.logo_text || 'Your Website'}
                 onClose={() => setHeaderFooterVariantsOpen(false)}
-                onApplyHeader={async (variant) => {
-                    if (variant === 'overlay_hero_header' && !firstBlockIsBanner) {
+                onApplyHeader={async (variant, options = {}) => {
+                    const variantConfig = headerVariantById(variant);
+                    const overlayVariant = variantConfig.background === 'overlay';
+                    if (overlayVariant && !firstBlockIsBanner) {
                         showCosmicNotification({
-                            title: 'Overlay Hero needs a hero or banner',
-                            message: 'Add or build a hero/banner as the first section before applying the Overlay Hero header.',
+                            title: 'Overlay header needs a hero or banner',
+                            message: 'Add or build a hero/banner as the first section before applying an overlay header.',
                             tone: 'warning',
                         });
                         return;
                     }
+                    const secondaryTone = resolveSemanticPalette(globalSelections?.primary || 'midnight', globalSelections || {}).shellSecondaryTone || 'dark';
                     const nextHeader = {
                         ...(data.global_header || {}),
                         type: variant,
-                        overlay_header_on_banner: variant === 'overlay_hero_header',
-                        logo_tone: variant === 'overlay_hero_header' ? 'light' : 'dark',
+                        overlay_header_on_banner: overlayVariant,
+                        logo_tone: variantConfig.tone === 'auto' ? (secondaryTone === 'light' ? 'dark' : 'light') : variantConfig.tone,
+                        allow_light_logo_filter: options.allowLightLogoFilter !== false,
                     };
-                    setData('global_header', nextHeader);
+                    setData((current) => ({
+                        ...current,
+                        global_header: nextHeader,
+                        global_footer: { ...(current.global_footer || {}), allow_light_logo_filter: options.allowLightLogoFilter !== false },
+                    }));
                     setPageStatus('draft');
                     showCosmicNotification({
                         title: 'Header variation applied',
-                        message: 'Your logo, navigation and current theme colors were preserved. Save Draft or Publish when ready.',
+                        message: 'The exact preview layout, current logo/navigation and theme-driven shell colors are now in the Builder draft.',
                         tone: 'success',
                     });
                 }}
-                onApplyFooter={async (variant) => {
+                onApplyFooter={async (variant, options = {}) => {
                     const currentFooter = normalizeGlobalFooterBlock(data.global_footer || {});
-                    setData('global_footer', {
-                        ...currentFooter,
-                        mega_enabled: true,
-                        mega_footer: {
-                            ...(currentFooter.mega_footer || {}),
-                            enabled: true,
-                            variant,
-                            logo_tone: variant === 'newsletter' ? 'dark' : 'light',
+                    const variantConfig = footerVariantById(variant);
+                    const semantic = resolveSemanticPalette(globalSelections?.primary || 'midnight', globalSelections || {});
+                    const footerTone = variantConfig.background === 'primary'
+                        ? 'light'
+                        : variantConfig.background === 'secondary'
+                            ? ((semantic.shellSecondaryTone || semantic.shell_secondary_tone) === 'light' ? 'dark' : 'light')
+                            : 'dark';
+                    setData((current) => ({
+                        ...current,
+                        global_footer: {
+                            ...currentFooter,
+                            allow_light_logo_filter: options.allowLightLogoFilter !== false,
+                            mega_enabled: true,
+                            mega_footer: {
+                                ...(currentFooter.mega_footer || {}),
+                                enabled: true,
+                                variant,
+                                theme: variantConfig.background,
+                                logo_tone: footerTone,
+                            },
+                            logo_tone: footerTone,
                         },
-                        logo_tone: variant === 'newsletter' ? 'dark' : 'light',
-                    });
+                        global_header: { ...(current.global_header || {}), allow_light_logo_filter: options.allowLightLogoFilter !== false },
+                    }));
                     setPageStatus('draft');
                     showCosmicNotification({
                         title: 'Footer variation applied',
-                        message: 'Your footer content and dynamic theme colors were preserved. Save Draft or Publish when ready.',
+                        message: 'The footer now uses the same theme-aware shell system and exact selected layout.',
                         tone: 'success',
                     });
                 }}
+                onUploadLightLogo={uploadLightLogoForShell}
             />
             <DesignToggleModal
                 open={designToggleModal === 'overlay_header'}
@@ -7706,20 +7775,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             </button>
                                         )}
 
-                                        {capabilities.canEditGlobalShell && (
-                                            <>
-                                                <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
-                                                <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Layout</div>
-                                                <button type="button" role="menuitem" onClick={() => openDesignToggle('overlay_header')} title={overlayCompatibilityMessage} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
-                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">↥</span> Overlay Header</span><span className={`h-2.5 w-2.5 rounded-full ${data.global_header?.overlay_header_on_banner ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                                                </button>
-                                                {data.global_footer && (
-                                                    <button type="button" role="menuitem" onClick={() => openDesignToggle('mega_footer')} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
-                                                        <span className="inline-flex items-center gap-2"><span aria-hidden="true">▤</span> Mega Footer</span><span className={`h-2.5 w-2.5 rounded-full ${megaFooterEnabled ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
                                         {hasRealBrandLogo && (logoMatchPending || brandMatchNeeded) && (
                                             <>
                                                 <div className={`mx-2 my-2 h-px ${trialMode ? 'bg-violet-200' : 'bg-violet-400/20'}`} />
@@ -8063,6 +8118,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 -webkit-overflow-scrolling: touch;
                             }
                         }
+                        /* Hero/banner radius authority: these are page surfaces, not cards.
+                           Keep this inside Builder too so Global Styling section radius can never
+                           visually re-round a hero even before the app stylesheet refreshes. */
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="hero"] > .cosmic-render-content > section,
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="hero"] > .cosmic-render-content > div > section:first-child,
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] > .cosmic-render-content > section,
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] > .cosmic-render-content > div > section:first-child,
+                        .cosmic-builder-spark [data-cosmic-media-banner="true"],
+                        .cosmic-builder-spark section[data-cosmic-hero-theme] {
+                            border-radius: 0 !important;
+                        }
                         /* Contextual overlay clearance must come after shared section spacing. */
                         .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
                         .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
@@ -8121,7 +8187,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     navManualOpenSignal={headerNavManualOpenSignal}
                                 />
                             )}
-                            {['classic_header','centered_header','split_navigation_header','floating_glass_header','overlay_hero_header','minimal_header'].includes(data.global_header.type) && (
+                            {['classic_header','primary_header','centered_header','split_navigation_header','overlay_hero_header','overlay_centered_header','secondary_header','floating_glass_header','minimal_header'].includes(data.global_header.type) && (
                                 <PremiumHeaderVariant block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={builderPageTargets} onLogoClick={openLunaForLogo} onLogoManual={openHeaderLogoManual} onCtaAi={openLunaForHeaderCta} onNavAi={openLunaForHeaderNavigation} navManualOpenSignal={headerNavManualOpenSignal} />
                             )}
                         </div>
@@ -8354,13 +8420,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             <button type="button" title="Footer theme" aria-label="Footer theme" onClick={() => setFooterThemeMenu((value) => !value)} className="h-8 w-8 rounded-lg text-slate-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400">🎨</button>
                                             {footerThemeMenu && (
                                                 <div className="absolute right-0 top-10 w-44 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
-                                                    {[['auto','✨ Auto'],['primary','🟦 Primary'],['white','⬜ White'],['surface','🩶 Surface']].map(([value,label]) => (
+                                                    {[['auto','✨ Auto'],['primary','🟦 Primary'],['white','⬜ White'],['surface','🩶 Surface'],['secondary','◐ Secondary']].map(([value,label]) => (
                                                         <button key={value} type="button" onClick={() => { updateFooter({ mega_footer: { ...(data.global_footer?.mega_footer || {}), enabled: Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled), theme: value } }); setFooterThemeMenu(false); }} className="w-full px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-slate-800">{label}</button>
                                                     ))}
                                                 </div>
                                             )}
                                         </div>
-                                        <button type="button" role="switch" title="Enable or disable Mega Footer" aria-label="Enable or disable Mega Footer" aria-checked={Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled)} onClick={() => { const enabled = !Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled); updateFooter({ mega_enabled: enabled, mega_footer: { ...(data.global_footer?.mega_footer || {}), enabled, theme: data.global_footer?.mega_footer?.theme || 'auto' } }); }} className={`relative h-7 w-12 shrink-0 rounded-full transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'bg-emerald-500' : 'bg-slate-700'}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'left-6' : 'left-1'}`} /></button>
                                     </div>
                                 </div>
                             )}
@@ -8369,6 +8434,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 onUpdate={updateFooter}
                                 editorMode={Boolean(capabilities.canEditGlobalShell)}
                                 resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)}
+                                globalTheme={globalSelections}
                                 onLogoManual={openFooterLogoManual}
                                 onLogoAi={openLunaForFooterLogo}
                                 onAiTarget={openLunaForFooterElement}
@@ -8538,7 +8604,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
-                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
+                    headerOverlayEnabled={overlayHeaderActive}
                     trialMode={false}
                     cosmicPricing={cosmicPricing}
                     websiteTheme={globalSelections}
@@ -8566,7 +8632,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
-                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
+                    headerOverlayEnabled={overlayHeaderActive}
                     trialMode={trialMode}
                     trialToken={trialToken}
                     cosmicPricing={cosmicPricing}
@@ -8606,7 +8672,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     }}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
-                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
+                    headerOverlayEnabled={overlayHeaderActive}
                     trialMode={trialMode}
                     trialToken={trialToken}
                     websiteTheme={globalSelections}
@@ -8632,7 +8698,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     onReplace={replaceBlocks}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
-                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
+                    headerOverlayEnabled={overlayHeaderActive}
                     creditCost={Number(cosmicPricing?.actions?.generate_page || 50)}
                 />
             )}

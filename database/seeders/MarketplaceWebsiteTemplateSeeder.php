@@ -1042,7 +1042,7 @@ class MarketplaceWebsiteTemplateSeeder extends Seeder
                 'tags' => ['accounting', 'bookkeeping', 'finance', 'professional', 'clean'],
                 'service_labels' => ['Bookkeeping', 'Tax & Compliance', 'Payroll', 'Business Advisory'],
                 'pages' => [
-                    $this->page('Home', 'home', 'home', ['marketplace_ledger_hero', 'marketplace_ledger_services', 'marketplace_ledger_proof', 'marketplace_ledger_cta'], 'A conversion-ready overview of the firm, core services, proof, and consultation CTA.'),
+                    $this->page('Home', 'home', 'home', ['marketplace_ledger_hero', 'marketplace_ledger_services', 'marketplace_ledger_story', 'marketplace_ledger_proof', 'marketplace_ledger_cta'], 'A conversion-ready overview of the firm, core services, advisory approach, proof, and consultation CTA.'),
                     $this->page('About', 'about', 'about', ['marketplace_ledger_page_hero', 'marketplace_ledger_story', 'marketplace_ledger_proof', 'marketplace_ledger_cta'], 'Introduce the firm, experience, values, and approach.'),
                     $this->page('Services', 'services', 'services', ['marketplace_ledger_page_hero', 'marketplace_ledger_services', 'marketplace_ledger_proof', 'marketplace_ledger_faq', 'marketplace_ledger_cta'], 'Explain bookkeeping, tax, payroll, and advisory services in one clear services hub.'),
                     $this->page('FAQ', 'faq', 'faq', ['marketplace_ledger_page_hero', 'marketplace_ledger_faq', 'marketplace_ledger_cta'], 'Answer common questions about onboarding, records, fees, timelines, and ongoing support.'),

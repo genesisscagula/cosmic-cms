@@ -124,7 +124,14 @@ export default function PublicHeader({
                             >
                                 <span className="inline-flex items-center gap-1.5">
                                     Resources
-                                    <span aria-hidden="true" className={`text-[10px] transition-transform ${resourcesOpen ? 'rotate-180' : ''}`}>⌄</span>
+                                    <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 12 12"
+                                        fill="none"
+                                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${resourcesOpen ? 'rotate-180' : ''}`}
+                                    >
+                                        <path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
                                 </span>
                             </button>
 

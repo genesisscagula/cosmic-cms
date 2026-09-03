@@ -92,6 +92,15 @@ final class ThemeColorResolver
         $buttonPrimaryText = $this->contrast->readableForeground($buttonPrimary, $this->nullableHex($raw, ['button_text', 'buttonText', 'primary_text', 'primaryText', 'on_primary', 'onPrimary']));
         $buttonSecondary = $this->hex($raw, ['button_secondary', 'buttonSecondary'], $surfaceAlt);
         $buttonSecondaryText = $this->contrast->readableForeground($buttonSecondary, $this->nullableHex($raw, ['button_secondary_text', 'buttonSecondaryText', 'heading']));
+        $shellSecondary = $this->hex($raw, ['headerFooterSecondary', 'header_footer_secondary', 'shellSecondary', 'shell_secondary'],
+            $this->contrast->luminance($brandSurface) >= 0.72 ? $this->contrast->mix($primary, $white, 0.10) : $brandSurface);
+        $shellSecondaryText = $this->contrast->readableForeground($shellSecondary, $this->nullableHex($raw, ['headerFooterSecondaryText', 'header_footer_secondary_text', 'shellSecondaryText', 'shell_secondary_text']));
+        $shellSecondaryMuted = $this->hex($raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted'], $this->contrast->mix($shellSecondaryText, $shellSecondary, 0.68));
+        $shellSecondaryBorder = $this->hex($raw, ['headerFooterSecondaryBorder', 'header_footer_secondary_border', 'shellSecondaryBorder', 'shell_secondary_border'], $this->contrast->mix($shellSecondaryText, $shellSecondary, 0.18));
+        $declaredShellSecondaryTone = strtolower(trim((string) ($raw['headerFooterSecondaryTone'] ?? $raw['header_footer_secondary_tone'] ?? $raw['shellSecondaryTone'] ?? $raw['shell_secondary_tone'] ?? '')));
+        $shellSecondaryTone = in_array($declaredShellSecondaryTone, ['light', 'dark'], true)
+            ? $declaredShellSecondaryTone
+            : ($this->contrast->luminance($shellSecondary) >= 0.58 ? 'light' : 'dark');
 
         $gradient = [
             'from' => $this->hex($rawGradient, ['from'], $this->contrast->mix('#000000', $primary, 0.58)),
@@ -133,6 +142,11 @@ final class ThemeColorResolver
             'button_text' => $buttonPrimaryText,
             'button_secondary' => $buttonSecondary,
             'button_secondary_text' => $buttonSecondaryText,
+            'shell_secondary' => $shellSecondary,
+            'shell_secondary_text' => $shellSecondaryText,
+            'shell_secondary_muted' => $shellSecondaryMuted,
+            'shell_secondary_border' => $shellSecondaryBorder,
+            'shell_secondary_tone' => $shellSecondaryTone,
             'success' => $this->hex($raw, ['success'], '#237A57'),
             'warning' => $this->hex($raw, ['warning'], '#A86D22'),
             'error' => $this->hex($raw, ['error'], '#B44949'),
@@ -204,6 +218,9 @@ final class ThemeColorResolver
             'onAccent' => 'on_accent', 'onSurface' => 'on_surface', 'onDark' => 'on_dark',
             'buttonPrimary' => 'button_primary', 'buttonText' => 'button_text',
             'buttonSecondary' => 'button_secondary', 'buttonSecondaryText' => 'button_secondary_text',
+            'shellSecondary' => 'shell_secondary', 'shellSecondaryText' => 'shell_secondary_text',
+            'shellSecondaryMuted' => 'shell_secondary_muted', 'shellSecondaryBorder' => 'shell_secondary_border',
+            'shellSecondaryTone' => 'shell_secondary_tone',
         ] as $alias => $source) {
             $palette[$alias] = $palette[$source];
         }

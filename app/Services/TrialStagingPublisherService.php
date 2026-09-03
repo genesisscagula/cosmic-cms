@@ -6,6 +6,7 @@ use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Models\Website;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -176,7 +177,6 @@ final class TrialStagingPublisherService
             'logo_height'=>max(60,(int)($header['logo_height']??0)),
             'logo_max_width'=>max(300,(int)($header['logo_max_width']??0)),
             'logo_filter_key'=>data_get($theme,'primary','midnight'),
-            'overlay_header_on_banner'=>(bool)data_get($theme,'overlay_header_on_banner',false),
             'menu'=>$menu,
         ]);
         $footer=array_merge($footer,[
@@ -185,6 +185,10 @@ final class TrialStagingPublisherService
             'logo_height'=>max(56,(int)($footer['logo_height']??0)),
             'logo_filter_key'=>data_get($theme,'primary','midnight'),
         ]);
+        // Header/footer variants are authoritative. Trial theme/page-style metadata
+        // must not re-enable retired overlay/mega toggles during staging publish.
+        $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
+        $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
         $style=PageStyleRegistry::normalize($website->page_style?:$website->pages()->orderBy('sort_order')->value('page_style'));
 
         $website->forceFill([

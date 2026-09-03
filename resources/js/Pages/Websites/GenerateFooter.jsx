@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { EditableText } from "./Blocks/Shared/EditableText";
 import themeCatalog from "../../../theme/theme-families.json";
 import { logoStyleForTone } from '@/Branding/logoFilters';
+import { resolveSemanticPalette } from '../../theme/semanticPalette';
+import { footerVariantById, resolveShellSurface } from './Components/headerFooterVariantConfig';
 
 export const themeConfig = themeCatalog.legacyFooterFamilies;
 
@@ -74,9 +76,11 @@ function FooterLogo({ block, dark = false, mega = false, forceWhite = false, edi
 
 const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <button type="button" onClick={onClick} className={`${inline?'relative':'absolute right-1 top-1'} cosmic-footer-ai-control hidden h-7 w-7 items-center justify-center rounded-md border border-violet-300/40 bg-violet-600 text-xs font-bold text-white shadow-sm group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex`} aria-label={label} title={label}>✦</button> : null;
 
-export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
-    const megaEnabled = Boolean(block.mega_enabled ?? block.mega_footer?.enabled ?? false);
-    const footerVariant = ['classic','cta','brand','contact','newsletter'].includes(block.mega_footer?.variant) ? block.mega_footer.variant : 'classic';
+export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, globalTheme = {}, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
+    // Header/Footer variant selection is the single source of truth: the global footer always renders the selected rich variant.
+    const megaEnabled = true;
+    const footerVariant = ['classic','primary','centered_cta','centered','split','brand','secondary'].includes(block.mega_footer?.variant) ? block.mega_footer.variant : 'classic';
+    const footerVariantConfig = footerVariantById(footerVariant);
     const mega = {
         variant: footerVariant,
         tagline: block.mega_footer?.tagline || 'A premium information-rich footer.',
@@ -98,22 +102,26 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         label:item?.label || 'Social',
         url:item?.url || '#',
     }));
-    const megaThemeKey = block.logo_filter_key || 'midnight';
-    const familyTheme = themeCatalog.families?.[megaThemeKey] || themeConfig[megaThemeKey] || themeCatalog.families?.midnight || themeConfig.midnight || themeConfig.dark;
-    const requestedMegaTheme = ['auto', 'primary', 'white', 'surface'].includes(block.mega_footer?.theme) ? block.mega_footer.theme : 'auto';
-    const effectiveMegaTheme = requestedMegaTheme === 'auto' ? (resolvedTheme || 'primary') : requestedMegaTheme;
-    const megaTheme = effectiveMegaTheme === 'white'
-        ? { bg: 'bg-white', text: 'text-slate-900', sub: 'text-slate-500', border: 'border-slate-200' }
-        : effectiveMegaTheme === 'surface'
-            ? { bg: 'bg-[#F5F5F2]', text: 'text-slate-900', sub: 'text-slate-500', border: 'border-slate-200' }
-            : familyTheme;
+    const megaThemeKey = globalTheme?.primary || block.logo_filter_key || 'midnight';
+    const semanticPalette = resolveSemanticPalette(megaThemeKey, globalTheme || {});
+    // The selected footer variant owns its surface. Ignore stale legacy theme
+    // values so Builder and Live cannot render different backgrounds.
+    const effectiveMegaTheme = footerVariantConfig.background;
+    const megaSurface = resolveShellSurface(effectiveMegaTheme, semanticPalette);
+    const megaTheme = { bg:'', text:'', sub:'text-[color:var(--cosmic-footer-muted)]', border:'' };
     const customShell = Boolean(block.custom_shell_mode);
     const customStyle = customShell && block.custom_style ? block.custom_style : {};
     const customFooterStyle = customShell ? {
         backgroundColor: customStyle.background_color || undefined,
         color: customStyle.text_color || undefined,
+        borderColor: 'rgba(255,255,255,.12)',
         '--cosmic-footer-muted': customStyle.muted_color || customStyle.text_color || undefined,
-    } : undefined;
+    } : {
+        backgroundColor: megaSurface.background,
+        color: megaSurface.text,
+        borderColor: megaSurface.border,
+        '--cosmic-footer-muted': megaSurface.muted,
+    };
     const [editTarget, setEditTarget] = useState(null);
 
     const openEditor = (target) => editorMode && setEditTarget(target);
@@ -190,28 +198,30 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
     };
     const removeSocial = (itemIndex) => onUpdate({social_links:socialLinks.filter((_,index)=>index!==itemIndex)});
 
-    const megaShellClass = footerVariant === 'brand'
-        ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(380px,1.15fr)_minmax(520px,.85fr)] lg:items-start lg:gap-20'
-        : footerVariant === 'contact'
-            ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(360px,.8fr)_minmax(600px,1.2fr)] lg:items-start lg:gap-14'
-            : footerVariant === 'newsletter'
-                ? 'mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16'
-                : footerVariant === 'cta'
-                    ? 'mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[minmax(420px,1fr)_minmax(520px,1fr)] lg:items-center lg:gap-16'
-                    : 'mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16';
-    const megaColumnsClass = footerVariant === 'brand' ? 'lg:max-w-[760px]' : footerVariant === 'contact' ? 'lg:max-w-[900px]' : 'lg:max-w-[860px]';
+    const centeredFooter = footerVariantConfig.layout === 'centered';
+    const megaShellClass = centeredFooter
+        ? 'mx-auto flex w-full flex-col items-center gap-9 text-center'
+        : footerVariantConfig.layout === 'brand'
+            ? 'mx-auto grid w-full gap-10 lg:grid-cols-[minmax(390px,1.18fr)_minmax(520px,.82fr)] lg:items-start lg:gap-20'
+            : footerVariantConfig.layout === 'editorial'
+                ? 'mx-auto grid w-full gap-10 lg:grid-cols-[minmax(360px,.82fr)_minmax(600px,1.18fr)] lg:items-start lg:gap-16'
+                : 'mx-auto grid w-full gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16';
+    const megaColumnsClass = centeredFooter ? 'mx-auto w-full max-w-[1000px]' : (footerVariantConfig.layout === 'brand' ? 'lg:max-w-[760px]' : 'lg:max-w-[900px]');
+    const lightFooterShell = customShell ? customStyle.logo_tone === 'light' : megaSurface.tone === 'light';
+    const footerCtaStyle = lightFooterShell
+        ? { backgroundColor: '#FFFFFF', color: semanticPalette.primary || '#243447', borderColor: 'rgba(255,255,255,.88)' }
+        : { backgroundColor: semanticPalette.buttonPrimary || semanticPalette.button_primary || semanticPalette.primary || '#243447', color: semanticPalette.buttonText || semanticPalette.button_text || semanticPalette.onPrimary || semanticPalette.on_primary || '#FFFFFF', borderColor: 'transparent' };
 
     return (
         <div data-cosmic-shell-element="footer" data-cosmic-shell-path="footer" className="group/footer-editor relative w-full">
-            {editorMode ? <div className="pointer-events-none absolute right-4 top-3 z-[80] flex gap-1 opacity-0 transition group-hover/footer-editor:opacity-100 group-focus-within/footer-editor:opacity-100">
-                <button type="button" onClick={()=>{const enabled=!megaEnabled;onUpdate({mega_enabled:enabled,mega_footer:{...(block.mega_footer||{}),enabled,theme:requestedMegaTheme}});}} className="pointer-events-auto rounded-full border border-white/15 bg-slate-950/90 px-3 py-1.5 text-[10px] font-semibold text-white shadow-lg">{megaEnabled?'Disable Mega Footer':'Enable Mega Footer'} · 0 credits</button>
-                {onAiTarget ? <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer">✦</button> : null}
+            {editorMode && onAiTarget ? <div className="pointer-events-none absolute right-4 top-3 z-[80] flex gap-1 opacity-0 transition group-hover/footer-editor:opacity-100 group-focus-within/footer-editor:opacity-100">
+                <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer">✦</button>
             </div> : null}
             {megaEnabled && (
-                <section data-cosmic-footer-variant={footerVariant} data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className={`cosmic-mega-footer-section w-full ${customShell ? '' : (megaTheme?.bg || 'bg-slate-800')} ${customShell ? '' : (megaTheme?.text || 'text-white')} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
+                <section data-cosmic-footer-variant={footerVariant} data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className="cosmic-mega-footer-section w-full border-b px-6 py-10 sm:px-8 sm:py-12 xl:px-[50px]">
                     <div className={megaShellClass}>
-                        <div className="min-w-0">
-                            <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={customShell ? customStyle.logo_tone === 'light' : effectiveMegaTheme === 'primary'} editorMode={editorMode} onManual={onLogoManual} onAi={onLogoAi} />
+                        <div className={`min-w-0 ${centeredFooter ? 'flex flex-col items-center' : ''}`}>
+                            <FooterLogo block={block} dark={megaSurface.tone === 'light'} mega forceWhite={customShell ? customStyle.logo_tone === 'light' : megaSurface.tone === 'light'} editorMode={editorMode} onManual={onLogoManual} onAi={onLogoAi} />
                             {editorMode ? (
                                 <>
                                     <div data-cosmic-shell-element="footer-tagline" data-cosmic-shell-path="footer.mega_footer.tagline" className="group/footer-field relative mt-4 max-w-sm rounded-lg py-1 pr-16">
@@ -219,16 +229,16 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                         <FooterAiButton onClick={()=>onAiTarget?.({type:'text',fieldPath:'footer.mega_footer.tagline',currentValue:mega.tagline,label:'Footer tagline'})} label="Ask Luna about footer tagline" />
                                         <button type="button" onClick={() => openEditor({ kind: 'tagline', title: 'Edit footer description' })} className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md border border-white/15 bg-black/20 px-2 py-1 text-[10px] text-white/70 opacity-0 transition hover:bg-white/10 group-hover/footer-field:opacity-100 focus:opacity-100" aria-label="Edit footer description">✎</button>
                                     </div>
-                                    <div data-cosmic-shell-element="footer-cta" data-cosmic-shell-path="footer.mega_footer.cta" className="group/footer-field cosmic-mega-cta relative mt-4 inline-flex items-center pr-16">
-                                        <span className="text-sm font-semibold text-current">{mega.primary_label}</span>
+                                    {footerVariantConfig.cta ? <div data-cosmic-shell-element="footer-cta" data-cosmic-shell-path="footer.mega_footer.cta" style={footerCtaStyle} className="group/footer-field cosmic-mega-cta relative mt-5 inline-flex items-center rounded-full border px-5 py-3 pr-16 shadow-sm">
+                                        <span className="text-sm font-semibold">{mega.primary_label}</span>
                                         <FooterAiButton onClick={()=>onAiTarget?.({type:'button',fieldPath:'footer.mega_footer.cta',currentValue:mega.primary_label,currentUrl:mega.primary_url,label:'Footer CTA'})} label="Ask Luna about footer CTA" />
                                         <button type="button" onClick={() => openEditor({ kind: 'cta', title: 'Edit footer call to action' })} className="absolute right-0 rounded-md border border-white/15 bg-black/20 px-2 py-1 text-[10px] text-white/70 opacity-0 transition hover:bg-white/10 group-hover/footer-field:opacity-100 focus:opacity-100" aria-label="Edit footer call to action">✎</button>
-                                    </div>
+                                    </div> : null}
                                 </>
                             ) : (
                                 <>
                                     <p className={`mt-4 max-w-sm text-sm leading-6 ${megaTheme?.sub || 'text-slate-300'}`}>{mega.tagline}</p>
-                                    <a href={mega.primary_url || '#contact'} className={`mt-5 inline-flex text-sm font-semibold text-current hover:opacity-75 ${['cta','newsletter'].includes(footerVariant) ? 'rounded-full border border-current/25 px-5 py-3' : ''}`}>{mega.primary_label}</a>
+                                    {footerVariantConfig.cta ? <a href={mega.primary_url || '#contact'} style={footerCtaStyle} className="mt-5 inline-flex rounded-full border px-5 py-3 text-sm font-semibold shadow-sm transition hover:opacity-85">{mega.primary_label}</a> : null}
                                 </>
                             )}
                             {editorMode ? <div className="mt-5 space-y-2 text-xs">
@@ -325,18 +335,18 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 </section>
             )}
 
-            <footer style={customShell ? {backgroundColor:customStyle.background_color || undefined,color:customStyle.muted_color || customStyle.text_color || undefined,borderColor:'rgba(255,255,255,.12)'} : undefined} className={`flex w-full flex-col items-start gap-4 border-t px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 ${customShell ? '' : 'border-slate-200 bg-white text-slate-500'}`}>
+            <footer style={customShell ? {backgroundColor:customStyle.background_color || undefined,color:customStyle.muted_color || customStyle.text_color || undefined,borderColor:'rgba(255,255,255,.12)'} : (megaEnabled ? {backgroundColor:megaSurface.background,color:megaSurface.muted,borderColor:megaSurface.border} : undefined)} className={`flex w-full flex-col items-start gap-4 border-t px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 ${customShell || megaEnabled ? '' : 'border-slate-200 bg-white text-slate-500'}`}>
                 {megaEnabled ? (
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                         {editorMode ? (
                             <>
-                                <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'link',fieldPath:'footer.privacy',currentValue:privacyLabel,currentUrl:privacyUrl,label:'Privacy link'})}/><button data-cosmic-shell-path="footer.privacy" type="button" onClick={() => openEditor({ kind: 'privacy', title: 'Edit Privacy Policy link' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{privacyLabel}<span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
-                                <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'link',fieldPath:'footer.terms',currentValue:termsLabel,currentUrl:termsUrl,label:'Terms link'})}/><button data-cosmic-shell-path="footer.terms" type="button" onClick={() => openEditor({ kind: 'terms', title: 'Edit Terms & Conditions link' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">{termsLabel}<span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
+                                <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'link',fieldPath:'footer.privacy',currentValue:privacyLabel,currentUrl:privacyUrl,label:'Privacy link'})}/><button data-cosmic-shell-path="footer.privacy" type="button" onClick={() => openEditor({ kind: 'privacy', title: 'Edit Privacy Policy link' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-current transition hover:opacity-75">{privacyLabel}<span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
+                                <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'link',fieldPath:'footer.terms',currentValue:termsLabel,currentUrl:termsUrl,label:'Terms link'})}/><button data-cosmic-shell-path="footer.terms" type="button" onClick={() => openEditor({ kind: 'terms', title: 'Edit Terms & Conditions link' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-current transition hover:opacity-75">{termsLabel}<span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
                             </>
                         ) : (
                             <>
-                                <a href={privacyUrl} className="transition hover:text-slate-900">{privacyLabel}</a>
-                                <a href={termsUrl} className="transition hover:text-slate-900">{termsLabel}</a>
+                                <a href={privacyUrl} className="transition hover:opacity-75">{privacyLabel}</a>
+                                <a href={termsUrl} className="transition hover:opacity-75">{termsLabel}</a>
                             </>
                         )}
                     </div>
@@ -345,7 +355,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 )}
                 <div className="min-w-0 text-sm sm:whitespace-nowrap">
                     {editorMode ? (
-                        <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'text',fieldPath:'footer.copyright',currentValue:copy,label:'Footer copyright'})}/><button data-cosmic-shell-path="footer.copyright" type="button" onClick={() => openEditor({ kind: 'copyright', title: 'Edit copyright text' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900"><span>{copy}</span><span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
+                        <span className="group/footer-field relative inline-flex pr-8"><FooterAiButton onClick={()=>onAiTarget?.({type:'text',fieldPath:'footer.copyright',currentValue:copy,label:'Footer copyright'})}/><button data-cosmic-shell-path="footer.copyright" type="button" onClick={() => openEditor({ kind: 'copyright', title: 'Edit copyright text' })} className="group/legal inline-flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-current transition hover:opacity-75"><span>{copy}</span><span className="opacity-0 transition group-hover/legal:opacity-100">✎</span></button></span>
                     ) : (
                         <span>{copy}</span>
                     )}

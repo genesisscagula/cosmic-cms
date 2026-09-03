@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Website;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Support\Str;
 
 /**
@@ -27,7 +28,7 @@ final class LunaHeaderFooterActionService
 
     private function applyHeader(Website $website, string $prompt, string $action, array $header): ?array
     {
-        $header = $header !== [] ? $header : (is_array($website->global_header) ? $website->global_header : []);
+        $header = HeaderFooterVariantContract::normalizeHeader($header !== [] ? $header : (is_array($website->global_header) ? $website->global_header : [])) ?? [];
         $lower = Str::lower($prompt);
         $operations = [];
 
@@ -35,30 +36,39 @@ final class LunaHeaderFooterActionService
 
         if ($action === 'overlay_header' || $action === 'transparent_header') {
             $enabled = ! preg_match('/\b(disable|off|remove|turn off|not transparent|non[- ]?transparent)\b/i', $prompt);
-            $header['overlay_header_on_banner'] = $enabled;
-            $operations[] = $this->op('header.overlay_header_on_banner', $enabled);
+            $currentType = (string) ($header['type'] ?? 'classic_header');
+            $nextType = $enabled
+                ? (in_array($currentType, ['centered_header','overlay_centered_header'], true) ? 'overlay_centered_header' : 'overlay_hero_header')
+                : ($currentType === 'overlay_centered_header' ? 'centered_header' : 'classic_header');
+            $header['type'] = $nextType;
+            $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
+            $operations[] = $this->op('header.type', $nextType);
         } elseif ($action === 'sticky_header') {
-            // Current standard header is already sticky in static export. Turning
-            // sticky on therefore means returning it to normal (non-overlay) flow.
             $enabled = ! preg_match('/\b(disable|off|remove|turn off|not sticky)\b/i', $prompt);
-            if (! $enabled) return null; // no supported non-sticky shell contract yet
-            $header['overlay_header_on_banner'] = false;
-            $operations[] = $this->op('header.overlay_header_on_banner', false);
+            if (! $enabled) return null;
+            $currentType = (string) ($header['type'] ?? 'classic_header');
+            if ($currentType === 'overlay_centered_header') $header['type'] = 'centered_header';
+            elseif ($currentType === 'overlay_hero_header') $header['type'] = 'classic_header';
+            $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
+            $operations[] = $this->op('header.type', $header['type']);
         }
 
         if ($action === 'change_header') {
             $type = null;
             if (preg_match('/\b(?:dark cyan|dark-cyan|cyan)\b/i', $prompt)) $type = 'dark_cyan_header';
             if (preg_match('/\b(?:glass|glassmorphism|glass morphism)\b/i', $prompt)) $type = 'glassmorphism_header';
-            if (preg_match('/\bclassic(?: header)?\b/i', $prompt)) $type = 'classic_header';
-            if (preg_match('/\bcentered(?: header)?\b/i', $prompt)) $type = 'centered_header';
-            if (preg_match('/\bsplit(?: navigation| nav)?(?: header)?\b/i', $prompt)) $type = 'split_navigation_header';
-            if (preg_match('/\bfloating(?: glass)?(?: header)?\b/i', $prompt)) $type = 'floating_glass_header';
+            if (preg_match('/\b(?:classic|white)(?: header)?\b/i', $prompt)) $type = 'classic_header';
+            if (preg_match('/\bprimary(?: contrast| color| background)?(?: header)?\b/i', $prompt)) $type = 'primary_header';
+            if (preg_match('/\b(?:center(?:ed)? logo|split navigation|split nav)(?: with cta)?(?: header)?\b/i', $prompt)) $type = 'split_navigation_header';
+            if (preg_match('/\b(?:center(?:ed)? logo|centered)(?: without cta| no cta)?(?: header)?\b/i', $prompt) && ! preg_match('/\bwith cta\b/i', $prompt)) $type = 'centered_header';
             if (preg_match('/\boverlay(?: hero)?(?: header)?\b/i', $prompt)) $type = 'overlay_hero_header';
-            if (preg_match('/\bminimal(?: header)?\b/i', $prompt)) $type = 'minimal_header';
+            if (preg_match('/\boverlay\s+(?:center(?:ed)?|center logo)(?: header)?\b/i', $prompt)) $type = 'overlay_centered_header';
+            if (preg_match('/\bsecondary(?: surface| background)?(?: header)?\b/i', $prompt)) $type = 'secondary_header';
+            if (preg_match('/\b(?:floating(?: glass)?|minimal)(?: header)?\b/i', $prompt)) $type = 'classic_header';
             if ($type === null) return null;
             $header['type'] = $type;
-            $operations[] = $this->op('header.type', $type);
+            $header = HeaderFooterVariantContract::normalizeHeader($header) ?? $header;
+            $operations[] = $this->op('header.type', $header['type']);
         }
 
         if (in_array($action, ['logo', 'edit_header'], true)) {
@@ -116,31 +126,38 @@ final class LunaHeaderFooterActionService
             if ($operations !== []) $header['custom_style'] = $style;
         }
 
-        return $operations === [] ? null : $this->success('header', $action ?: 'edit_header', ['header' => $header, 'operations' => $operations]);
+        return $operations === [] ? null : $this->success('header', $action ?: 'edit_header', ['header' => HeaderFooterVariantContract::normalizeHeader($header) ?? $header, 'operations' => $operations]);
     }
 
     private function applyFooter(Website $website, string $prompt, string $action, array $footer): ?array
     {
-        $footer = $footer !== [] ? $footer : (is_array($website->global_footer) ? $website->global_footer : []);
+        $footer = HeaderFooterVariantContract::normalizeFooter($footer !== [] ? $footer : (is_array($website->global_footer) ? $website->global_footer : [])) ?? [];
         $operations = [];
         $mega = is_array($footer['mega_footer'] ?? null) ? $footer['mega_footer'] : [];
 
         if ($action === 'custom_footer') return null;
 
         if ($action === 'mega_footer') {
-            $enabled = ! preg_match('/\b(disable|off|remove|turn off)\b/i', $prompt);
-            $footer['mega_enabled'] = $enabled;
-            $mega['enabled'] = $enabled;
+            // Mega Footer is no longer an independent on/off setting. A request
+            // to simplify it selects the canonical white footer instead.
+            $disableRequested = (bool) preg_match('/\b(disable|off|remove|turn off)\b/i', $prompt);
+            $mega['variant'] = $disableRequested ? 'classic' : (string) ($mega['variant'] ?? 'classic');
             $footer['mega_footer'] = $mega;
-            $operations[] = $this->op('footer.mega_enabled', $enabled);
+            $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
+            $mega = $footer['mega_footer'];
+            $operations[] = $this->op('footer.mega_footer.variant', $mega['variant']);
         }
         if ($action === 'change_footer') {
             $variant = null;
-            if (preg_match('/\b(?:mega\s+)?classic(?:\s+footer)?\b/i', $prompt)) $variant = 'classic';
-            if (preg_match('/\b(?:mega\s+)?cta(?:\s+footer)?\b/i', $prompt)) $variant = 'cta';
+            if (preg_match('/\b(?:mega\s+)?(?:classic|white)(?:\s+footer)?\b/i', $prompt)) $variant = 'classic';
+            if (preg_match('/\b(?:mega\s+)?primary(?:\s+footer)?\b/i', $prompt)) $variant = 'primary';
+            if (preg_match('/\bcenter(?:ed)?(?:\s+footer)?\s+(?:with\s+)?cta\b|\bcentered[_ -]?cta\b/i', $prompt)) $variant = 'centered_cta';
+            if (preg_match('/\b(?:mega\s+)?centered(?: minimal)?(?:\s+footer)?\b/i', $prompt) && ! preg_match('/\bcta\b/i', $prompt)) $variant = 'centered';
+            if (preg_match('/\b(?:split|editorial)(?:\s+footer)?\b/i', $prompt)) $variant = 'split';
             if (preg_match('/\b(?:mega\s+)?brand(?:\s+footer)?\b/i', $prompt)) $variant = 'brand';
-            if (preg_match('/\b(?:mega\s+)?contact(?:\s+footer)?\b/i', $prompt)) $variant = 'contact';
-            if (preg_match('/\b(?:mega\s+)?newsletter(?:\s+footer)?\b/i', $prompt)) $variant = 'newsletter';
+            if (preg_match('/\bsecondary(?: surface| background)?(?:\s+footer)?\b/i', $prompt)) $variant = 'secondary';
+            // Legacy names migrate to the closest current design instead of creating stale variants.
+            if (preg_match('/\b(?:contact|newsletter|cta)(?:\s+footer)?\b/i', $prompt) && $variant === null) $variant = 'centered_cta';
             if ($variant !== null) {
                 $footer['mega_enabled'] = true;
                 $mega['enabled'] = true;
@@ -155,9 +172,11 @@ final class LunaHeaderFooterActionService
                 $footer['mega_enabled'] = true; $mega['enabled'] = true;
                 $operations[] = $this->op('footer.mega_enabled', true);
             } elseif ($action === 'simple_footer' || preg_match('/\b(simple|minimal)\b/i', $prompt)) {
-                $footer['type'] = 'minimal_footer';
-                $footer['mega_enabled'] = false; $mega['enabled'] = false;
-                $operations[] = $this->op('footer.mega_enabled', false);
+                $mega['variant'] = 'centered';
+                $footer['mega_footer'] = $mega;
+                $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
+                $mega = $footer['mega_footer'];
+                $operations[] = $this->op('footer.mega_footer.variant', 'centered');
             } elseif ($operations === []) return null;
             $footer['mega_footer'] = $mega;
         }
@@ -193,10 +212,20 @@ final class LunaHeaderFooterActionService
 
         if ($action === 'footer_background') {
             $theme = null;
-            foreach (['primary','white','surface','auto'] as $candidate) if (preg_match('/\b'.preg_quote($candidate,'/').'\b/i',$prompt)) { $theme=$candidate; break; }
+            foreach (['primary','white','surface','secondary','auto'] as $candidate) if (preg_match('/\b'.preg_quote($candidate,'/').'\b/i',$prompt)) { $theme=$candidate; break; }
             if ($theme === null) return null;
-            $mega['theme']=$theme; $footer['mega_footer']=$mega;
-            $operations[]=$this->op('footer.mega_footer.theme',$theme);
+            if ($theme !== 'auto') {
+                $mega['variant'] = match ($theme) {
+                    'primary' => 'primary',
+                    'surface' => 'split',
+                    'secondary' => 'secondary',
+                    default => 'classic',
+                };
+            }
+            $footer['mega_footer']=$mega;
+            $footer = HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer;
+            $mega = $footer['mega_footer'];
+            $operations[]=$this->op('footer.mega_footer.variant',$mega['variant']);
         }
 
         if ($action === 'footer_brand') {
@@ -231,7 +260,7 @@ final class LunaHeaderFooterActionService
             $operations[]=$this->op('footer.social_links',$footer['social_links']);
         }
 
-        return $operations === [] ? null : $this->success('footer', $action ?: 'edit_footer', ['footer'=>$footer,'operations'=>$operations]);
+        return $operations === [] ? null : $this->success('footer', $action ?: 'edit_footer', ['footer'=>HeaderFooterVariantContract::normalizeFooter($footer) ?? $footer,'operations'=>$operations]);
     }
 
     private function safeUrl(string $value): ?string

@@ -276,6 +276,8 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
     const { vars, localCardSurface, heroNeedsDefaultPadding, hasLegacyDesignTypography } = templatePreviewRenderVars(previewBlock, websiteTheme, index);
     const blockType = String(block?.type || '').toLowerCase();
     const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
+    const isLedgerMarketplace = blockType.startsWith('marketplace_ledger_');
+    const marketplaceFamily = isEmberMarketplace ? 'ember' : (isLedgerMarketplace ? 'ledger' : undefined);
     const emberPaletteVars = isEmberMarketplace ? {
         '--cosmic-primary': '#1a1a16',
         '--cosmic-accent': '#d6a151',
@@ -296,6 +298,26 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
         '--cosmic-button-primary-bg': '#d6a151',
         '--cosmic-button-primary-text': '#17150e',
     } : {};
+    const ledgerPaletteVars = isLedgerMarketplace ? {
+        '--cosmic-primary': '#0c6670',
+        '--cosmic-accent': '#d3b166',
+        '--cosmic-bg-primary': '#09242d',
+        '--cosmic-local-bg-primary': '#09242d',
+        '--cosmic-bg-primary-surface': '#10343d',
+        '--cosmic-local-bg-primary-surface': '#10343d',
+        '--cosmic-bg-surface': '#f7f6f1',
+        '--cosmic-local-bg-surface': '#f7f6f1',
+        '--cosmic-bg-white': '#ffffff',
+        '--cosmic-local-bg-white': '#ffffff',
+        '--cosmic-on-primary': '#ffffff',
+        '--cosmic-on-primary-muted': 'rgba(255,255,255,.66)',
+        '--cosmic-on-surface': '#102b33',
+        '--cosmic-on-surface-muted': '#60747a',
+        '--cosmic-color-on-dark': '#ffffff',
+        '--cosmic-color-on-primary': '#ffffff',
+        '--cosmic-button-primary-bg': '#0c6670',
+        '--cosmic-button-primary-text': '#ffffff',
+    } : {};
     const hasLunaDesign = Object.keys(previewBlock?.luna_design_overrides || {}).length > 0 || heroNeedsDefaultPadding;
 
     return (
@@ -306,7 +328,7 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
             data-cosmic-design-system="1"
             data-cosmic-block-index={index}
             data-cosmic-block-type={previewBlock.type}
-            data-cosmic-marketplace-family={isEmberMarketplace ? 'ember' : undefined}
+            data-cosmic-marketplace-family={marketplaceFamily}
             data-cosmic-tailwind-schema={hasSparkTailwindSchema(previewBlock) ? 'schema_backed' : 'legacy_fallback'}
             data-cosmic-resolved-theme={resolvedTheme}
             data-cosmic-card-surface={localCardSurface || undefined}
@@ -315,7 +337,7 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
             data-luna-design={hasLunaDesign ? '1' : undefined}
             data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
             className={`cosmic-render-shell ${hasLunaDesign ? 'cosmic-luna-design-host' : ''}`}
-            style={{ ...vars, ...emberPaletteVars }}
+            style={{ ...vars, ...emberPaletteVars, ...ledgerPaletteVars }}
         >
             <div className="cosmic-render-content pointer-events-none">
                 <Component
@@ -384,9 +406,23 @@ function EmberMarketplaceTemplateFooter({ template, embed = false }) {
     </footer>;
 }
 
+function LedgerMarketplaceTemplateHeader({ template, embed = false }) {
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const current = String(template?.current_page?.slug || 'home');
+    const items = [['Home','home'],['About','about'],['Services','services'],['FAQ','faq']];
+    const href = (slug) => demoHref(template, slug, embed);
+    return <header className="relative z-50 border-b bg-white" style={{ borderColor:'#dfe7e5', color:'#102b33' }}><div className="flex min-h-[82px] w-full items-center justify-between gap-6 px-6 sm:px-8 lg:px-12 xl:px-16"><a href={href('home')} className="text-xl font-semibold tracking-[-.035em]"><span>Ledger</span><span style={{color:'#16838d'}}>Point</span><span className="ml-2 text-[9px] font-semibold uppercase tracking-[.18em] opacity-50">Accounting</span></a><nav className="hidden items-center gap-1 lg:flex" aria-label="LedgerPoint navigation">{items.map(([label,slug])=><a key={slug} href={href(slug)} className="relative px-4 py-3 text-sm font-semibold opacity-70 transition hover:opacity-100">{label}{current===slug&&<span className="absolute bottom-1 left-4 right-4 h-[2px]" style={{background:'#16838d'}} />}</a>)}<a href={href('contact')} className="ml-3 inline-flex min-h-11 items-center rounded-full px-6 text-sm font-semibold text-white" style={{background:'#0c6670'}}>Book a Consultation</a></nav><button type="button" onClick={()=>setMobileOpen(v=>!v)} className="grid h-10 w-10 place-items-center rounded-full border lg:hidden" style={{borderColor:'#dfe7e5'}} aria-label="Toggle navigation">{mobileOpen?'×':'☰'}</button></div>{mobileOpen&&<nav className="grid border-t px-6 py-4 lg:hidden" style={{borderColor:'#dfe7e5'}}>{items.map(([label,slug])=><a key={slug} href={href(slug)} className="border-b px-2 py-3 text-sm font-semibold" style={{borderColor:'#dfe7e5'}}>{label}</a>)}<a href={href('contact')} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full text-sm font-semibold text-white" style={{background:'#0c6670'}}>Book a Consultation</a></nav>}</header>;
+}
+
+function LedgerMarketplaceTemplateFooter({ template, embed = false }) {
+    const href=(slug)=>demoHref(template,slug,embed);
+    return <footer style={{background:'#09242d',color:'#fff'}}><div className="grid w-full gap-10 px-6 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.5fr_.7fr_.7fr_1fr] lg:px-12 xl:px-16"><div><a href={href('home')} className="text-2xl font-semibold tracking-[-.035em]">Ledger<span style={{color:'#d3b166'}}>Point</span></a><p className="mt-4 max-w-[360px] text-sm leading-6 text-white/55">Clear accounting, practical advice, and a better view of what comes next.</p></div><div><p className="font-semibold">Navigate</p><div className="mt-4 grid gap-2 text-xs text-white/55"><a href={href('home')}>Home</a><a href={href('about')}>About</a><a href={href('services')}>Services</a></div></div><div><p className="font-semibold">Support</p><div className="mt-4 grid gap-2 text-xs text-white/55"><a href={href('faq')}>FAQ</a><span>Privacy</span><span>Terms</span></div></div><div><p className="font-semibold">Contact</p><div className="mt-4 grid gap-2 text-xs leading-5 text-white/55"><span>(02) 5550 0148</span><span>hello@ledgerpoint.example</span><span>Level 6 · 42 Market Street<br/>Sydney NSW</span></div></div></div><div className="border-t px-6 py-5 text-[10px] text-white/40 sm:px-8 lg:px-12 xl:px-16" style={{borderColor:'rgba(255,255,255,.1)'}}>© {new Date().getFullYear()} LedgerPoint Accounting. All rights reserved.</div></footer>;
+}
+
 function MarketplaceTemplateHeader({ template, palette, embed = false }) {
     const [mobileOpen, setMobileOpen] = useState(false);
     if (String(template?.slug || '') === 'bistro-classic') return <EmberMarketplaceTemplateHeader template={template} embed={embed} />;
+    if (String(template?.slug || '') === 'ledger-start') return <LedgerMarketplaceTemplateHeader template={template} embed={embed} />;
     const navigation = Array.isArray(template?.navigation) ? template.navigation : [];
     const header = template?.global_header || {};
     const logoText = header.logo_text || header.brand || template?.name || 'Website';
@@ -467,6 +503,7 @@ function MarketplaceTemplateHeader({ template, palette, embed = false }) {
 
 function MarketplaceTemplateFooter({ template, palette, embed = false }) {
     if (String(template?.slug || '') === 'bistro-classic') return <EmberMarketplaceTemplateFooter template={template} embed={embed} />;
+    if (String(template?.slug || '') === 'ledger-start') return <LedgerMarketplaceTemplateFooter template={template} embed={embed} />;
     const footer = template?.global_footer || {};
     const columns = Array.isArray(footer.columns) ? footer.columns : [];
     const pages = Array.isArray(template?.pages) ? template.pages : [];

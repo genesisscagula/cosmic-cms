@@ -22,6 +22,7 @@ use App\Services\WebsiteHealthService;
 use App\Services\TrialCreditService;
 use App\Services\RegisteredSiteBundleService;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 use App\Support\SparkExtrasContract;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
@@ -951,7 +952,7 @@ class PageController extends Controller
             'trialMode' => $isTrialMode,
             'globalHeaderBlock' => $isTrialMode
                 ? [
-                    'type' => 'glassmorphism_header',
+                    'type' => 'classic_header',
                     'logo_text' => $trial->business_name,
                     'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
                     'logo_height' => max(42, (int) data_get($trial->preview_theme, 'logo_height', 60)),
@@ -972,9 +973,11 @@ class PageController extends Controller
             'globalFooterBlock' => $isTrialMode
                 ? [
                     'type' => 'minimal_footer',
-                'mega_enabled' => false,
+                'mega_enabled' => true,
                 'mega_footer' => [
-                    'enabled' => false,
+                    'enabled' => true,
+                    'variant' => 'classic',
+                    'theme' => 'white',
                     'tagline' => 'A premium information-rich footer.',
                     'primary_label' => 'Get in touch',
                     'primary_url' => '#contact',
@@ -1073,6 +1076,13 @@ class PageController extends Controller
             'global_footer' => 'nullable|array',
         ]);
 
+        if (array_key_exists('global_header', $validated)) {
+            $validated['global_header'] = HeaderFooterVariantContract::normalizeHeader($validated['global_header']);
+        }
+        if (array_key_exists('global_footer', $validated)) {
+            $validated['global_footer'] = HeaderFooterVariantContract::normalizeFooter($validated['global_footer']);
+        }
+
         $isWebsiteEditor = app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $page->website) === 'website_editor';
         DB::transaction(function () use ($page, $validated, $isWebsiteEditor) {
             $page->blocks = is_array($validated['blocks'] ?? null)
@@ -1140,20 +1150,13 @@ class PageController extends Controller
             }
         }
 
-        // Overlay Header compatibility is a product rule, not a CSS guess:
-        // only Premium/Balanced with non-light theme families may persist it.
+        // Header/footer variants are the authoritative shell state. Legacy
+        // overlay/mega toggles are normalized here before anything is saved.
         if (array_key_exists('global_header', $validated)) {
-            $effectiveStyle = PageStyleRegistry::normalize($website->page_style);
-            $effectiveTheme = strtolower(trim((string) (
-                data_get($validated, 'theme_settings.primary')
-                ?: data_get($website->theme_settings, 'primary')
-                ?: 'midnight'
-            )));
-            $overlayCompatible = in_array($effectiveStyle, ['premium', 'balanced'], true)
-                && ! in_array($effectiveTheme, ['stone', 'white'], true);
-            if (! $overlayCompatible) {
-                data_set($validated, 'global_header.overlay_header_on_banner', false);
-            }
+            $validated['global_header'] = HeaderFooterVariantContract::normalizeHeader($validated['global_header']);
+        }
+        if (array_key_exists('global_footer', $validated)) {
+            $validated['global_footer'] = HeaderFooterVariantContract::normalizeFooter($validated['global_footer']);
         }
 
         if ($trial !== null && array_key_exists('theme_settings', $validated)) {
@@ -1689,9 +1692,10 @@ class PageController extends Controller
         // Global shell/navigation editing is deterministic CMS work. Credits are
         // reserved for actual AI/API requests, so manual/Luna-applied menu changes
         // remain free when the Builder persists the resulting header snapshot.
+        $header = HeaderFooterVariantContract::normalizeHeader($validated['header_block'] ?? null);
         $website->update([
-            'global_header' => $validated['header_block'] ?? null,
-            'published_global_header' => $validated['header_block'] ?? null,
+            'global_header' => $header,
+            'published_global_header' => $header,
         ]);
 
         return response()->json([
@@ -1712,9 +1716,10 @@ class PageController extends Controller
 
         // Footer changes follow the same explicit global-shell workflow as
         // headers: save now, then deploy only when Push live update is used.
+        $footer = HeaderFooterVariantContract::normalizeFooter($request->input('footer_block'));
         $website->update([
-            'global_footer' => $request->input('footer_block'),
-            'published_global_footer' => $request->input('footer_block'),
+            'global_footer' => $footer,
+            'published_global_footer' => $footer,
         ]);
 
         return response()->json([

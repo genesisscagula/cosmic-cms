@@ -75,7 +75,7 @@ final class TrialSiteBundleService
                 ],
                 'theme_settings' => $theme,
                 'global_header' => [
-                    'type' => 'glassmorphism_header',
+                    'type' => 'classic_header',
                     'logo_text' => (string) $profile['business_name'],
                     'logo_image_url' => '/storage/branding/your-logo.png',
                     'logo_height' => 42,

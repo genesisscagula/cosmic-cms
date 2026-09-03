@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { getEffectiveTheme } from '../../theme/Theme';
 import { logoStyleForTone } from '@/Branding/logoFilters';
 import { colorFamilies } from '../../theme/colorFamilies';
+import { resolveSemanticPalette } from '../../theme/semanticPalette';
+import { headerVariantById, resolveShellSurface } from './Components/headerFooterVariantConfig';
 import { EditableText as SharedEditableText } from './Blocks/Shared/EditableText';
 
 const EditableText = SharedEditableText;
@@ -233,43 +235,67 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
 }
 
 
-const HEADER_VARIANT_CONFIG = {
-    classic_header: { shell: 'classic', nav: 'right' },
-    centered_header: { shell: 'centered', nav: 'center' },
-    split_navigation_header: { shell: 'split', nav: 'split' },
-    floating_glass_header: { shell: 'floating', nav: 'right' },
-    overlay_hero_header: { shell: 'overlay', nav: 'right' },
-    minimal_header: { shell: 'minimal', nav: 'right' },
+const LEGACY_HEADER_VARIANT_ALIASES = {
+    floating_glass_header: 'classic_header',
+    minimal_header: 'classic_header',
 };
 
-/** Batch 1 premium header family. Layout changes; brand/theme tokens remain authoritative. */
+/** Theme-aware global header variants shared by Builder preview and published shell contracts. */
 export function PremiumHeaderVariant({ block, overlay = false, overlayTone = 'light', globalTheme, onUpdate, pageTargets = [], onLogoClick = null, onLogoManual = null, onCtaAi = null, onNavAi = null, navManualOpenSignal = 0 }) {
-    const config = HEADER_VARIANT_CONFIG[block.type] || HEADER_VARIANT_CONFIG.classic_header;
-    const menuItems = block.menu || [{label:'Home',url:'#'},{label:'About',url:'#'},{label:'Services',url:'#'}];
-    const familyKey = typeof globalTheme === 'string' ? globalTheme : (globalTheme?.primary || 'midnight');
-    const family = colorFamilies[familyKey] || colorFamilies.midnight;
-    const palette = family?.palette || {};
-    const primary = palette.primary || '#0f766e';
-    const surface = palette.surface || palette.background || '#ffffff';
-    const ink = palette.text || palette.foreground || '#0f172a';
-    const muted = palette.muted || '#64748b';
-    const forceOverlay = config.shell === 'overlay' || overlay;
-    const darkOverlayText = forceOverlay && overlayTone === 'dark';
-    const navColor = forceOverlay ? (darkOverlayText ? '#0f172a' : '#ffffff') : ink;
-    const shellStyle = forceOverlay ? {background:'transparent', color:navColor} : {backgroundColor:surface, color:ink, borderColor:`color-mix(in srgb, ${ink} 14%, transparent)`};
-    const logoTone = forceOverlay && !darkOverlayText ? 'light' : (block.logo_tone === 'light' ? 'light' : 'dark');
+    const requestedType = LEGACY_HEADER_VARIANT_ALIASES[block.type] || block.type || 'classic_header';
+    const config = headerVariantById(requestedType);
+    const menuItems = block.menu || [{label:'Home',url:'#'},{label:'About',url:'#'},{label:'Services',url:'#'},{label:'Contact',url:'#'}];
+    const familyKey = typeof globalTheme === 'string' ? globalTheme : (globalTheme?.primary || block.logo_filter_key || 'midnight');
+    const palette = resolveSemanticPalette(familyKey, typeof globalTheme === 'object' ? globalTheme : {});
+    const primary = palette.primary || '#243447';
+    const forceOverlay = config.background === 'overlay';
+    const baseSurface = forceOverlay
+        ? { background:'transparent', text: overlayTone === 'dark' ? '#0F172A' : '#FFFFFF', muted: overlayTone === 'dark' ? '#334155' : 'rgba(255,255,255,.84)', border:'rgba(255,255,255,.22)', tone: overlayTone === 'dark' ? 'dark' : 'light' }
+        : resolveShellSurface(config.background, palette);
+    const logoTone = config.tone === 'auto' ? baseSurface.tone : (forceOverlay ? (overlayTone === 'dark' ? 'dark' : 'light') : config.tone);
     const resolvedLogo = logoStyleForTone(block, logoTone, familyKey);
     const logoImageUrl = resolvedLogo.url;
     const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
     const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
     const logo = logoImageUrl ? <HeaderLogoEditor imageUrl={logoImageUrl} alt={block.logo_text || 'Website logo'} imageStyle={{height:`${logoHeight}px`,maxHeight:'64px',maxWidth:`${logoMaxWidth}px`,filter:resolvedLogo.filter}} imageClassName="w-auto object-contain" onManual={onLogoManual} onAi={onLogoClick}/> : <EditableText value={block.logo_text || 'Your Website'} className="cursor-pointer text-xl font-extrabold tracking-tight" onSave={(logo_text)=>onUpdate({logo_text})}/>;
-    const nav = <HeaderNavigation items={menuItems} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(menu)=>onUpdate({menu})} pageTargets={pageTargets} onAi={onNavAi} manualOpenSignal={navManualOpenSignal}/>;
-    const cta = <HeaderCtaEditor block={block} onUpdate={onUpdate} onAi={onCtaAi} style={{backgroundColor:primary,color:'#fff',borderRadius: config.shell === 'minimal' ? '10px' : '999px'}} className="shrink-0 px-6 py-3 text-sm font-semibold shadow-sm transition hover:opacity-90" textClass="font-semibold text-white"/>;
+    const navColor = baseSurface.text;
+    const nav = (items = menuItems, onMenuUpdate = (menu)=>onUpdate({menu}), signal = navManualOpenSignal) => <HeaderNavigation items={items} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={onMenuUpdate} pageTargets={pageTargets} onAi={onNavAi} manualOpenSignal={signal}/>;
+    const ctaMode = forceOverlay && config.cta !== 'none' ? 'white' : config.cta;
+    const ctaStyle = ctaMode === 'white'
+        ? {backgroundColor:'#FFFFFF',color:primary,border:`1px solid #FFFFFF`,borderRadius:'999px'}
+        : {backgroundColor:primary,color:palette.onPrimary || palette.on_primary || '#FFFFFF',border:`1px solid ${primary}`,borderRadius:'999px'};
+    const ctaTextClass = ctaMode === 'white' ? '' : 'text-white';
+    const cta = config.cta === 'none' ? null : <HeaderCtaEditor block={block} onUpdate={onUpdate} onAi={onCtaAi} style={ctaStyle} className="shrink-0 px-6 py-3 text-sm font-semibold shadow-sm transition hover:opacity-90" textClass={`font-semibold ${ctaTextClass}`}/>;
+    const headerStyle = {
+        backgroundColor: forceOverlay ? 'transparent' : baseSurface.background,
+        color: baseSurface.text,
+        borderColor: forceOverlay ? 'transparent' : baseSurface.border,
+        backdropFilter: forceOverlay ? 'blur(3px)' : undefined,
+        WebkitBackdropFilter: forceOverlay ? 'blur(3px)' : undefined,
+    };
+    const headerClass = `${forceOverlay ? 'absolute inset-x-0 top-0 z-50 border-transparent' : 'relative z-30 border-b'} w-full px-5 py-4 sm:px-[50px]`;
 
-    if (config.shell === 'centered') return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={shellStyle} className={`w-full border-b px-5 py-5 sm:px-8 ${forceOverlay?'border-transparent':' '} transition-colors`}><div className="mx-auto grid max-w-[1480px] grid-cols-[1fr_auto_1fr] items-center gap-5"><div>{logo}</div><nav className="hidden justify-self-center lg:block">{nav}</nav><div className="justify-self-end">{cta}</div><div className="col-span-3 lg:hidden">{nav}</div></div></header>;
-    if (config.shell === 'split') { const half=Math.ceil(menuItems.length/2); const left=menuItems.slice(0,half), right=menuItems.slice(half); return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={shellStyle} className={`w-full border-b px-5 py-5 sm:px-8 ${forceOverlay?'border-transparent':''}`}><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-5 lg:flex-nowrap"><nav className="order-2 w-full lg:order-1 lg:w-auto"><HeaderNavigation items={left} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(next)=>onUpdate({menu:[...next,...right]})} pageTargets={pageTargets} onAi={onNavAi} manualOpenSignal={navManualOpenSignal}/></nav><div className="order-1 lg:order-2">{logo}</div><div className="order-3 flex items-center gap-5"><nav className="hidden lg:block"><HeaderNavigation items={right} textClass="font-medium transition hover:opacity-65" textStyle={{color:navColor}} onUpdate={(next)=>onUpdate({menu:[...left,...next]})} pageTargets={pageTargets} onAi={onNavAi}/></nav>{cta}</div></div></header>; }
-    const floating = config.shell === 'floating';
-    return <header id={forceOverlay?'cosmic-overlay-header':undefined} style={floating?{...shellStyle,backgroundColor:`color-mix(in srgb, ${surface} 82%, transparent)`,backdropFilter:'blur(18px)',WebkitBackdropFilter:'blur(18px)'}:shellStyle} className={`${floating?'mx-auto mt-5 w-[calc(100%-2rem)] max-w-[1480px] rounded-2xl border shadow-lg':'w-full border-b'} ${forceOverlay?'border-transparent':''} px-5 py-4 sm:px-8`}><div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-4 lg:flex-nowrap"><div>{logo}</div><nav className="order-3 w-full lg:order-none lg:w-auto">{nav}</nav><div>{cta}</div></div></header>;
+    if (config.layout === 'split') {
+        const half = Math.ceil(menuItems.length / 2);
+        const left = menuItems.slice(0, half);
+        const right = menuItems.slice(half);
+        return <header id={forceOverlay?'cosmic-overlay-header':undefined} data-cosmic-header-variant={config.id} style={headerStyle} className={headerClass}>
+            <div className="mx-auto grid max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-5">
+                <nav className="hidden min-w-0 justify-self-start lg:block">{nav(left,(next)=>onUpdate({menu:[...next,...right]}))}</nav>
+                <div className="justify-self-center">{logo}</div>
+                <div className="hidden min-w-0 items-center justify-self-end gap-5 lg:flex"><nav>{nav(right,(next)=>onUpdate({menu:[...left,...next]}),0)}</nav>{cta}</div>
+                <div className="col-span-3 flex items-center justify-between gap-4 lg:hidden"><nav className="min-w-0 flex-1">{nav(menuItems)}</nav>{cta}</div>
+            </div>
+        </header>;
+    }
+
+    return <header id={forceOverlay?'cosmic-overlay-header':undefined} data-cosmic-header-variant={config.id} style={headerStyle} className={headerClass}>
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 lg:flex-nowrap">
+            <div>{logo}</div>
+            <nav className="order-3 w-full lg:order-none lg:ml-auto lg:w-auto">{nav()}</nav>
+            {cta ? <div>{cta}</div> : null}
+        </div>
+    </header>;
 }
 
 function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets = [], onAi=null, manualOpenSignal=0 }) {

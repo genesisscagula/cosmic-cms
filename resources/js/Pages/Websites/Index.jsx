@@ -26,8 +26,9 @@ const countMenuItems = (items = []) => items.reduce((total, item) => total + 1 +
 const legacyHeaderLogoSamples = new Set(['AkongLogo', 'DesignKaBai', 'CosmicCMS']);
 
 const defaultMegaFooter = {
-    enabled: false,
-    theme: 'auto',
+    enabled: true,
+    variant: 'classic',
+    theme: 'white',
     tagline: 'A premium information-rich footer.',
     primary_label: 'Get in touch',
     primary_url: '#contact',
@@ -41,6 +42,8 @@ const defaultMegaFooter = {
 const normalizeGlobalFooter = (footer, websiteName) => {
     const source = footer && typeof footer === 'object' ? footer : {};
     const mega = source.mega_footer && typeof source.mega_footer === 'object' ? source.mega_footer : {};
+    const variant = ['classic','primary','centered_cta','centered','split','brand','secondary'].includes(mega.variant) ? mega.variant : 'classic';
+    const variantTheme = ['primary','brand'].includes(variant) ? 'primary' : variant === 'split' ? 'surface' : variant === 'secondary' ? 'secondary' : 'white';
     return {
         ...source,
         type: 'minimal_footer',
@@ -51,11 +54,13 @@ const normalizeGlobalFooter = (footer, websiteName) => {
         privacy_url: source.privacy_url || '/privacy-policy',
         terms_label: source.terms_label || 'Terms & Conditions',
         terms_url: source.terms_url || '/terms-and-conditions',
-        mega_enabled: Boolean(source.mega_enabled ?? mega.enabled ?? false),
+        mega_enabled: true,
         mega_footer: {
             ...defaultMegaFooter,
             ...mega,
-            enabled: Boolean(source.mega_enabled ?? mega.enabled ?? false),
+            enabled: true,
+            variant,
+            theme: variantTheme,
             columns: Array.isArray(mega.columns) && mega.columns.length ? mega.columns.slice(0, 4) : defaultMegaFooter.columns,
         },
     };

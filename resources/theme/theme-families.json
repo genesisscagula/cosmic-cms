@@ -137,7 +137,12 @@
         "accent": "#34D399",
         "background": "#0B5D4B",
         "surface": "#14735D",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#14735D",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B4D2CB",
+        "headerFooterSecondaryBorder": "#3E8C7A",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -162,12 +167,17 @@
       "glow": "from-amber-500 via-orange-500",
       "name": "Coffee House",
       "category": "Hospitality",
-      "description": "Warm roasted tones for caf\u00e9s, restaurants, and artisan brands.",
+      "description": "Warm roasted tones for cafés, restaurants, and artisan brands.",
       "palette": {
         "accent": "#F59E0B",
         "background": "#4A2A14",
         "surface": "#5A341A",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#5A341A",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#CABEB6",
+        "headerFooterSecondaryBorder": "#785943",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -197,7 +207,12 @@
         "accent": "#FB7185",
         "background": "#A13D63",
         "surface": "#8C3156",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#8C3156",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#DABDC9",
+        "headerFooterSecondaryBorder": "#A15674",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "pill",
       "cardStyle": "soft",
@@ -227,7 +242,12 @@
         "accent": "#94A3B8",
         "background": "#1F2937",
         "surface": "#374151",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#374151",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BFC2C7",
+        "headerFooterSecondaryBorder": "#5B6370",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "outline",
@@ -257,7 +277,12 @@
         "accent": "#38BDF8",
         "background": "#24598F",
         "surface": "#2C6AA8",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#2C6AA8",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BBCFE3",
+        "headerFooterSecondaryBorder": "#5285B8",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -287,7 +312,12 @@
         "accent": "#A78BFA",
         "background": "#4F46A5",
         "surface": "#5B55B8",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#5B55B8",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#CBC9E8",
+        "headerFooterSecondaryBorder": "#7974C5",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "glass",
@@ -317,7 +347,12 @@
         "accent": "#FBBF24",
         "background": "#A16207",
         "surface": "#B7791F",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#B7791F",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#3B270A",
+        "headerFooterSecondaryBorder": "#966319",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "pill",
       "cardStyle": "soft",
@@ -347,7 +382,12 @@
         "accent": "#D4D4D8",
         "background": "#3A3A3A",
         "surface": "#4A4A4A",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#4A4A4A",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#C5C5C5",
+        "headerFooterSecondaryBorder": "#6B6B6B",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "square",
       "cardStyle": "outline",
@@ -377,7 +417,12 @@
         "accent": "#C084FC",
         "background": "#5B3FA3",
         "surface": "#6C4DB6",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#6C4DB6",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#D0C6E8",
+        "headerFooterSecondaryBorder": "#866DC3",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "glass",
@@ -407,7 +452,12 @@
         "accent": "#2DD4BF",
         "background": "#186B66",
         "surface": "#217C76",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#217C76",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B8D5D3",
+        "headerFooterSecondaryBorder": "#49948F",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -437,7 +487,12 @@
         "accent": "#FB7185",
         "background": "#A12649",
         "surface": "#8C1E3F",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#8C1E3F",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#DAB7C2",
+        "headerFooterSecondaryBorder": "#A14662",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "pill",
       "cardStyle": "elevated",
@@ -467,7 +522,12 @@
         "accent": "#4ADE80",
         "background": "#2E5E3E",
         "surface": "#3A714C",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#3A714C",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#C0D2C6",
+        "headerFooterSecondaryBorder": "#5D8B6C",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -497,7 +557,12 @@
         "accent": "#60A5FA",
         "background": "#243447",
         "surface": "#30475E",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#30475E",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BDC4CB",
+        "headerFooterSecondaryBorder": "#55687B",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -527,7 +592,12 @@
         "accent": "#E5E7EB",
         "background": "#171717",
         "surface": "#262626",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#262626",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BABABA",
+        "headerFooterSecondaryBorder": "#4D4D4D",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "square",
       "cardStyle": "glass",
@@ -557,7 +627,12 @@
         "accent": "#60A5FA",
         "background": "#214B7A",
         "surface": "#295C95",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#295C95",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BBCBDD",
+        "headerFooterSecondaryBorder": "#5079A8",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -587,7 +662,12 @@
         "accent": "#818CF8",
         "background": "#111827",
         "surface": "#1F2937",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#1F2937",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B7BBBF",
+        "headerFooterSecondaryBorder": "#47505B",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "glass",
@@ -617,7 +697,12 @@
         "accent": "#FB923C",
         "background": "#4B2E1E",
         "surface": "#5B3825",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#5B3825",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#CBBFB9",
+        "headerFooterSecondaryBorder": "#795C4C",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -647,7 +732,12 @@
         "accent": "#FB923C",
         "background": "#A04A2C",
         "surface": "#B25A39",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#B25A39",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#E6CAC0",
+        "headerFooterSecondaryBorder": "#C0785D",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -677,7 +767,12 @@
         "accent": "#A1A1AA",
         "background": "#2A2A2A",
         "surface": "#3A3A3A",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#3A3A3A",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#C0C0C0",
+        "headerFooterSecondaryBorder": "#5D5D5D",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "square",
       "cardStyle": "outline",
@@ -707,7 +802,12 @@
         "accent": "#38BDF8",
         "background": "#0F4C81",
         "surface": "#1B5FA7",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#1B5FA7",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B6CCE3",
+        "headerFooterSecondaryBorder": "#447CB7",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -737,7 +837,12 @@
         "accent": "#E879F9",
         "background": "#5B214A",
         "surface": "#6E2959",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#6E2959",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#D1BBCA",
+        "headerFooterSecondaryBorder": "#885077",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "pill",
       "cardStyle": "glass",
@@ -767,7 +872,12 @@
         "accent": "#A3E635",
         "background": "#4D5D2D",
         "surface": "#5E7037",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#5E7037",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#CBD1BF",
+        "headerFooterSecondaryBorder": "#7B8A5B",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -797,7 +907,12 @@
         "accent": "#78716C",
         "background": "#F7F7F5",
         "surface": "#FFFFFF",
-        "text": "#0F172A"
+        "text": "#0F172A",
+        "headerFooterSecondary": "#FEFEFE",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#515151",
+        "headerFooterSecondaryBorder": "#D0D0D0",
+        "headerFooterSecondaryTone": "light"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -827,7 +942,12 @@
         "accent": "#4F46E5",
         "background": "#FEFEFD",
         "surface": "#F8F8F7",
-        "text": "#0F172A"
+        "text": "#0F172A",
+        "headerFooterSecondary": "#FFFFFF",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#525252",
+        "headerFooterSecondaryBorder": "#D1D1D1",
+        "headerFooterSecondaryTone": "light"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -848,28 +968,56 @@
       "text": "text-slate-900",
       "sub": "text-slate-600",
       "card": "bg-slate-50",
-      "border": "border-slate-200"
+      "border": "border-slate-200",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "soft": {
       "bg": "bg-slate-50",
       "text": "text-slate-900",
       "sub": "text-slate-600",
       "card": "bg-white",
-      "border": "border-slate-200"
+      "border": "border-slate-200",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "sky": {
       "bg": "bg-sky-50",
       "text": "text-slate-900",
       "sub": "text-slate-600",
       "card": "bg-white",
-      "border": "border-sky-100"
+      "border": "border-sky-100",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "cream": {
       "bg": "bg-orange-50",
       "text": "text-slate-900",
       "sub": "text-slate-600",
       "card": "bg-white",
-      "border": "border-orange-100"
+      "border": "border-orange-100",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "slate": {
       "bg": "bg-[#475569]",
@@ -885,7 +1033,12 @@
         "accent": "#93C5FD",
         "background": "#475569",
         "surface": "#334155",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#334155",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BEC2C9",
+        "headerFooterSecondaryBorder": "#586374",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "outline",
@@ -906,14 +1059,28 @@
       "text": "text-white",
       "sub": "text-slate-200",
       "card": "bg-[#64748b]",
-      "border": "border-slate-500"
+      "border": "border-slate-500",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "slate-950": {
       "bg": "bg-[#0f172a]",
       "text": "text-white",
       "sub": "text-slate-400",
       "card": "bg-[#1e293b]",
-      "border": "border-slate-700"
+      "border": "border-slate-700",
+      "palette": {
+        "headerFooterSecondary": "#243447",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#B9BEC4",
+        "headerFooterSecondaryBorder": "#4B5968",
+        "headerFooterSecondaryTone": "dark"
+      }
     },
     "burgundy": {
       "bg": "bg-[#6B2035]",
@@ -929,7 +1096,12 @@
         "accent": "#F4728A",
         "background": "#6B2035",
         "surface": "#7D2941",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#7D2941",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#D5BBC2",
+        "headerFooterSecondaryBorder": "#945063",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -959,7 +1131,12 @@
         "accent": "#C4D6B0",
         "background": "#667A63",
         "surface": "#788D74",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#788D74",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#262D25",
+        "headerFooterSecondaryBorder": "#62745F",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -989,7 +1166,12 @@
         "accent": "#F4C095",
         "background": "#B46F47",
         "surface": "#C7835A",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#C7835A",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#402A1D",
+        "headerFooterSecondaryBorder": "#A36B4A",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -1019,7 +1201,12 @@
         "accent": "#F59E6B",
         "background": "#8B4A2F",
         "surface": "#A35A3B",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#A35A3B",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#E2CAC0",
+        "headerFooterSecondaryBorder": "#B4785E",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -1049,7 +1236,12 @@
         "accent": "#9EDBE8",
         "background": "#37677A",
         "surface": "#477D91",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#477D91",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#17282E",
+        "headerFooterSecondaryBorder": "#3A6777",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -1079,7 +1271,12 @@
         "accent": "#F7B8C8",
         "background": "#A85F72",
         "surface": "#BB7184",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#BB7184",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#3C242A",
+        "headerFooterSecondaryBorder": "#995D6C",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -1109,7 +1306,12 @@
         "accent": "#B9C0CA",
         "background": "#30343B",
         "surface": "#41464F",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#41464F",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#C2C4C7",
+        "headerFooterSecondaryBorder": "#63676F",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -1139,7 +1341,12 @@
         "accent": "#7DA7FF",
         "background": "#2448A8",
         "surface": "#315AC2",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#315AC2",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#BDCAEB",
+        "headerFooterSecondaryBorder": "#5678CD",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
@@ -1169,7 +1376,12 @@
         "accent": "#A8C686",
         "background": "#405B3B",
         "surface": "#506E49",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#506E49",
+        "headerFooterSecondaryText": "#FFFFFF",
+        "headerFooterSecondaryMuted": "#C7D1C5",
+        "headerFooterSecondaryBorder": "#70886A",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "soft",
@@ -1199,7 +1411,12 @@
         "accent": "#F2D3A2",
         "background": "#9A7650",
         "surface": "#B18A61",
-        "text": "#F8FAFC"
+        "text": "#F8FAFC",
+        "headerFooterSecondary": "#B18A61",
+        "headerFooterSecondaryText": "#000000",
+        "headerFooterSecondaryMuted": "#392C1F",
+        "headerFooterSecondaryBorder": "#917150",
+        "headerFooterSecondaryTone": "dark"
       },
       "buttonStyle": "rounded",
       "cardStyle": "elevated",

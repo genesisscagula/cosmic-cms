@@ -11,6 +11,7 @@ use App\Cosmic\Pricing\ActionPricing;
 use App\Services\CreditService;
 use App\Services\ThemeColorResolver;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -554,7 +555,7 @@ PROMPT;
         $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
         if (! in_array($firstSurface, ['white', 'surface', 'primary'], true)) $firstSurface = 'primary';
 
-        $header = is_array($website->global_header) ? $website->global_header : $website->published_global_header;
+        $header = HeaderFooterVariantContract::normalizeHeader(is_array($website->global_header) ? $website->global_header : $website->published_global_header);
 
         return [
             'page_style' => $pageStyle,

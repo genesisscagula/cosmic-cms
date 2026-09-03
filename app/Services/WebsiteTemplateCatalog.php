@@ -253,7 +253,7 @@ class WebsiteTemplateCatalog
                 'auto' => true,
             ],
             'global_header' => [
-                'type' => 'glassmorphism_header',
+                'type' => 'classic_header',
                 'logo_text' => $websiteName,
                 'cta_label' => $this->ctaLabel($profile['industry']),
                 'cta_url' => '#contact',
@@ -266,9 +266,11 @@ class WebsiteTemplateCatalog
             ],
             'global_footer' => [
                 'type' => 'minimal_footer',
-                'mega_enabled' => false,
+                'mega_enabled' => true,
                 'mega_footer' => [
-                    'enabled' => false,
+                    'enabled' => true,
+                    'variant' => 'classic',
+                    'theme' => 'white',
                     'tagline' => 'A premium information-rich footer.',
                     'primary_label' => 'Get in touch',
                     'primary_url' => '#contact',

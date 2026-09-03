@@ -9,6 +9,7 @@ use App\Models\CommerceProduct;
 use App\Models\CommerceProductCategory;
 use App\Models\Website;
 use App\Support\PageStyleRegistry;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -522,8 +523,8 @@ class CommerceStorefrontService
 
     private function siteShell(Website $website, string $previewSlug, string $primaryColor, array $visual = []): array
     {
-        $header = $website->global_header ?? $website->published_global_header;
-        $footer = $website->global_footer ?? $website->published_global_footer;
+        $header = HeaderFooterVariantContract::normalizeHeader($website->global_header ?? $website->published_global_header);
+        $footer = HeaderFooterVariantContract::normalizeFooter($website->global_footer ?? $website->published_global_footer);
 
         if (! is_array($header) && ! is_array($footer)) {
             return ['header' => '', 'footer' => ''];
@@ -576,10 +577,6 @@ class CommerceStorefrontService
 
         $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style);
         $shellContext = ['page_style' => $pageStyle];
-        if (is_array($header)) {
-            $header['overlay_header_on_banner'] = (bool) ($visual['overlay'] ?? false);
-        }
-
         return [
             'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $shellContext) : '',
             'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $shellContext) : '',
@@ -591,18 +588,20 @@ class CommerceStorefrontService
         $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style);
         $clean = $pageStyle === 'clean';
         $branded = in_array($pageStyle, ['premium', 'balanced'], true);
-        $header = $website->global_header ?? $website->published_global_header;
+        $header = HeaderFooterVariantContract::normalizeHeader($website->global_header ?? $website->published_global_header);
         $overlayRequested = is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false);
-        $overlayCompatible = in_array($pageStyle, ['premium', 'balanced'], true) && ! in_array(strtolower($themeKey), ['stone', 'white'], true);
+        // The selected header variant is the shell contract. Commerce page style
+        // may adapt its hero surface for contrast, but cannot disable overlay.
+        $overlay = $overlayRequested;
 
         return [
             'page_style' => $pageStyle,
             'theme_key' => strtolower($themeKey),
             'clean' => $clean,
             'branded' => $branded,
-            'overlay' => $overlayRequested && $overlayCompatible,
-            'hero_background' => $clean ? ($palette['background'] ?? '#FFFFFF') : ($palette['primary'] ?? '#243447'),
-            'hero_text' => $clean ? '#0F172A' : '#FFFFFF',
+            'overlay' => $overlay,
+            'hero_background' => $overlay ? ($palette['primary'] ?? '#243447') : ($clean ? ($palette['background'] ?? '#FFFFFF') : ($palette['primary'] ?? '#243447')),
+            'hero_text' => $overlay ? '#FFFFFF' : ($clean ? '#0F172A' : '#FFFFFF'),
         ];
     }
 

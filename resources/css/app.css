@@ -6715,8 +6715,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 
 /* Plain primary Spark roots take the centralized primary family color.
-   Background images are preserved because only background-color is normalized. */
-.cosmic-render-shell[data-cosmic-resolved-theme="primary"]
+   Background images are preserved because only background-color is normalized.
+   Marketplace families are design-locked and own their authored section surfaces,
+   so they intentionally opt out of this Studio theme normalizer. */
+.cosmic-render-shell:not([data-cosmic-marketplace-family])[data-cosmic-resolved-theme="primary"]
 > .cosmic-render-content
 > section:not(.cosmic-theme-gradient):not([class*="cosmic-tw-slot--"]) {
     background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary)) !important;
@@ -6725,7 +6727,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 /* White and surface are separate semantic states. White stays neutral while
    surface receives a light tint derived from the active family. */
 :is(
-    .cosmic-render-shell[data-cosmic-resolved-theme="white"]
+    .cosmic-render-shell:not([data-cosmic-marketplace-family])[data-cosmic-resolved-theme="white"]
 )
 > .cosmic-render-content
 > section:not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="cosmic-tw-slot--"]) {
@@ -6733,8 +6735,8 @@ body .cosmic-start-quick-idea.rounded-full.border {
     background-color:var(--cosmic-local-bg-white,var(--cosmic-bg-white)) !important;
 }
 :is(
-    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
-    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+    .cosmic-render-shell:not([data-cosmic-marketplace-family])[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell:not([data-cosmic-marketplace-family])[data-cosmic-resolved-theme="surface"]
 )
 > .cosmic-render-content
 > section:not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="cosmic-tw-slot--"]) {
@@ -7215,6 +7217,13 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-render-shell [role="dialog"]:not([data-cosmic-preserve-radius]),
 .cosmic-render-shell [data-cosmic-modal]:not([data-cosmic-preserve-radius]) {
     border-radius:var(--cosmic-local-modal-radius,var(--cosmic-radius-modal,32px)) !important;
+}
+
+/* Header/Footer shell hotfix: hero/banner sections are edge-to-edge surfaces, never cards. */
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] > .cosmic-render-content > section,
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] > .cosmic-render-content > div > section:first-child,
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[data-cosmic-radius="section"] {
+    border-radius:0 !important;
 }
 @media (max-width:1024px) {
     .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]),
@@ -14823,6 +14832,93 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     -webkit-text-fill-color:currentColor !important;
 }
 
+/* Marketplace LedgerPoint — keep its editorial teal/cream system isolated from
+   global builder theme normalization. This also protects text contrast when a
+   saved site theme differs from the template's authored palette. */
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] {
+    --cosmic-primary:#0c6670;
+    --cosmic-accent:#d3b166;
+    --cosmic-bg-primary:#09242d;
+    --cosmic-local-bg-primary:#09242d;
+    --cosmic-bg-primary-surface:#10343d;
+    --cosmic-local-bg-primary-surface:#10343d;
+    --cosmic-bg-surface:#f7f6f1;
+    --cosmic-local-bg-surface:#f7f6f1;
+    --cosmic-bg-white:#fff;
+    --cosmic-local-bg-white:#fff;
+    --cosmic-on-primary:#fff;
+    --cosmic-on-primary-muted:rgba(255,255,255,.66);
+    --cosmic-on-surface:#102b33;
+    --cosmic-on-surface-muted:#60747a;
+    --cosmic-color-on-dark:#fff;
+    --cosmic-color-on-primary:#fff;
+    --cosmic-button-primary-bg:#0c6670;
+    --cosmic-button-primary-text:#fff;
+}
+/* Preview/editor runtimes can insert an extra block wrapper, so keep a
+   descendant-form lock alongside the direct-child export selector. */
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-surface="hero"] {
+    background-color:#f7f6f1 !important;
+    background-image:none !important;
+}
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-surface="page-hero"],
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-surface="proof"] {
+    background-color:#09242d !important;
+    background-image:none !important;
+}
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-tone="dark"] {
+    color:#fff !important;
+}
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#fff !important;
+    -webkit-text-fill-color:#fff !important;
+}
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-tone="light"] {
+    color:#102b33 !important;
+}
+.cosmic-render-shell .marketplace-ledger-site[data-ledger-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#102b33 !important;
+    -webkit-text-fill-color:#102b33 !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-surface="hero"] {
+    background-color:#f7f6f1 !important;
+    background-image:none !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-surface="page-hero"],
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-surface="proof"] {
+    background-color:#09242d !important;
+    background-image:none !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-tone="dark"] {
+    color:#fff !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#fff !important;
+    -webkit-text-fill-color:#fff !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-tone="light"] {
+    color:#102b33 !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#102b33 !important;
+    -webkit-text-fill-color:#102b33 !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-surface="contact"] > div > div:first-child,
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] > .cosmic-render-content > section[data-ledger-surface="contact"] > div > div:first-child :is(h1,h2,h3,h4,h5,h6,[data-cosmic-heading],[data-luna-target="heading"]) {
+    color:#fff !important;
+    -webkit-text-fill-color:#fff !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] section[data-ledger-tone="light"] :is(input,select,textarea) {
+    background:#fff !important;
+    color:#102b33 !important;
+    -webkit-text-fill-color:#102b33 !important;
+}
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] [style*="color: rgb(211, 177, 102)"],
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] [style*="color:#d3b166"],
+.cosmic-render-shell[data-cosmic-marketplace-family="ledger"] [style*="color: #d3b166"] {
+    -webkit-text-fill-color:currentColor !important;
+}
+
 /* Batch 8 — public marketing-site polish and responsive safety rails. */
 .cosmic-public-site {
     overflow-x: clip;
@@ -14874,3 +14970,23 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
         transition-duration: 0.01ms !important;
     }
 }
+/* ==========================================================================
+   Header/Footer hotfix v1.0.5 — hero/banner radius authority
+   Hero and banner media are structural page surfaces, not cards. Keep this
+   final in app.css so later global section-radius contracts cannot re-round
+   them in Builder, previews, or published pages.
+   ========================================================================== */
+.cosmic-render-shell:is([data-cosmic-layout-mode="hero"],[data-cosmic-layout-mode="immersive"]) > .cosmic-render-content > section,
+.cosmic-render-shell:is([data-cosmic-layout-mode="hero"],[data-cosmic-layout-mode="immersive"]) > .cosmic-render-content > div > section:first-child,
+.cosmic-render-shell section[data-cosmic-media-banner="true"],
+.cosmic-render-shell section[data-cosmic-hero-theme] {
+    border-radius: 0 !important;
+}
+/* Some legacy hero Sparks render through an extra wrapper and may not expose
+   the media marker. The shell layout contract remains authoritative. */
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] .cosmic-render-content > :first-child,
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] .cosmic-render-content > :first-child {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+

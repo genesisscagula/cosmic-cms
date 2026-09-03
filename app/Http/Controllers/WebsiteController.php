@@ -22,6 +22,7 @@ use App\Services\MyBrandThemeService;
 use App\Services\WebsiteDuplicationService;
 use App\Services\WebsiteOwnershipTransferService;
 use App\Services\WebsiteDashboardService;
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -639,7 +640,7 @@ class WebsiteController extends Controller
                 'midnight'
             ),
 	        'global_header' => [
-	            'type' => 'glassmorphism_header',
+	            'type' => 'classic_header',
 	            'logo_text' => $request->name,
                 'logo_image_url' => '/storage/branding/your-logo.png',
                 'logo_height' => 42,
@@ -654,9 +655,11 @@ class WebsiteController extends Controller
 	        ],
 	        'global_footer' => [
 	            'type' => 'minimal_footer',
-                'mega_enabled' => false,
+                'mega_enabled' => true,
                 'mega_footer' => [
-                    'enabled' => false,
+                    'enabled' => true,
+                    'variant' => 'classic',
+                    'theme' => 'white',
                     'tagline' => 'A premium information-rich footer.',
                     'primary_label' => 'Get in touch',
                     'primary_url' => '#contact',
@@ -1102,7 +1105,8 @@ class WebsiteController extends Controller
 
         $footer = $request->input('footer_block', []);
         $mega = is_array($footer['mega_footer'] ?? null) ? $footer['mega_footer'] : [];
-        $megaEnabled = (bool) ($footer['mega_enabled'] ?? $mega['enabled'] ?? false);
+        // Footer variant selection is now authoritative; the rich global footer is always enabled.
+        $megaEnabled = true;
 
         // Footer variants now live in the Website Shell. Keep one stable global
         // footer shape and migrate any legacy Detailed Footer save back to it.
@@ -1125,7 +1129,9 @@ class WebsiteController extends Controller
             ],
         ], $mega);
         $footer['mega_footer']['enabled'] = $megaEnabled;
-        $footer['mega_footer']['variant'] = in_array(($footer['mega_footer']['variant'] ?? 'classic'), ['classic','cta','brand','contact','newsletter'], true) ? $footer['mega_footer']['variant'] : 'classic';
+        $footer['mega_footer']['variant'] = in_array(($footer['mega_footer']['variant'] ?? 'classic'), ['classic','primary','centered_cta','centered','split','brand','secondary'], true) ? $footer['mega_footer']['variant'] : 'classic';
+        $footer['mega_footer']['theme'] = in_array(($footer['mega_footer']['theme'] ?? 'auto'), ['auto','primary','white','surface','secondary'], true) ? $footer['mega_footer']['theme'] : 'auto';
+        $footer['allow_light_logo_filter'] = (bool) ($footer['allow_light_logo_filter'] ?? true);
         $columns = is_array($footer['mega_footer']['columns'] ?? null) ? array_values($footer['mega_footer']['columns']) : [];
         $columns = array_slice($columns, 0, 4);
         $footer['mega_footer']['columns'] = array_values(array_map(function ($column, $columnIndex) {
@@ -1147,6 +1153,7 @@ class WebsiteController extends Controller
             ];
         }, $columns, array_keys($columns)));
 
+        $footer = HeaderFooterVariantContract::normalizeFooter($footer);
         $website->global_footer = $footer;
         $website->published_global_footer = $footer;
         $website->save();

@@ -72,7 +72,8 @@ final class GlobalMegaFooterService
             'mega_enabled' => true,
             'mega_footer' => [
                 'enabled' => true,
-                'theme' => 'auto',
+                'variant' => 'classic',
+                'theme' => 'white',
                 'tagline' => $tagline !== '' ? $tagline : 'Explore the website and find the right next step.',
                 'primary_label' => $primaryLabel !== '' ? $primaryLabel : 'Get in touch',
                 'primary_url' => $cta['url'],
