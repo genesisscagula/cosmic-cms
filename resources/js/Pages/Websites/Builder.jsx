@@ -2576,6 +2576,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         items: [],
         elements: [createAiFlexRow()],
         theme: 'auto',
+        section_surface: 'auto',
         ai_flex: {
             source: 'build_your_own',
             mode: 'manual_lego',
@@ -7051,12 +7052,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
     const renderBlock = (block, index) => {
 
         const resolvedTheme = resolveBlockTheme(block, index);
+        const configuredLegoSurface = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'white';
+        const resolvedLegoSurface = configuredLegoSurface === 'auto'
+            ? (resolvedTheme === 'primary' ? 'primary' : (resolvedTheme === 'surface' ? 'surface' : 'white'))
+            : configuredLegoSurface;
 
         const blockProps = {
 
             block: {
                 ...block,
-                resolvedTheme
+                resolvedTheme,
+                resolvedLegoSurface
             },
 
             globalTheme: { ...(globalSelections || {}), pageStyle: currentPageStyle },
@@ -7270,6 +7276,61 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 ...(['left','center','right'].includes(design.text_align)?{'--luna-text-align':design.text_align}:{}),
             };
 
+            const isLegoBuild = block?.ai_flex?.source === 'build_your_own';
+            const legoSurfaceMode = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'white';
+            const legoSurface = legoSurfaceMode === 'auto'
+                ? (resolvedTheme === 'primary' ? 'primary' : (resolvedTheme === 'surface' ? 'surface' : 'white'))
+                : legoSurfaceMode;
+            const legoSurfaceVars = isLegoBuild ? (legoSurface === 'primary' ? {
+                '--cosmic-lego-section-bg':'var(--cosmic-bg-primary,var(--cosmic-brand-primary,#243447))',
+                '--cosmic-lego-heading':'var(--cosmic-color-on-primary,var(--cosmic-color-on-dark,#ffffff))',
+                '--cosmic-lego-body':'var(--cosmic-on-primary-muted,color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 78%,transparent))',
+                '--cosmic-lego-muted':'var(--cosmic-on-primary-muted,color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 62%,transparent))',
+                '--cosmic-lego-icon':'var(--cosmic-color-on-primary,#ffffff)',
+                '--cosmic-lego-card-bg':'var(--cosmic-bg-primary-surface,color-mix(in srgb,var(--cosmic-bg-primary,#243447) 82%,white 18%))',
+                '--cosmic-lego-card-heading':'var(--cosmic-color-on-dark,var(--cosmic-color-on-primary,#ffffff))',
+                '--cosmic-lego-card-text':'color-mix(in srgb,var(--cosmic-color-on-dark,var(--cosmic-color-on-primary,#ffffff)) 78%,transparent)',
+                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 22%,transparent)',
+                '--cosmic-lego-button-bg':'var(--cosmic-bg-white,#ffffff)',
+                '--cosmic-lego-button-text':'var(--cosmic-bg-primary,var(--cosmic-brand-primary,#243447))',
+            } : legoSurface === 'slate' ? {
+                '--cosmic-lego-section-bg':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 94%,var(--cosmic-bg-primary,#243447) 6%)',
+                '--cosmic-lego-heading':'var(--cosmic-color-on-dark,#f8fafc)',
+                '--cosmic-lego-body':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 78%,transparent)',
+                '--cosmic-lego-muted':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 62%,transparent)',
+                '--cosmic-lego-icon':'var(--cosmic-brand-accent,var(--cosmic-brand-primary,#30475E))',
+                '--cosmic-lego-card-bg':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 82%,white 18%)',
+                '--cosmic-lego-card-heading':'var(--cosmic-color-on-dark,#f8fafc)',
+                '--cosmic-lego-card-text':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 76%,transparent)',
+                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 20%,transparent)',
+                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
+                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
+            } : legoSurface === 'surface' ? {
+                '--cosmic-lego-section-bg':'var(--cosmic-bg-surface,var(--cosmic-color-surface,#f3f7f4))',
+                '--cosmic-lego-heading':'var(--cosmic-color-heading,var(--cosmic-color-on-surface,#27272a))',
+                '--cosmic-lego-body':'var(--cosmic-color-body,var(--cosmic-color-on-surface,#3f3f46))',
+                '--cosmic-lego-muted':'var(--cosmic-color-muted,#64748b)',
+                '--cosmic-lego-icon':'var(--cosmic-brand-primary,#30475E)',
+                '--cosmic-lego-card-bg':'var(--cosmic-bg-white,#ffffff)',
+                '--cosmic-lego-card-heading':'var(--cosmic-color-heading,#27272a)',
+                '--cosmic-lego-card-text':'var(--cosmic-color-body,#3f3f46)',
+                '--cosmic-lego-border':'var(--cosmic-color-border,color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 14%,transparent))',
+                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
+                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
+            } : {
+                '--cosmic-lego-section-bg':'var(--cosmic-bg-white,#ffffff)',
+                '--cosmic-lego-heading':'var(--cosmic-color-heading,var(--cosmic-color-on-surface,#27272a))',
+                '--cosmic-lego-body':'var(--cosmic-color-body,#3f3f46)',
+                '--cosmic-lego-muted':'var(--cosmic-color-muted,#64748b)',
+                '--cosmic-lego-icon':'var(--cosmic-brand-primary,#30475E)',
+                '--cosmic-lego-card-bg':'var(--cosmic-card-bg,var(--cosmic-bg-surface,#ffffff))',
+                '--cosmic-lego-card-heading':'var(--cosmic-color-heading,#27272a)',
+                '--cosmic-lego-card-text':'var(--cosmic-color-body,#3f3f46)',
+                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 14%,transparent)',
+                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
+                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
+            }) : {};
+
             const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
             const emberPaletteVars = isEmberMarketplace ? {
                 '--cosmic-primary':'#1a1a16',
@@ -7314,7 +7375,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
                     data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
                     className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
-                    style={{...designVars,...emberPaletteVars}}
+                    style={{...designVars,...emberPaletteVars,...legoSurfaceVars}}
                 >
                     {universalEnabled && universalType==='video' ? <>
                         {universalVideoProvider.type==='file'
@@ -7325,7 +7386,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                               />}
                         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{background:universalOverlay}}/>
                     </> : null}
-                    <button type="button" className="cosmic-lego-open-panel" onClick={() => { setLegoActiveBlockIndex(index); setLegoHybridTarget(null); setLegoPanelOpen(true); }}><span aria-hidden="true">▦</span> {block?.ai_flex?.source === 'build_your_own' ? 'Elements' : 'Insert Elements'}</button>
+                    {isLegoBuild ? <button type="button" className="cosmic-lego-open-panel" onClick={() => { setLegoActiveBlockIndex(index); setLegoHybridTarget(null); setLegoPanelOpen(true); }}><span aria-hidden="true">▦</span> Elements</button> : null}
+                    {isLegoBuild ? <div className="cosmic-lego-surface-picker" role="group" aria-label="Section background"><span>Background</span>{['auto','white','slate','primary'].map(surface => <button key={surface} type="button" data-active={legoSurfaceMode===surface} data-surface={surface} title={surface==='auto'?`Follow Page Style · currently ${legoSurface}`:undefined} onClick={() => updateBlockContent(index,{section_surface:surface})}>{surface==='auto'?`Auto · ${legoSurface[0].toUpperCase()+legoSurface.slice(1)}`:(surface[0].toUpperCase()+surface.slice(1))}</button>)}</div> : null}
                     <div className={`cosmic-render-content ${universalEnabled && universalType==='video' ? 'relative z-[1]' : ''}`}><Component {...blockProps} /></div>
                 </div>
             );
