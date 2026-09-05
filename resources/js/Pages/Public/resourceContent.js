@@ -408,7 +408,7 @@ export const docs = [
             },
             {
                 heading: 'Marketplace and subscriptions',
-                paragraphs: ['Marketplace templates attach to the selected subscription and provision into a customer website. The installed customer copy can then be edited without modifying the master Marketplace template.'],
+                paragraphs: ['Marketplace is an Agency feature. Each template installation uses Cosmic Credits and provisions into a normal customer Website that shares the same Agency website allowance as Cosmic Studio. The installed customer copy can then be edited without modifying the master Marketplace template.'],
             },
         ],
     },

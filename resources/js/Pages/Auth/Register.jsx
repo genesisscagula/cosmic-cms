@@ -59,7 +59,7 @@ function StepIndicator({ currentStep }) {
 
 export default function Register({ trialToken = '', trialEmail = '', trialPlan = '', marketplaceTemplate = null }) {
     const storageKey = `cosmic:onboarding:${marketplaceTemplate?.slug || trialToken || 'new'}`;
-    const selectedPlan = plans[trialPlan] || plans[marketplaceTemplate?.plan] || plans.starter;
+    const selectedPlan = plans[trialPlan] || (marketplaceTemplate ? plans.agency_starter : plans[marketplaceTemplate?.plan]) || plans.starter;
     const availableIndustries = marketplaceTemplate?.industry && !industries.includes(marketplaceTemplate.industry)
         ? [marketplaceTemplate.industry, ...industries]
         : industries;
@@ -81,7 +81,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
         password_confirmation: '',
         trial_token: trialToken || '',
         marketplace_template: marketplaceTemplate?.slug || '',
-        selected_plan: trialPlan || marketplaceTemplate?.plan || 'starter',
+        selected_plan: trialPlan || (marketplaceTemplate ? 'agency_starter' : marketplaceTemplate?.plan) || 'starter',
         website_name: '',
         website_url: '',
         industry: marketplaceTemplate?.industry || '',
@@ -232,11 +232,11 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                             <p className="mt-1 text-violet-200">{marketplaceTemplate.industry} · {marketplaceTemplate.pages} pages</p>
                         </div>
                         <div className="rounded-xl border border-violet-300/20 bg-black/20 px-4 py-2 text-right">
-                            <p className="text-xs text-violet-200">{selectedPlan.name}</p>
-                            <p className="font-bold text-white">{selectedPlan.price}/month</p>
+                            <p className="text-xs text-violet-200">Template installation</p>
+                            <p className="font-bold text-white">{Number(marketplaceTemplate.creditPrice || 0).toLocaleString()} Credits</p>
                         </div>
                     </div>
-                    <p className="mt-3 text-xs leading-5 text-violet-200">This exact website stays attached through PayPal checkout and account provisioning.</p>
+                    <p className="mt-3 text-xs leading-5 text-violet-200">This exact website stays attached to your account. Its Marketplace template price is a one-install Cosmic Credit charge, separate from the account subscription.</p>
                 </div>
             )}
 
@@ -348,7 +348,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                                     <li>✓ {selectedPlan.welcome}</li>
                                     <li>✓ {marketplaceTemplate ? `${marketplaceTemplate.name} selected` : 'Your trial landing page is preserved'}</li>
                                 </ul>
-                                <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-400">After account creation, you’ll be redirected securely to PayPal to activate this plan.</p>
+                                <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-400">After account creation, you’ll be redirected securely to PayPal to activate the Agency plan. The Marketplace template itself is installed later with Cosmic Credits.</p>
                             </aside>
                         </div>
                     </section>

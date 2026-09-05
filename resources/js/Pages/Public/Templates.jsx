@@ -68,7 +68,7 @@ export default function Templates({ catalogReady = false, templates = [], indust
                         ['Complete websites', 'Multi-page designs with navigation and reusable patterns.'],
                         ['AI personalization', 'Luna adapts content without randomly replacing the design system.'],
                         ['Reusable design kit', 'New pages inherit the same visual language by default.'],
-                        ['Website care ready', 'Built to fit the Marketplace subscription and care workflow.'],
+                        ['Website care ready', 'Installed into a normal Agency website and supported through the existing Agency care workflow.'],
                     ].map(([title, copy]) => (
                         <div key={title} className="rounded-2xl border border-slate-200 bg-white p-4">
                             <p className="text-xs font-black text-[#07132c]">{title}</p>

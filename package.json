@@ -44,7 +44,11 @@
     "audit:sparks-guards": "node scripts/audit-spark-schema-guards-batch5.mjs",
     "audit:sparks-final": "node scripts/audit-spark-roundtrip-batch6.mjs",
     "audit:hotfix-batch2-add-section": "node scripts/audit-hotfix-batch2-add-section-css-isolation.mjs",
-    "audit:edit-section-contextual-luna": "node scripts/audit-edit-section-contextual-luna.mjs"
+    "audit:edit-section-contextual-luna": "node scripts/audit-edit-section-contextual-luna.mjs",
+    "audit:cosmic-lego-responsive-batch7": "node scripts/audit-cosmic-lego-responsive-batch7.mjs",
+    "audit:cosmic-lego-hybrid-sparks-batch8": "node scripts/audit-cosmic-lego-hybrid-sparks-batch8.mjs",
+    "audit:cosmic-lego-cross-spark-batch9": "node scripts/audit-cosmic-lego-cross-spark-batch9.mjs",
+    "audit:cosmic-lego-final-batch10": "node scripts/audit-cosmic-lego-final-batch10.mjs"
   },
   "devDependencies": {
     "@headlessui/react": "^2.0.0",
@@ -65,5 +69,5 @@
     "lottie-react": "^2.4.1",
     "html2canvas": "^1.4.1"
   },
-  "version": "1.0.27"
+  "version": "1.0.39"
 }

@@ -12,6 +12,11 @@ import {
     getSparkFieldExtraAnchors,
     normalizeSparkExtraTargetPath,
 } from './sparkExtrasContract';
+import {
+    canInsertLegoTypeIntoHybridSpark,
+    getHybridSparkInsertionAnchors,
+    hybridSparkExtraToLegoNode,
+} from './hybridSparkInsertionContract';
 
 const SparkFieldExtrasContext = createContext(null);
 
@@ -72,6 +77,24 @@ const scoreDescriptor = (descriptor, request) => {
 };
 
 const extraSpacingClass = (placement) => placement === 'before' ? 'mb-3' : 'mt-3';
+
+const extraPortableStyle = (extra) => {
+    const x = extra?.style && typeof extra.style === 'object' ? extra.style : {};
+    const px = (value) => value === '' || value === null || value === undefined ? undefined : `${Number(value) || 0}px`;
+    const pct = (value) => value === '' || value === null || value === undefined ? undefined : `${Number(value) || 0}%`;
+    const shadow = { none: 'none', sm: '0 1px 2px rgba(15,23,42,.08)', md: '0 8px 20px rgba(15,23,42,.10)', lg: '0 14px 34px rgba(15,23,42,.12)', xl: '0 24px 56px rgba(15,23,42,.16)' };
+    return {
+        color: x.color || undefined,
+        background: x.background || undefined,
+        gap: px(x.gap), maxWidth: px(x.max_width), minHeight: px(x.min_height), width: pct(x.width),
+        padding: px(x.padding), paddingLeft: px(x.padding_x), paddingRight: px(x.padding_x), paddingTop: px(x.padding_y), paddingBottom: px(x.padding_y),
+        borderRadius: px(x.radius), border: x.border_width ? `${Number(x.border_width) || 1}px solid ${x.border_color || 'rgba(15,23,42,.12)'}` : undefined,
+        boxShadow: shadow[x.shadow] || undefined, textAlign: x.text_align || undefined, fontSize: px(x.font_size), fontWeight: x.font_weight || undefined,
+        lineHeight: x.line_height || undefined, opacity: x.opacity != null ? Math.max(0, Math.min(1, Number(x.opacity) || 0)) : undefined,
+        alignSelf: x.self_align === 'start' ? 'flex-start' : x.self_align === 'end' ? 'flex-end' : x.self_align || undefined,
+    };
+};
+
 const spacerClass = (size) => ({
     xs: 'h-2',
     sm: 'h-4',
@@ -81,17 +104,34 @@ const spacerClass = (size) => ({
     '2xl': 'h-20',
 }[String(size || '').toLowerCase()] || 'h-6');
 
-function SparkFieldExtraItem({ extra }) {
+function SparkFieldExtraItem({ extra, targetPath = null, placement = null }) {
+    const context = useContext(SparkFieldExtrasContext);
     const type = String(extra?.type || '').toLowerCase();
     const data = extra?.data || {};
+    const portableNode = hybridSparkExtraToLegoNode(extra);
+    const portableStyle = extraPortableStyle(extra);
     const common = {
         'data-cosmic-field-extra': '1',
         'data-cosmic-extra-id': extra?.id || undefined,
         'data-cosmic-extra-type': type || undefined,
+        draggable: Boolean(context?.hybridBuilder && portableNode),
+        onDragStart: context?.hybridBuilder && portableNode ? (event) => {
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('application/x-cosmic-lego', JSON.stringify({
+                kind: 'hybrid-extra',
+                type,
+                node: portableNode,
+                sourceBlockIndex: context.blockIndex,
+                sourceTargetPath: targetPath,
+                sourcePlacement: placement,
+                sourceExtraId: extra?.id || null,
+            }));
+        } : undefined,
     };
 
     if (type === 'image') {
-        return <span {...common} className="cosmic-field-extra cosmic-field-extra--image block w-full overflow-hidden rounded-2xl" style={{ borderRadius: 'var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))' }}>
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--image block w-full overflow-hidden rounded-2xl" style={{ ...portableStyle, borderRadius: 'var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))' }}>
             {data.src ? <img
                 src={data.src}
                 alt={data.alt || ''}
@@ -113,7 +153,7 @@ function SparkFieldExtraItem({ extra }) {
                 target={data.target || '_self'}
                 rel={data.rel || (data.target === '_blank' ? 'noopener noreferrer' : undefined)}
                 className="inline-flex min-h-10 items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold no-underline"
-                style={{
+                style={{ ...portableStyle,
                     borderRadius: 'var(--cosmic-local-button-radius,var(--cosmic-button-radius,999px))',
                     backgroundColor: 'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#0f172a))',
                     color: 'var(--cosmic-button-primary-text,#fff)',
@@ -128,7 +168,7 @@ function SparkFieldExtraItem({ extra }) {
             role="heading"
             aria-level={Math.max(1, Math.min(6, Number(data.level) || 2))}
             className="cosmic-field-extra cosmic-field-extra--heading block text-2xl font-semibold"
-            style={{
+            style={{ ...portableStyle,
                 fontSize: 'var(--cosmic-local-h3-size,var(--cosmic-h3-size,1.75rem))',
                 lineHeight: 'var(--cosmic-local-h3-line,var(--cosmic-h3-line,1.15))',
                 color: 'var(--cosmic-color-heading,currentColor)',
@@ -137,22 +177,22 @@ function SparkFieldExtraItem({ extra }) {
     }
 
     if (type === 'text') {
-        return <span {...common} className="cosmic-field-extra cosmic-field-extra--text block text-base" style={{ fontSize: 'var(--cosmic-local-body-size,var(--cosmic-body-size,1rem))', lineHeight: 'var(--cosmic-local-body-line,var(--cosmic-body-line,1.6))', color: 'var(--cosmic-color-body,currentColor)' }}>{data.text}</span>;
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--text block text-base" style={{ ...portableStyle, fontSize: 'var(--cosmic-local-body-size,var(--cosmic-body-size,1rem))', lineHeight: 'var(--cosmic-local-body-line,var(--cosmic-body-line,1.6))', color: 'var(--cosmic-color-body,currentColor)' }}>{data.text}</span>;
     }
 
     if (type === 'badge') {
-        return <span {...common} className="cosmic-field-extra cosmic-field-extra--badge inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[.12em]" style={{ borderColor: 'var(--cosmic-color-border,currentColor)', color: 'var(--cosmic-color-heading,currentColor)' }}>{data.text}</span>;
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--badge inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[.12em]" style={{ ...portableStyle, borderColor: 'var(--cosmic-color-border,currentColor)', color: 'var(--cosmic-color-heading,currentColor)' }}>{data.text}</span>;
     }
 
     if (type === 'icon') {
-        return <span {...common} className="cosmic-field-extra cosmic-field-extra--icon inline-flex items-center gap-2" aria-label={data.label || undefined}>
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--icon inline-flex items-center gap-2" style={portableStyle} aria-label={data.label || undefined}>
             <span aria-hidden="true" className="text-xl leading-none">{data.name || '✦'}</span>
             {data.label ? <span className="text-sm">{data.label}</span> : null}
         </span>;
     }
 
     if (type === 'video') {
-        return <span {...common} className="cosmic-field-extra cosmic-field-extra--video block w-full overflow-hidden rounded-2xl" style={{ borderRadius: 'var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))' }}>
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--video block w-full overflow-hidden rounded-2xl" style={{ ...portableStyle, borderRadius: 'var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))' }}>
             {data.src ? <video
                 src={data.src}
                 poster={data.poster || undefined}
@@ -174,14 +214,73 @@ function SparkFieldExtraItem({ extra }) {
         return <span {...common} aria-hidden="true" className={vertical
             ? 'cosmic-field-extra cosmic-field-extra--divider inline-block h-10 w-px border-l'
             : 'cosmic-field-extra cosmic-field-extra--divider block h-px w-full border-t'
-        } style={{ borderColor: 'var(--cosmic-color-border,currentColor)' }} />;
+        } style={{ ...portableStyle, borderColor: 'var(--cosmic-color-border,currentColor)' }} />;
     }
 
     if (type === 'spacer') {
-        return <span {...common} aria-hidden="true" className={`cosmic-field-extra cosmic-field-extra--spacer block w-full ${spacerClass(data.size)}`} />;
+        return <span {...common} aria-hidden="true" className={`cosmic-field-extra cosmic-field-extra--spacer block w-full ${spacerClass(data.size)}`} style={portableStyle} />;
+    }
+
+    if (type === 'list') {
+        return <ul {...common} className="cosmic-field-extra cosmic-field-extra--list block list-disc space-y-1 pl-6" style={portableStyle}>{(Array.isArray(data.items) ? data.items : []).map((item, index) => <li key={index}>{item}</li>)}</ul>;
+    }
+
+    if (type === 'quote') {
+        return <blockquote {...common} className="cosmic-field-extra cosmic-field-extra--quote block border-l-2 pl-4" style={{ ...portableStyle, borderColor: 'var(--cosmic-brand-primary,currentColor)', color: 'var(--cosmic-color-body,currentColor)' }}><span>{data.text}</span>{data.cite ? <cite className="mt-2 block text-sm font-semibold not-italic">{data.cite}</cite> : null}</blockquote>;
+    }
+
+    if (type === 'stat') {
+        return <span {...common} className="cosmic-field-extra cosmic-field-extra--stat block" style={portableStyle}><strong className="block text-3xl" style={{ color: 'var(--cosmic-color-heading,currentColor)' }}>{data.value}</strong>{data.label ? <span className="text-sm" style={{ color: 'var(--cosmic-color-body,currentColor)' }}>{data.label}</span> : null}</span>;
     }
 
     return null;
+}
+
+function HybridSparkDropZone({ targetPath, placement }) {
+    const context = useContext(SparkFieldExtrasContext);
+    if (!context?.hybridBuilder || !targetPath) return null;
+
+    const handleDrop = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        let payload = null;
+        try { payload = JSON.parse(event.dataTransfer?.getData('application/x-cosmic-lego') || 'null'); } catch (_) {}
+        const type = String(payload?.type || event.dataTransfer?.getData('text/plain') || '').trim();
+        if (!canInsertLegoTypeIntoHybridSpark(type)) {
+            context.onUnsupportedHybridType?.(type);
+            return;
+        }
+        context.onInsertHybridExtra?.({ targetPath, placement, type, payload });
+    };
+
+    return <button
+        type="button"
+        className="cosmic-hybrid-spark-drop-zone"
+        data-cosmic-hybrid-drop-zone="1"
+        data-cosmic-hybrid-target={targetPath}
+        data-cosmic-hybrid-placement={placement}
+        onDragOver={(event) => {
+            const hasLego = Array.from(event.dataTransfer?.types || []).includes('application/x-cosmic-lego');
+            if (!hasLego) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+        }}
+        onDrop={handleDrop}
+        onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            context.onSelectHybridSlot?.({ targetPath, placement });
+        }}
+        title="Drop a Cosmic element here"
+        aria-label={`Add element ${placement} ${targetPath}`}
+    ><span aria-hidden="true">＋</span><small>Drop element</small></button>;
+}
+
+function SparkFieldExtraPlacement({ targetPath, placement, items }) {
+    return <Fragment>
+        <HybridSparkDropZone targetPath={targetPath} placement={placement} />
+        <SparkFieldExtraList targetPath={targetPath} placement={placement} items={items} />
+    </Fragment>;
 }
 
 export function SparkFieldExtraList({ targetPath, placement, items }) {
@@ -192,16 +291,16 @@ export function SparkFieldExtraList({ targetPath, placement, items }) {
         data-cosmic-field-extra-placement={placement}
         className={`cosmic-field-extra-list cosmic-field-extra-list--${placement} block w-full ${extraSpacingClass(placement)}`}
     >
-        {items.map((extra) => <SparkFieldExtraItem key={extra.id} extra={extra} />)}
+        {items.map((extra) => <SparkFieldExtraItem key={extra.id} extra={extra} targetPath={targetPath} placement={placement} />)}
     </span>;
 }
 
 export function SparkFieldExtraSlots({ anchor, children }) {
     if (!anchor?.target) return children;
     return <Fragment>
-        <SparkFieldExtraList targetPath={anchor.target} placement="before" items={anchor.slots?.before} />
+        <SparkFieldExtraPlacement targetPath={anchor.target} placement="before" items={anchor.slots?.before} />
         {children}
-        <SparkFieldExtraList targetPath={anchor.target} placement="after" items={anchor.slots?.after} />
+        <SparkFieldExtraPlacement targetPath={anchor.target} placement="after" items={anchor.slots?.after} />
     </Fragment>;
 }
 
@@ -287,14 +386,26 @@ const appendPortalMarker = (anchorNode, descriptor, placement) => {
     return marker;
 };
 
-export function SparkFieldExtrasProvider({ block, schema, children }) {
-    const descriptors = useMemo(() => getSparkFieldExtraAnchors(block, schema), [block, schema]);
+export function SparkFieldExtrasProvider({ block, schema, children, builderMode = false, blockIndex = null, onInsertHybridExtra = null, onSelectHybridSlot = null, onUnsupportedHybridType = null }) {
+    const descriptors = useMemo(() => {
+        if (!builderMode) return getSparkFieldExtraAnchors(block, schema);
+        const hybrid = getHybridSparkInsertionAnchors(block, schema);
+        if (!hybrid.length) return getSparkFieldExtraAnchors(block, schema);
+        const byTarget = new Map(hybrid.map((item) => [item.target, item]));
+        getSparkFieldExtraAnchors(block, schema).forEach((item) => byTarget.set(item.target, { ...byTarget.get(item.target), ...item }));
+        return Array.from(byTarget.values());
+    }, [block, schema, builderMode]);
     const claimedThisRenderRef = useRef(new Set());
     claimedThisRenderRef.current = new Set();
     const hostRef = useRef(null);
     const [fallbackAnchors, setFallbackAnchors] = useState([]);
 
     const contextValue = useMemo(() => ({
+        hybridBuilder: Boolean(builderMode && typeof onInsertHybridExtra === 'function'),
+        blockIndex,
+        onInsertHybridExtra,
+        onSelectHybridSlot,
+        onUnsupportedHybridType,
         resolveAnchor(request) {
             const explicit = normalizeSparkExtraTargetPath(request?.fieldPath);
             if (explicit) {
@@ -316,7 +427,7 @@ export function SparkFieldExtrasProvider({ block, schema, children }) {
     // Claims reset when the provider rerenders. Component refs retain their
     // resolved target between local child rerenders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [descriptors]);
+    }), [descriptors, builderMode, blockIndex, onInsertHybridExtra, onSelectHybridSlot, onUnsupportedHybridType]);
 
     const descriptorSignature = useMemo(() => descriptors.map((descriptor) => [
         descriptor.target,
@@ -350,14 +461,14 @@ export function SparkFieldExtrasProvider({ block, schema, children }) {
             anchorNode.setAttribute('data-cosmic-field-anchor-mode', 'fallback');
             annotatedNodes.push({ node: anchorNode, target: descriptor.target });
 
-            if (descriptor.slots?.before?.length) {
+            if (builderMode || descriptor.slots?.before?.length) {
                 const marker = appendPortalMarker(anchorNode, descriptor, 'before');
                 if (marker) {
                     markers.push(marker);
                     portals.push({ marker, descriptor, placement: 'before' });
                 }
             }
-            if (descriptor.slots?.after?.length) {
+            if (builderMode || descriptor.slots?.after?.length) {
                 const marker = appendPortalMarker(anchorNode, descriptor, 'after');
                 if (marker) {
                     markers.push(marker);
@@ -387,7 +498,7 @@ export function SparkFieldExtrasProvider({ block, schema, children }) {
         <div ref={hostRef} data-cosmic-field-extras-host="1" style={{ display: 'contents' }}>
             {children}
             {fallbackAnchors.map(({ marker, descriptor, placement }) => createPortal(
-                <SparkFieldExtraList
+                <SparkFieldExtraPlacement
                     targetPath={descriptor.target}
                     placement={placement}
                     items={descriptor.slots?.[placement]}

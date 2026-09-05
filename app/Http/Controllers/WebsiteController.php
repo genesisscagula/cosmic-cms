@@ -536,6 +536,12 @@ class WebsiteController extends Controller
                 'credit_balance' => $creditBalance,
                 'plan_capabilities' => $planCapabilities,
                 'websites_dashboard' => $websitesDashboard,
+                'website_creation' => [
+                    // Keep Dashboard creation choices connected to the existing Marketplace route.
+                    // In production this local route redirects to marketplace.cosmiccms.com.
+                    'marketplace_url' => route('marketplace.local.home'),
+                    'website_limit' => app(AgencyWebsiteLimitService::class)->summary($user),
+                ],
                 'agency_insights' => $agencyInsights,
                 'overview_analytics' => app(AgencyAnalyticsService::class)->aggregate($websites, 90),
                 'team_workspace' => $teamWorkspace,

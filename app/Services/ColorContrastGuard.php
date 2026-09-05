@@ -67,6 +67,38 @@ final class ColorContrastGuard
             : $this->readableForeground($background, $foreground, $minimumRatio);
     }
 
+    /**
+     * Return the most-muted blend of a readable foreground toward the background
+     * that still meets the requested WCAG contrast ratio. This is intended for
+     * secondary shell copy (footer metadata, helper text, etc.) where simply
+     * falling back to pure white/black would erase the visual hierarchy.
+     */
+    public function readableMutedForeground(string $background, ?string $foreground = null, float $minimumRatio = 4.5): string
+    {
+        $background = $this->normalizeHex($background, '#FFFFFF') ?? '#FFFFFF';
+        $preferred = $this->normalizeHex($foreground);
+        if ($preferred !== null && $this->contrastRatio($preferred, $background) >= $minimumRatio) return $preferred;
+
+        $foreground = $this->readableForeground($background, $preferred, $minimumRatio);
+
+        // Find the most-muted blend toward the shell background that still
+        // satisfies WCAG AA for normal-sized footer/header copy.
+        $low = 0.0;
+        $high = 1.0;
+        for ($index = 0; $index < 18; $index++) {
+            $mid = ($low + $high) / 2;
+            $candidate = $this->mix($foreground, $background, $mid);
+            if ($this->contrastRatio($candidate, $background) >= $minimumRatio) {
+                $high = $mid;
+            } else {
+                $low = $mid;
+            }
+        }
+
+        // A tiny safety margin avoids RGB rounding landing just under 4.5:1.
+        return $this->mix($foreground, $background, min(1.0, $high + 0.015));
+    }
+
     public function isLight(string $hex): bool
     {
         return $this->luminance($hex) >= 0.46;

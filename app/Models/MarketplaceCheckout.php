@@ -12,6 +12,7 @@ class MarketplaceCheckout extends Model
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
     public const STATUS_PAYMENT_CANCELLED = 'payment_cancelled';
     public const STATUS_PAID = 'paid';
+    public const STATUS_CREDITS_CHARGED = 'credits_charged';
     public const STATUS_SUBSCRIPTION_READY = 'subscription_ready';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_EXPIRED = 'expired';
@@ -22,6 +23,7 @@ class MarketplaceCheckout extends Model
         'marketplace_template_id',
         'pending_onboarding_id',
         'payment_order_id',
+        'credit_transaction_id',
         'selected_plan',
         'status',
         'amount_minor',
@@ -58,5 +60,10 @@ class MarketplaceCheckout extends Model
     public function paymentOrder(): BelongsTo
     {
         return $this->belongsTo(PaymentOrder::class, 'payment_order_id');
+    }
+
+    public function creditTransaction(): BelongsTo
+    {
+        return $this->belongsTo(CreditTransaction::class, 'credit_transaction_id');
     }
 }

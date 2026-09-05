@@ -419,10 +419,33 @@ function LedgerMarketplaceTemplateFooter({ template, embed = false }) {
     return <footer style={{background:'#09242d',color:'#fff'}}><div className="grid w-full gap-10 px-6 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.5fr_.7fr_.7fr_1fr] lg:px-12 xl:px-16"><div><a href={href('home')} className="text-2xl font-semibold tracking-[-.035em]">Ledger<span style={{color:'#d3b166'}}>Point</span></a><p className="mt-4 max-w-[360px] text-sm leading-6 text-white/55">Clear accounting, practical advice, and a better view of what comes next.</p></div><div><p className="font-semibold">Navigate</p><div className="mt-4 grid gap-2 text-xs text-white/55"><a href={href('home')}>Home</a><a href={href('about')}>About</a><a href={href('services')}>Services</a></div></div><div><p className="font-semibold">Support</p><div className="mt-4 grid gap-2 text-xs text-white/55"><a href={href('faq')}>FAQ</a><span>Privacy</span><span>Terms</span></div></div><div><p className="font-semibold">Contact</p><div className="mt-4 grid gap-2 text-xs leading-5 text-white/55"><span>(02) 5550 0148</span><span>hello@ledgerpoint.example</span><span>Level 6 · 42 Market Street<br/>Sydney NSW</span></div></div></div><div className="border-t px-6 py-5 text-[10px] text-white/40 sm:px-8 lg:px-12 xl:px-16" style={{borderColor:'rgba(255,255,255,.1)'}}>© {new Date().getFullYear()} LedgerPoint Accounting. All rights reserved.</div></footer>;
 }
 
+function HarborMarketplaceTemplateHeader({ template, embed = false }) {
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const current = String(template?.current_page?.slug || 'home');
+    const items = [['Home','home'],['Properties','listings'],['Buy','buyers'],['Sell','sellers'],['About Us','about'],['Neighborhoods','neighborhoods'],['Contact','contact']];
+    const href=(slug)=>demoHref(template,slug,embed);
+    const BrandMark=()=> <span className="flex items-center gap-3">
+        <svg viewBox="0 0 44 52" className="h-[52px] w-[44px] shrink-0" fill="none" stroke="#c8a052" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 19 22 5l16 14"/><path d="M11 17v29M33 17v13M11 28h22"/><path d="M22 14v11M18 19h8"/><path d="M11 36h11l4 4h10"/><circle cx="36" cy="40" r="2.2"/></svg>
+        <span className="leading-none"><span className="block font-serif text-[21px] tracking-[.055em] text-white">HARBOR &amp; KEY</span><span className="mt-1 block text-center text-[9px] font-bold tracking-[.42em]" style={{color:'#c8a052'}}>REALTY</span></span>
+    </span>;
+    return <header className="relative z-50" style={{background:'#071f3d',color:'#fff'}}>
+        <div className="flex min-h-[80px] w-full items-center justify-between gap-5 px-5 sm:px-8 lg:px-[78px]">
+            <a href={href('home')} className="shrink-0"><BrandMark/></a>
+            <nav className="hidden min-w-0 items-center gap-1 xl:flex" aria-label="Harbor & Key navigation">
+                {items.map(([label,slug])=><a key={slug} href={href(slug)} className="relative px-4 py-7 text-[12px] font-semibold text-white/90 transition hover:text-white">{label}{current===slug&&<span className="absolute bottom-0 left-4 right-4 h-[3px]" style={{background:'#c8a052'}}/>}</a>)}
+            </nav>
+            <div className="hidden shrink-0 items-center gap-5 xl:flex"><span className="inline-flex items-center gap-2 text-[12px] font-semibold text-white/90"><span style={{color:'#c8a052'}}>☎</span> +63 912 345 6789</span><a href={href('contact')} className="inline-flex min-h-[40px] items-center justify-center rounded-[3px] px-5 text-[11px] font-black text-white" style={{background:'#c6a052'}}>BOOK A CONSULTATION</a></div>
+            <button type="button" onClick={()=>setMobileOpen(v=>!v)} className="grid h-10 w-10 place-items-center rounded-[3px] border text-lg xl:hidden" style={{borderColor:'rgba(255,255,255,.22)',color:'#fff'}} aria-label="Toggle navigation">{mobileOpen?'×':'☰'}</button>
+        </div>
+        {mobileOpen&&<nav className="grid border-t px-5 py-4 xl:hidden" style={{borderColor:'rgba(255,255,255,.12)',background:'#071f3d'}}>{items.map(([label,slug])=><a key={slug} href={href(slug)} onClick={()=>setMobileOpen(false)} className="border-b px-2 py-3 text-sm font-semibold text-white/80" style={{borderColor:'rgba(255,255,255,.08)'}}>{label}</a>)}<div className="mt-4 flex flex-col gap-3"><span className="text-xs text-white/70">☎ +63 912 345 6789</span><a href={href('contact')} className="inline-flex min-h-11 items-center justify-center rounded-[3px] text-xs font-black text-white" style={{background:'#c6a052'}}>BOOK A CONSULTATION</a></div></nav>}
+    </header>;
+}
+
 function MarketplaceTemplateHeader({ template, palette, embed = false }) {
     const [mobileOpen, setMobileOpen] = useState(false);
     if (String(template?.slug || '') === 'bistro-classic') return <EmberMarketplaceTemplateHeader template={template} embed={embed} />;
     if (String(template?.slug || '') === 'ledger-start') return <LedgerMarketplaceTemplateHeader template={template} embed={embed} />;
+    if (String(template?.slug || '') === 'harbor-key-realty') return <HarborMarketplaceTemplateHeader template={template} embed={embed} />;
     const navigation = Array.isArray(template?.navigation) ? template.navigation : [];
     const header = template?.global_header || {};
     const logoText = header.logo_text || header.brand || template?.name || 'Website';
@@ -501,9 +524,35 @@ function MarketplaceTemplateHeader({ template, palette, embed = false }) {
     );
 }
 
+function HarborMarketplaceTemplateFooter({ template, embed = false }) {
+    const footer = template?.global_footer || {};
+    const mega = footer.mega_footer || {};
+    const href=(slug)=>demoHref(template,slug,embed);
+    const hrefFor=(url)=> isExternalUrl(url) ? url : href(normalizedPath(url));
+    const fallbackColumns = [
+        {title:'Quick Links',items:[{label:'Home',url:'/'},{label:'Properties',url:'/listings'},{label:'Buy',url:'/buyers'},{label:'Sell',url:'/sellers'},{label:'About Us',url:'/about'},{label:'Contact',url:'/contact'}]},
+        {title:'Our Services',items:[{label:'Residential Sales',url:'/listings'},{label:'Luxury Properties',url:'/listings'},{label:'Rentals & Leasing',url:'/listings'},{label:'Property Management',url:'/contact'},{label:'Investment Consulting',url:'/contact'},{label:'Relocation Services',url:'/contact'}]},
+        {title:'Contact Us',items:[{label:'+63 912 345 6789',url:'tel:+639123456789'},{label:'hello@harborandkey.com',url:'mailto:hello@harborandkey.com'},{label:'www.harborandkey.com',url:'/'},{label:'Mon–Sat · 9:00 AM–6:00 PM',url:'/contact'}]},
+        {title:'Our Office',items:[{label:'Harbor & Key Realty',url:'/contact'},{label:'8F The Waterfront Tower',url:'/contact'},{label:'Lahug, Cebu City 6000',url:'/contact'},{label:'View on Map →',url:'/contact'}]},
+    ];
+    const columns = Array.isArray(mega.columns) && mega.columns.length ? mega.columns : fallbackColumns;
+    const newsletter = footer.newsletter || {};
+    const socials = Array.isArray(footer.social_links) ? footer.social_links : [];
+    const BrandMark=()=> <span className="flex items-center gap-3"><svg viewBox="0 0 44 52" className="h-[48px] w-[40px] shrink-0" fill="none" stroke="#c8a052" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 19 22 5l16 14"/><path d="M11 17v29M33 17v13M11 28h22"/><path d="M22 14v11M18 19h8"/><path d="M11 36h11l4 4h10"/><circle cx="36" cy="40" r="2.2"/></svg><span className="leading-none"><span className="block font-serif text-[17px] tracking-[.055em] text-white">HARBOR &amp; KEY</span><span className="mt-1 block text-center text-[8px] font-bold tracking-[.42em]" style={{color:'#c8a052'}}>REALTY</span></span></span>;
+    return <footer style={{background:'#071f3d',color:'#fff'}}>
+        <div className="grid w-full gap-9 px-6 py-12 sm:px-8 md:grid-cols-2 lg:px-10 xl:grid-cols-[1.22fr_.68fr_.82fr_.9fr_.9fr_1.02fr] xl:gap-7 xl:px-[50px]">
+            <div><a href={href('home')}><BrandMark/></a><p className="mt-4 max-w-[300px] text-[11px] leading-6 text-white/60">{mega.tagline || footer.tagline || footer.description || 'Connecting you to exceptional properties and experiences across Cebu and beyond.'}</p><p className="mt-6 text-[9px] font-black uppercase tracking-[.16em] text-white/50">Follow us</p><div className="mt-3 flex flex-wrap gap-4 text-[10px] font-bold text-white/70">{socials.length ? socials.map((item,index)=><a key={`${item.label}-${index}`} href={item.url||'#'}>{item.label}</a>) : <><span>f</span><span>◎</span><span>in</span><span>▶</span></>}</div></div>
+            {columns.slice(0,4).map((column,index)=><div key={column.title||index}><p className="text-[10px] font-black uppercase tracking-[.14em] text-white/90">{column.title}</p><div className="mt-4 grid gap-2.5">{(column.items || column.links || []).slice(0,6).map((item,itemIndex)=><a key={`${item.label}-${itemIndex}`} href={hrefFor(item.url||'#')} className="text-[10px] leading-5 text-white/60 transition hover:text-white">{item.label}</a>)}</div></div>)}
+            <div><p className="text-[10px] font-black uppercase tracking-[.14em] text-white/90">{newsletter.title || 'Newsletter'}</p><p className="mt-4 text-[10px] leading-5 text-white/60">{newsletter.text || 'Be the first to get the latest property listings and news.'}</p><div className="mt-4 grid gap-2"><input type="email" placeholder={newsletter.placeholder || 'Enter your email'} className="min-h-[38px] border bg-transparent px-3 text-[10px] text-white outline-none placeholder:text-white/30" style={{borderColor:'rgba(255,255,255,.28)',borderRadius:2}}/><button type="button" className="min-h-[38px] px-3 text-[9px] font-black text-white" style={{background:'#c6a052',borderRadius:2}}>{newsletter.button_label || 'SUBSCRIBE'}</button></div></div>
+        </div>
+        <div className="border-t px-6 py-5 text-[9px] text-white/40 sm:px-8 lg:px-10 xl:px-[50px]" style={{borderColor:'rgba(255,255,255,.1)'}}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span>{footer.copyright || `© ${new Date().getFullYear()} Harbor & Key Realty. All Rights Reserved.`}</span><span className="flex flex-wrap gap-5"><a href={hrefFor(footer.privacy_url || '/privacy-policy')}>Privacy Policy</a><a href={hrefFor(footer.terms_url || '/terms-and-conditions')}>Terms of Use</a><a href="/sitemap.xml">Sitemap</a></span></div></div>
+    </footer>;
+}
+
 function MarketplaceTemplateFooter({ template, palette, embed = false }) {
     if (String(template?.slug || '') === 'bistro-classic') return <EmberMarketplaceTemplateFooter template={template} embed={embed} />;
     if (String(template?.slug || '') === 'ledger-start') return <LedgerMarketplaceTemplateFooter template={template} embed={embed} />;
+    if (String(template?.slug || '') === 'harbor-key-realty') return <HarborMarketplaceTemplateFooter template={template} embed={embed} />;
     const footer = template?.global_footer || {};
     const columns = Array.isArray(footer.columns) ? footer.columns : [];
     const pages = Array.isArray(template?.pages) ? template.pages : [];

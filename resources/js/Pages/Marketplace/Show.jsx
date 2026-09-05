@@ -68,7 +68,7 @@ function RelatedTemplate({ template }) {
             </Link>
             <div className="p-5">
                 <p className="text-xs font-bold text-slate-500">{template.industryLabel} · {template.pages} pages</p>
-                <div className="mt-4 flex items-center justify-between gap-3"><p className="text-2xl font-black text-slate-950">${template.price}<span className="text-xs font-bold text-slate-400">/mo</span></p><Link href={template.demoPath} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Preview</Link></div>
+                <div className="mt-4 flex items-center justify-between gap-3"><p className="text-2xl font-black text-slate-950">{Number(template.creditPrice || 0).toLocaleString()}<span className="ml-1 text-xs font-bold text-slate-400">Cosmic Credits</span></p><Link href={template.demoPath} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Preview</Link></div>
             </div>
         </article>
     );
@@ -98,13 +98,11 @@ export default function MarketplaceTemplateShow({
         description,
         category: `${template.industry.label} website template`,
         brand: { '@type': 'Brand', name: 'Cosmic CMS' },
-        offers: {
-            '@type': 'Offer',
-            priceCurrency: String(template.currency || 'USD').toUpperCase(),
-            price: Number(template.monthly_price || 0).toFixed(2),
-            availability: 'https://schema.org/InStock',
-            url: `${String(canonicalUrl).replace(/\/$/, '')}${seoPath}`,
-        },
+        additionalProperty: [{
+            '@type': 'PropertyValue',
+            name: 'Template installation price',
+            value: `${Number(template.credit_price || 0).toLocaleString()} Cosmic Credits`,
+        }],
     };
 
     return (
@@ -138,8 +136,8 @@ export default function MarketplaceTemplateShow({
                                     </div>
 
                                     <div className="mt-8 rounded-[22px] border border-slate-200 bg-white p-5 shadow-[0_20px_55px_rgba(15,23,42,.08)] sm:p-6">
-                                        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-slate-400">Managed website subscription</p><p className="mt-2 text-4xl font-black tracking-[-.04em] text-slate-950">${Number(template.monthly_price || 0).toFixed(0)}<span className="text-sm font-bold text-slate-400"> / month</span></p></div><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{template.plan_label}</span></div>
-                                        <p className="mt-3 text-xs leading-5 text-slate-500">Template, AI personalization, hosting, SSL, backups, security, and ongoing website care are included.</p>
+                                        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-slate-400">One template installation</p><p className="mt-2 text-4xl font-black tracking-[-.04em] text-slate-950">{Number(template.credit_price || 0).toLocaleString()}<span className="ml-2 text-sm font-bold text-slate-400">Cosmic Credits</span></p></div><span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">{template.plan_label}</span></div>
+                                        <p className="mt-3 text-xs leading-5 text-slate-500">This is the one-time Marketplace template installation price. Normal editing does not charge the template price again; Agency access and AI usage continue under their existing rules.</p>
                                         <div className="mt-5 grid gap-2.5 sm:grid-cols-2"><Link href={template.demo_path} className="flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-800 transition hover:bg-slate-50">View Full Demo</Link><Link href={checkoutPath} className={`flex min-h-12 items-center justify-center rounded-xl bg-gradient-to-r px-5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 ${planButton[plan] || planButton.growth}`}>Get This Website</Link></div>
                                         <p className="mt-4 text-center text-[11px] font-semibold text-slate-400">No coding required · customize after AI setup</p>
                                     </div>
@@ -173,13 +171,13 @@ export default function MarketplaceTemplateShow({
 
                     <section className="border-y border-slate-200 bg-white">
                         <div className="mx-auto max-w-[1480px] px-5 py-14 sm:px-7 lg:px-10 lg:py-20">
-                            <div className="grid gap-9 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">Included features</p><h2 className="mt-2 text-3xl font-black tracking-[-.04em] text-slate-950">Ready for a real business launch.</h2><p className="mt-4 text-sm leading-6 text-slate-500">The subscription includes the website system around the design, not just a downloadable template file.</p></div><div className="grid gap-3 sm:grid-cols-2">{[...features, ...(template.ai_personalization_enabled ? ['Luna AI content personalization'] : []), ...(template.is_customizable ? ['Pure visual customization'] : []), ...(template.website_care_included ? ['Hosting, security & website care'] : [])].filter((value, index, list) => value && list.indexOf(value) === index).map((feature) => <div key={feature} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-700"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs text-emerald-700">✓</span>{feature}</div>)}</div></div>
+                            <div className="grid gap-9 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">Included features</p><h2 className="mt-2 text-3xl font-black tracking-[-.04em] text-slate-950">Ready for a real business launch.</h2><p className="mt-4 text-sm leading-6 text-slate-500">The installed website keeps the complete design system around the template, not just a downloadable file.</p></div><div className="grid gap-3 sm:grid-cols-2">{[...features, ...(template.ai_personalization_enabled ? ['Luna AI content personalization'] : []), ...(template.is_customizable ? ['Pure visual customization'] : []), ...(template.website_care_included ? ['Hosting, security & website care'] : [])].filter((value, index, list) => value && list.indexOf(value) === index).map((feature) => <div key={feature} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-700"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs text-emerald-700">✓</span>{feature}</div>)}</div></div>
                         </div>
                     </section>
 
                     {relatedTemplates.length > 0 && <section className="mx-auto max-w-[1480px] px-5 py-14 sm:px-7 lg:px-10 lg:py-20"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">More {template.industry.label} designs</p><h2 className="mt-2 text-3xl font-black tracking-[-.04em] text-slate-950">Explore similar websites.</h2></div><Link href={`${catalogPath}/${template.industry.slug}`} className="hidden text-sm font-black text-violet-700 sm:block">View all →</Link></div><div className="mt-7 grid gap-6 md:grid-cols-2 xl:grid-cols-3">{relatedTemplates.map((item) => <RelatedTemplate key={item.slug} template={item} />)}</div></section>}
 
-                    <section className="bg-[#070b1d] text-white"><div className="mx-auto flex max-w-[1200px] flex-col items-center px-5 py-16 text-center sm:px-7 lg:py-20"><p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">Like this website?</p><h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.045em] sm:text-5xl">Make {template.name} yours.</h2><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">Choose the template, answer a few business questions, and Luna will prepare the complete website for you.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><Link href={template.demo_path} className="flex min-h-12 items-center justify-center rounded-xl border border-white/20 px-6 text-sm font-black text-white hover:bg-white/10">Review Demo</Link><Link href={checkoutPath} className="flex min-h-12 items-center justify-center rounded-xl bg-violet-600 px-7 text-sm font-black text-white shadow-xl shadow-violet-950/30 hover:bg-violet-500">Get This Website — ${Number(template.monthly_price || 0).toFixed(0)}/mo</Link></div></div></section>
+                    <section className="bg-[#070b1d] text-white"><div className="mx-auto flex max-w-[1200px] flex-col items-center px-5 py-16 text-center sm:px-7 lg:py-20"><p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">Like this website?</p><h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.045em] sm:text-5xl">Make {template.name} yours.</h2><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">Choose the template, answer a few business questions, and Luna will prepare the complete website for you.</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><Link href={template.demo_path} className="flex min-h-12 items-center justify-center rounded-xl border border-white/20 px-6 text-sm font-black text-white hover:bg-white/10">Review Demo</Link><Link href={checkoutPath} className="flex min-h-12 items-center justify-center rounded-xl bg-violet-600 px-7 text-sm font-black text-white shadow-xl shadow-violet-950/30 hover:bg-violet-500">Get This Website — {Number(template.credit_price || 0).toLocaleString()} Credits</Link></div></div></section>
                 </main>
 
                 <footer className="border-t border-slate-800 bg-[#050918] text-slate-400"><div className="mx-auto flex max-w-[1480px] flex-col gap-6 px-5 py-9 sm:px-7 md:flex-row md:items-center md:justify-between lg:px-10"><MarketplaceLogo href={marketplaceHome} /><div className="flex flex-wrap gap-5 text-xs font-bold"><Link href={catalogPath} className="hover:text-white">Templates</Link><Link href={`${marketplaceHome}#pricing`} className="hover:text-white">Pricing</Link><Link href="/terms" className="hover:text-white">Terms</Link><Link href="/privacy" className="hover:text-white">Privacy</Link></div><p className="text-xs">© {new Date().getFullYear()} Cosmic CMS</p></div></footer>

@@ -6,6 +6,7 @@ use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Services\AiPageGenerationService;
 use App\Services\LunaPexelsVideoService;
+use App\Services\LunaTrialShellSelectionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -39,7 +40,7 @@ final class BuildTrialSiteBundleJob implements ShouldQueue, ShouldBeUnique
         return $this->trialId.':'.$this->pageId;
     }
 
-    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos): void
+    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos, LunaTrialShellSelectionService $shellSelection): void
     {
         $trial = TrialGeneration::query()->find($this->trialId);
         if (! $trial || $trial->claimed_at || $trial->status !== 'ready') {
@@ -62,6 +63,9 @@ final class BuildTrialSiteBundleJob implements ShouldQueue, ShouldBeUnique
             return;
         }
         if (is_array($page->blocks) && $page->blocks !== []) {
+            if ((bool) ($recipe['is_home'] ?? false) && $trial->website) {
+                $shellSelection->apply($trial, $trial->website, array_values($page->blocks), []);
+            }
             $this->markPage($trial->id, $page->id, 'ready');
             $status = $this->refreshBundleStatus($trial->id);
             if ($status === 'ready') {
@@ -96,6 +100,21 @@ final class BuildTrialSiteBundleJob implements ShouldQueue, ShouldBeUnique
                 $this->mergeMedia($trial->id, $remote);
                 $this->markPage($trial->id, $page->id, 'ready');
             });
+
+            // Once Home has real generated media, Luna can make the final shell
+            // decision before Builder opens. Inner pages inherit this website-level
+            // shell and never re-roll it independently.
+            if ((bool) ($recipe['is_home'] ?? false)) {
+                $freshTrial = TrialGeneration::query()->with('website')->find($trial->id);
+                if ($freshTrial?->website) {
+                    $shellSelection->apply(
+                        $freshTrial,
+                        $freshTrial->website,
+                        $blocks,
+                        is_array($remote['visual_intent'] ?? null) ? $remote['visual_intent'] : [],
+                    );
+                }
+            }
         } catch (Throwable $exception) {
             report($exception);
             // Keep the page non-terminal while Laravel still owns retries for

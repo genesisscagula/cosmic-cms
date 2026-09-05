@@ -17,7 +17,7 @@ class MarketplaceTemplate extends Model
 
     protected $fillable = [
         'slug', 'name', 'industry_slug', 'industry_label', 'style_slug', 'plan', 'status',
-        'monthly_price_cents', 'currency', 'page_count', 'summary', 'description',
+        'monthly_price_cents', 'credit_price', 'currency', 'page_count', 'summary', 'description',
         'thumbnail_url', 'preview_url', 'theme_key', 'theme_settings', 'global_header',
         'global_footer', 'features', 'tags', 'seo', 'onboarding_schema', 'source_bundle_key',
         'is_featured', 'is_customizable', 'ai_personalization_enabled', 'website_care_included',
@@ -36,6 +36,7 @@ class MarketplaceTemplate extends Model
         'is_customizable' => 'boolean',
         'ai_personalization_enabled' => 'boolean',
         'website_care_included' => 'boolean',
+        'credit_price' => 'integer',
         'published_at' => 'datetime',
     ];
 
@@ -59,8 +60,9 @@ class MarketplaceTemplate extends Model
         return $query->where('is_featured', true);
     }
 
-    public function getMonthlyPriceAttribute(): float
+    /** Legacy monthly_price_cents is intentionally retained for migration compatibility only. */
+    public function getCreditPriceLabelAttribute(): string
     {
-        return round(((int) $this->monthly_price_cents) / 100, 2);
+        return number_format((int) $this->credit_price).' Cosmic Credits';
     }
 }

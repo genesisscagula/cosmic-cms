@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\MarketplacePurchaseException;
 use App\Models\MarketplaceCheckout;
 use App\Models\MarketplaceTemplate;
-use App\Models\PaymentOrder;
-use App\Models\PendingOnboarding;
+use App\Models\Website;
+use App\Services\MarketplaceAcquisitionService;
 use App\Services\MarketplaceCheckoutService;
 use App\Services\MarketplaceWebsiteProvisioningService;
-use App\Services\PaymentCheckoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -19,12 +19,15 @@ use Throwable;
 
 final class MarketplaceCheckoutController extends Controller
 {
-    public function __construct(private readonly MarketplaceCheckoutService $checkouts)
-    {
+    public function __construct(
+        private readonly MarketplaceCheckoutService $checkouts,
+        private readonly MarketplaceAcquisitionService $acquisitions,
+    ) {
     }
 
     public function show(Request $request, string $template): Response
     {
+        $marketplaceProvisioning = app(MarketplaceWebsiteProvisioningService::class);
         abort_unless(Schema::hasTable('marketplace_templates'), 404);
 
         try {
@@ -33,22 +36,42 @@ final class MarketplaceCheckoutController extends Controller
             abort(404);
         }
 
-        $plan = $this->checkouts->planSummary((string) $website->plan);
+        $planConfig = (array) config('cosmic_marketplace.plans.'.(string) $website->plan, []);
+        $plan = [
+            'key' => (string) $website->plan,
+            'label' => (string) ($planConfig['label'] ?? ucfirst((string) $website->plan)),
+            'creditPrice' => (int) $website->credit_price,
+            'priceUnit' => 'cosmic_credits',
+        ];
+
         $user = $request->user();
-        $pending = $user
-            ? PendingOnboarding::query()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['pending_payment', 'payment_cancelled', 'payment_confirmed'])
-                ->latest('id')
-                ->first()
-            : null;
-        $intent = $pending && Schema::hasTable('marketplace_checkouts')
-            ? $this->checkouts->forOnboarding($pending)
-            : null;
+        $intent = null;
+        $purchaseState = null;
+        $installedWebsiteUrl = null;
+
+        if ($user && Schema::hasTable('marketplace_checkouts')) {
+            $intent = $this->checkouts->latestForUserTemplate($user, $website);
+            $access = $this->acquisitions->agencyAccess($user);
+
+            if (($access['allowed'] ?? false) && ($request->boolean('new_install') || ! $intent)) {
+                $intent = $this->checkouts->ensureAgencyIntent($user, $website, $request->boolean('new_install'));
+            }
+
+            $purchaseState = $this->acquisitions->summary($user, $website, $intent);
+
+            if (($purchaseState['completed'] ?? false) && (int) ($purchaseState['website_id'] ?? 0) > 0) {
+                $installedWebsite = Website::query()
+                    ->where('user_id', $user->id)
+                    ->find((int) $purchaseState['website_id']);
+                $installedWebsiteUrl = $installedWebsite
+                    ? $marketplaceProvisioning->builderUrl($installedWebsite)
+                    : null;
+            }
+        }
 
         $coreBase = rtrim((string) config('cosmic_marketplace.core_url', config('app.url')), '/');
         $registerQuery = http_build_query([
-            'plan' => $website->plan,
+            'plan' => 'agency_starter',
             'marketplace_template' => $website->slug,
             'source' => 'marketplace',
         ]);
@@ -57,6 +80,10 @@ final class MarketplaceCheckoutController extends Controller
             'source' => 'marketplace',
         ]);
 
+        $initialMessage = $request->string('agency_subscription')->toString() === 'active'
+            ? 'Your Agency subscription is active. Confirm the Cosmic Credit installation below to continue.'
+            : '';
+
         return Inertia::render('Marketplace/Checkout', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
@@ -64,114 +91,83 @@ final class MarketplaceCheckoutController extends Controller
             'account' => $user ? [
                 'name' => $user->name,
                 'email' => $user->email,
-                'plan' => $user->plan_key,
+                'plan' => $user->effectivePlanKey(),
                 'planStatus' => $user->plan_status,
                 'onboardingStatus' => $user->onboarding_status,
             ] : null,
             'template' => $this->templatePayload($request, $website),
             'plan' => $plan,
+            'purchaseMode' => 'cosmic_credits',
+            'creditCheckoutReady' => (bool) ($purchaseState['can_install'] ?? false),
+            'purchaseState' => $purchaseState,
             'checkoutIntent' => $intent ? [
                 'uuid' => $intent->uuid,
                 'status' => $intent->status,
             ] : null,
+            'installedWebsiteUrl' => $installedWebsiteUrl,
             'initialError' => $request->string('payment')->toString() === 'cancelled'
-                ? 'Payment was cancelled. Nothing was charged, and your website selection is still saved.'
+                ? 'Agency subscription payment was cancelled. No Marketplace template credits were charged.'
                 : '',
+            'initialMessage' => $initialMessage,
             'registerUrl' => $coreBase.'/register?'.$registerQuery,
             'loginUrl' => $coreBase.'/login?'.$loginQuery,
             'startPath' => $this->marketplacePath($request, '/checkout/'.rawurlencode($website->slug).'/start'),
             'statusPath' => $this->marketplacePath($request, '/checkout/'.rawurlencode($website->slug).'/status'),
             'retryPath' => $this->marketplacePath($request, '/checkout/'.rawurlencode($website->slug).'/retry'),
+            'newInstallPath' => $this->marketplacePath($request, '/checkout/'.rawurlencode($website->slug)).'?new_install=1',
             'marketplaceHome' => $this->marketplacePath($request, ''),
             'catalogPath' => $this->marketplacePath($request, '/templates'),
             'canonicalUrl' => rtrim((string) config('cosmic_marketplace.scheme', 'https').'://'.config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com'), '/'),
         ]);
     }
 
-    public function start(
-        Request $request,
-        string $template,
-        PaymentCheckoutService $payments,
-        MarketplaceWebsiteProvisioningService $marketplaceProvisioning,
-    ): JsonResponse {
+    public function start(Request $request, string $template): JsonResponse
+    {
         $user = $request->user();
 
         if (! $user) {
-            return response()->json(['message' => 'Sign in or create an account to continue.'], 401);
+            return response()->json(['message' => 'Sign in or create an Agency account to continue.'], 401);
         }
 
+        $validated = $request->validate([
+            'checkout_uuid' => ['required', 'uuid'],
+            'confirmed' => ['accepted'],
+        ]);
+
         try {
-            $website = $this->checkouts->publishedTemplate($template);
-            $requiredPlan = (string) $website->plan;
-
-            $pending = PendingOnboarding::query()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['pending_payment', 'payment_cancelled'])
-                ->latest('id')
-                ->first();
-
-            if ($pending) {
-                $intent = $this->checkouts->selectForPendingOnboarding($user, $pending, $website);
-                $pending = $pending->fresh();
-                $result = $payments->create(
-                    $user,
-                    'paypal',
-                    'plan',
-                    (string) $pending->selected_plan,
-                    array_merge($this->checkouts->paymentMetadata($intent), [
-                        'onboarding_id' => $pending->id,
-                    ]),
-                );
-
-                $order = PaymentOrder::query()->where('reference', $result['order_reference'])->firstOrFail();
-                $this->checkouts->linkPaymentOrder($intent, $order);
-
-                return response()->json($result + ['provider' => 'paypal']);
-            }
-
-            // Existing subscribers should not be charged again when their current
-            // plan already covers the selected website. Persist the exact selection
-            // so Batch 6 can clone/personalize it after this handoff.
-            if ($this->checkouts->userPlanCoversTemplate($user, $website)) {
-                $intent = $this->checkouts->createForUserSelection(
-                    $user,
-                    $website,
-                    (string) $user->plan_key,
-                    \App\Models\MarketplaceCheckout::STATUS_SUBSCRIPTION_READY,
-                );
-
-                $provisionedWebsite = $marketplaceProvisioning->provision($intent);
-
-                return response()->json([
-                    'subscription_ready' => true,
-                    'checkout_uuid' => $intent->uuid,
-                    'website_id' => $provisionedWebsite->id,
-                    'message' => 'Your Marketplace website is ready. Luna will help personalize it for your business.',
-                    'next_url' => $marketplaceProvisioning->builderUrl($provisionedWebsite),
-                ]);
-            }
-
-            // Signed-in customers on a lower, expired, or otherwise non-covering
-            // plan can start the required Marketplace plan directly. The checkout
-            // row carries the template through the existing PayPal fulfillment path.
-            $intent = $this->checkouts->createForUserSelection($user, $website, $requiredPlan);
-            $result = $payments->create(
+            $websiteTemplate = $this->checkouts->publishedTemplate($template);
+            $result = $this->acquisitions->confirm(
                 $user,
-                'paypal',
-                'plan',
-                $requiredPlan,
-                $this->checkouts->paymentMetadata($intent),
+                $websiteTemplate,
+                (string) $validated['checkout_uuid'],
             );
+            $intent = $this->checkouts->latestForUserTemplate($user, $websiteTemplate);
 
-            $order = PaymentOrder::query()->where('reference', $result['order_reference'])->firstOrFail();
-            $this->checkouts->linkPaymentOrder($intent, $order);
+            return response()->json([
+                ...$result,
+                'purchase_mode' => 'cosmic_credits',
+                'purchase_state' => $this->acquisitions->summary($user, $websiteTemplate, $intent),
+            ], ($result['provisioning_failed'] ?? false) ? 202 : 200);
+        } catch (MarketplacePurchaseException $exception) {
+            $websiteTemplate = isset($websiteTemplate) ? $websiteTemplate : null;
+            $intent = $websiteTemplate
+                ? $this->checkouts->latestForUserTemplate($user, $websiteTemplate)
+                : null;
+            $state = $websiteTemplate
+                ? $this->acquisitions->summary($user, $websiteTemplate, $intent)
+                : null;
 
-            return response()->json($result + ['provider' => 'paypal']);
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->reason,
+                ...$exception->context,
+                'purchase_state' => $state,
+            ], $exception->httpStatus);
         } catch (Throwable $exception) {
             report($exception);
 
             return response()->json([
-                'message' => $exception->getMessage() ?: 'Unable to start Marketplace checkout.',
+                'message' => 'Marketplace installation could not start. No additional template credits were charged. Please refresh and try again.',
             ], 422);
         }
     }
@@ -185,33 +181,40 @@ final class MarketplaceCheckoutController extends Controller
         abort_unless($user, 401);
 
         $websiteTemplate = $this->checkouts->publishedTemplate($template);
-        $checkout = MarketplaceCheckout::query()
-            ->where('user_id', $user->id)
-            ->where('marketplace_template_id', $websiteTemplate->id)
-            ->latest('id')
-            ->first();
+        $checkout = $this->checkouts->latestForUserTemplate($user, $websiteTemplate);
 
         if (! $checkout) {
-            return response()->json(['status' => 'not_started']);
+            return response()->json([
+                'status' => 'not_started',
+                'purchase_state' => $this->acquisitions->summary($user, $websiteTemplate),
+            ]);
         }
 
         $websiteId = (int) data_get($checkout->metadata, 'website_id', 0);
         $website = $websiteId > 0
-            ? \App\Models\Website::query()->where('user_id', $user->id)->find($websiteId)
+            ? Website::query()->where('user_id', $user->id)->find($websiteId)
             : null;
+        $state = $this->acquisitions->summary($user, $websiteTemplate, $checkout);
+        $creditsCharged = (int) ($checkout->credit_transaction_id ?? 0) > 0;
 
         return response()->json([
             'status' => $checkout->status,
             'checkout_uuid' => $checkout->uuid,
             'ready' => $checkout->status === MarketplaceCheckout::STATUS_COMPLETED && (bool) $website,
-            'can_retry_provisioning' => in_array($checkout->status, [MarketplaceCheckout::STATUS_PAID, MarketplaceCheckout::STATUS_SUBSCRIPTION_READY], true),
-            'next_url' => $website ? $marketplaceProvisioning->builderUrl($website) : null,
+            'can_retry_provisioning' => $creditsCharged && $checkout->status !== MarketplaceCheckout::STATUS_COMPLETED,
+            'next_url' => $checkout->status === MarketplaceCheckout::STATUS_COMPLETED && $website
+                ? $marketplaceProvisioning->builderUrl($website)
+                : null,
+            'purchase_state' => $state,
             'message' => match ($checkout->status) {
                 MarketplaceCheckout::STATUS_COMPLETED => 'Your Marketplace website is ready.',
-                MarketplaceCheckout::STATUS_SUBSCRIPTION_READY, MarketplaceCheckout::STATUS_PAID => 'Subscription confirmed. Website setup is ready to continue.',
-                MarketplaceCheckout::STATUS_PENDING_PAYMENT => 'Waiting for PayPal subscription confirmation.',
-                MarketplaceCheckout::STATUS_PAYMENT_CANCELLED => 'Payment was cancelled. Your website selection is still saved.',
-                default => 'Your Marketplace checkout is in progress.',
+                MarketplaceCheckout::STATUS_CREDITS_CHARGED => 'Template credits were charged once. Website setup can safely resume without another charge.',
+                MarketplaceCheckout::STATUS_SUBSCRIPTION_READY, MarketplaceCheckout::STATUS_PAID => $creditsCharged
+                    ? 'Template credits are confirmed. Website setup can safely continue.'
+                    : 'Your Agency subscription is active. Confirm the Cosmic Credit installation to continue.',
+                MarketplaceCheckout::STATUS_PENDING_PAYMENT => 'Waiting for Agency subscription confirmation. The Marketplace template itself has not been charged.',
+                MarketplaceCheckout::STATUS_PAYMENT_CANCELLED => 'Agency subscription payment was cancelled. No Marketplace template credits were charged.',
+                default => 'Your Marketplace installation is ready for confirmation.',
             },
         ]);
     }
@@ -225,36 +228,39 @@ final class MarketplaceCheckoutController extends Controller
         abort_unless($user, 401);
 
         $websiteTemplate = $this->checkouts->publishedTemplate($template);
-        $checkout = MarketplaceCheckout::query()
-            ->where('user_id', $user->id)
-            ->where('marketplace_template_id', $websiteTemplate->id)
-            ->latest('id')
-            ->firstOrFail();
+        $checkout = $this->checkouts->latestForUserTemplate($user, $websiteTemplate);
+        abort_unless($checkout, 404);
 
         if ($checkout->status === MarketplaceCheckout::STATUS_COMPLETED) {
             $websiteId = (int) data_get($checkout->metadata, 'website_id', 0);
-            $website = \App\Models\Website::query()->where('user_id', $user->id)->find($websiteId);
+            $website = Website::query()->where('user_id', $user->id)->find($websiteId);
             if ($website) {
                 return response()->json([
                     'ready' => true,
-                    'message' => 'Your Marketplace website is already ready.',
+                    'message' => 'Your Marketplace website is already ready. No additional credits were charged.',
                     'next_url' => $marketplaceProvisioning->builderUrl($website),
                 ]);
             }
         }
 
-        if (! in_array($checkout->status, [MarketplaceCheckout::STATUS_PAID, MarketplaceCheckout::STATUS_SUBSCRIPTION_READY], true)) {
+        if (! $checkout->credit_transaction_id) {
             return response()->json([
-                'message' => 'Website setup can only be retried after the subscription is confirmed.',
+                'message' => 'Confirm the Cosmic Credit template installation before resuming website setup.',
+                'code' => 'template_credits_not_charged',
             ], 409);
         }
 
+        $websiteId = (int) data_get($checkout->metadata, 'website_id', 0);
+        $existingWebsite = $websiteId > 0
+            ? Website::query()->where('user_id', $user->id)->find($websiteId)
+            : null;
+
         try {
-            $website = $marketplaceProvisioning->provision($checkout);
+            $website = $marketplaceProvisioning->provision($checkout, $existingWebsite);
 
             return response()->json([
                 'ready' => true,
-                'message' => 'Website setup completed. Opening Luna now.',
+                'message' => 'Website setup completed. Opening Luna now. No additional template credits were charged.',
                 'next_url' => $marketplaceProvisioning->builderUrl($website),
             ]);
         } catch (Throwable $exception) {
@@ -264,11 +270,13 @@ final class MarketplaceCheckoutController extends Controller
                 'metadata' => array_merge($checkout->metadata ?? [], [
                     'last_provisioning_error' => $exception->getMessage(),
                     'last_provisioning_error_at' => now()->toIso8601String(),
+                    'provisioning_retry_safe' => true,
                 ]),
             ])->save();
 
             return response()->json([
-                'message' => 'Your subscription is active, but website setup could not finish yet. You can safely retry without being charged again.',
+                'message' => 'Your credits were already charged once, but website setup still could not finish. Retry remains safe and will not charge again.',
+                'can_retry_provisioning' => true,
             ], 422);
         }
     }
@@ -276,8 +284,6 @@ final class MarketplaceCheckoutController extends Controller
     private function templatePayload(Request $request, MarketplaceTemplate $template): array
     {
         $template->loadMissing('pages');
-        $plan = $this->checkouts->planSummary((string) $template->plan);
-
         return [
             'slug' => $template->slug,
             'name' => $template->name,
@@ -293,8 +299,8 @@ final class MarketplaceCheckoutController extends Controller
             'customizable' => (bool) $template->is_customizable,
             'aiPersonalization' => (bool) $template->ai_personalization_enabled,
             'websiteCare' => (bool) $template->website_care_included,
-            'price' => $plan['price'],
-            'currency' => $plan['currency'],
+            'creditPrice' => (int) $template->credit_price,
+            'priceUnit' => 'cosmic_credits',
             'detailPath' => $this->marketplacePath($request, "/templates/{$template->industry_slug}/{$template->slug}"),
             'demoPath' => $this->marketplacePath($request, "/templates/{$template->industry_slug}/{$template->slug}/demo"),
         ];

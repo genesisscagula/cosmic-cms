@@ -317,3 +317,60 @@
 .cosmic-render-shell .marketplace-ember-home[data-ember-surface="cream"] { background-color:#f5f0e7 !important; }
 .cosmic-render-shell .marketplace-ember-home[data-ember-tone="dark"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) { color:#f5f0e7 !important; -webkit-text-fill-color:currentColor !important; }
 .cosmic-render-shell .marketplace-ember-home[data-ember-tone="light"] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) { color:#221b16 !important; -webkit-text-fill-color:currentColor !important; }
+
+/* Cosmic Lego Builder Batch 2 — published/export smart defaults */
+.cosmic-lego-canvas{
+    font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));
+    gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap,24px));
+}
+.cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-local-stack-gap,var(--cosmic-section-gap,20px))}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display,inherit));
+    font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size,clamp(2rem,4vw,3.5rem)));
+    line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line,1.05));
+    font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight,700));
+    letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking,-.03em));
+    color:var(--cosmic-local-h2-color,var(--cosmic-color-heading,#27272a));
+}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-text{
+    font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));
+    font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size,16px));
+    line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6));
+    color:var(--cosmic-local-body-color,var(--cosmic-color-body,#3f3f46));
+}
+.cosmic-lego-row-runtime[data-cosmic-column-count="1"] [data-cosmic-style-mode="global"].cosmic-flex-heading,
+.cosmic-lego-row-runtime[data-cosmic-column-count="1"] [data-cosmic-style-mode="global"].cosmic-flex-text{text-align:center}
+.cosmic-lego-row-runtime[data-cosmic-column-count="1"] [data-cosmic-style-mode="global"].cosmic-flex-heading{max-width:min(900px,100%);margin-inline:auto!important}
+.cosmic-lego-row-runtime[data-cosmic-column-count="1"] [data-cosmic-style-mode="global"].cosmic-flex-text{max-width:min(760px,100%);margin-inline:auto!important}
+.cosmic-lego-row-runtime[data-cosmic-column-count="1"] [data-cosmic-style-mode="global"].cosmic-flex-button{align-self:center}
+.cosmic-lego-row-runtime:not([data-cosmic-column-count="1"]) [data-cosmic-style-mode="global"].cosmic-flex-heading,
+.cosmic-lego-row-runtime:not([data-cosmic-column-count="1"]) [data-cosmic-style-mode="global"].cosmic-flex-text{text-align:left}
+.cosmic-lego-row-runtime:not([data-cosmic-column-count="1"]) [data-cosmic-style-mode="global"].cosmic-flex-button{align-self:flex-start}
+@media(max-width:900px){
+    .cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-section-gap-tablet,var(--cosmic-section-gap,18px))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{font-size:var(--cosmic-type-h2-size-tablet,var(--cosmic-type-h2-size,2.5rem))}
+}
+@media(max-width:640px){
+    .cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-section-gap-mobile,var(--cosmic-section-gap,14px))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{font-size:var(--cosmic-type-h2-size-mobile,var(--cosmic-type-h2-size,2rem))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-text{font-size:var(--cosmic-type-body-size-mobile,var(--cosmic-type-body-size,16px))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-button{min-height:var(--cosmic-button-height-mobile,var(--cosmic-button-height,48px));width:100%;align-self:stretch}
+}
+
+/* Cosmic Lego Builder Batch 3 — exported core element parity */
+.cosmic-lego-canvas .cosmic-flex-list{display:grid;gap:8px;color:var(--cosmic-local-body-color,var(--cosmic-color-body,#3f3f46));font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6))}.cosmic-lego-canvas .cosmic-flex-quote{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));border-left-color:var(--cosmic-local-accent,var(--cosmic-brand-primary,#30475E))!important}.cosmic-lego-canvas .cosmic-flex-video,.cosmic-lego-canvas .cosmic-flex-image{max-width:100%;height:auto}
+
+/* Cosmic Lego Builder Batch 6 — local overrides are persisted in node.style and rendered by the shared compiler contract. */
+.cosmic-lego-canvas [data-cosmic-style-mode="custom"]{box-sizing:border-box}
+
+/* Cosmic Lego Builder Batch 7 — published/export responsive overrides */
+@media(max-width:900px){
+  .cosmic-lego-row-runtime{display:grid!important;grid-template-columns:repeat(var(--cosmic-lego-tablet-columns,1),minmax(0,1fr))!important}
+  .cosmic-lego-canvas .cosmic-flex-el{font-size:var(--af-tablet-font-size,inherit)!important;text-align:var(--af-tablet-text-align,inherit)!important;align-self:var(--af-tablet-self-align,auto)!important}
+  .cosmic-lego-canvas .cosmic-flex-el[style*="--af-tablet-display:none"]{display:none!important}
+}
+@media(max-width:640px){
+  .cosmic-lego-row-runtime{grid-template-columns:repeat(var(--cosmic-lego-mobile-columns,1),minmax(0,1fr))!important}
+  .cosmic-lego-canvas .cosmic-flex-el{font-size:var(--af-mobile-font-size,var(--af-tablet-font-size,inherit))!important;text-align:var(--af-mobile-text-align,var(--af-tablet-text-align,inherit))!important;align-self:var(--af-mobile-self-align,var(--af-tablet-self-align,auto))!important}
+  .cosmic-lego-canvas .cosmic-flex-el[style*="--af-mobile-display:none"]{display:none!important}
+}

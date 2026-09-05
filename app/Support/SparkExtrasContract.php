@@ -10,7 +10,7 @@ namespace App\Support;
  */
 final class SparkExtrasContract
 {
-    public const VERSION = 1;
+    public const VERSION = 2;
     public const STORAGE_KEY = 'field_extras';
     public const PLACEMENTS = ['before', 'after'];
     public const TYPES = [
@@ -23,6 +23,9 @@ final class SparkExtrasContract
         'video',
         'divider',
         'spacer',
+        'list',
+        'quote',
+        'stat',
     ];
 
     private const MAX_TEXT_LENGTH = 5000;
@@ -112,11 +115,18 @@ final class SparkExtrasContract
             return null;
         }
 
-        return [
+        $normalized = [
             'id' => self::normalizeId($item['id'] ?? null),
             'type' => $type,
             'data' => self::normalizeData($type, is_array($item['data'] ?? null) ? $item['data'] : []),
         ];
+        if (is_array($item['style'] ?? null)) $normalized['style'] = array_slice($item['style'], 0, 64, true);
+        if (is_array($item['meta'] ?? null)) $normalized['meta'] = [
+            'style_mode' => self::cleanEnum($item['meta']['style_mode'] ?? '', ['global','custom'], 'global'),
+            'responsive_mode' => self::cleanEnum($item['meta']['responsive_mode'] ?? '', ['auto','custom'], 'auto'),
+            'auto_align' => self::cleanBoolean($item['meta']['auto_align'] ?? true, true),
+        ];
+        return $normalized;
     }
 
     private static function normalizeSlots(array $slots, array &$usedIds): array
@@ -196,6 +206,17 @@ final class SparkExtrasContract
             ],
             'spacer' => [
                 'size' => self::cleanEnum($data['size'] ?? '', ['xs', 'sm', 'md', 'lg', 'xl', '2xl'], 'md'),
+            ],
+            'list' => [
+                'items' => array_values(array_filter(array_map(fn ($item) => self::cleanString(is_array($item) ? ($item['text'] ?? $item['label'] ?? $item['value'] ?? '') : $item, 1000), array_slice(is_array($data['items'] ?? null) ? $data['items'] : [], 0, 40)))),
+            ],
+            'quote' => [
+                'text' => self::cleanString($data['text'] ?? ''),
+                'cite' => self::cleanString($data['cite'] ?? '', 500),
+            ],
+            'stat' => [
+                'value' => self::cleanString($data['value'] ?? '', 500),
+                'label' => self::cleanString($data['label'] ?? '', 500),
             ],
             default => [],
         };

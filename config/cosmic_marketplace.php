@@ -9,25 +9,24 @@ return [
     // Core app URL is used for account/auth/payment handoff from the public marketplace subdomain.
     'core_url' => rtrim(env('COSMIC_MARKETPLACE_CORE_URL', env('APP_URL', 'http://127.0.0.1:8000')), '/'),
 
-    // Marketplace website subscriptions. Batch 2 keeps these values centralized
-    // so catalog cards, checkout, and provisioning read the same product promise.
+    // Marketplace template installation pricing. Marketplace is an Agency feature;
+    // these are one-install Cosmic Credit prices, not separate website subscriptions.
+    'allowed_template_credit_prices' => [500, 750, 1000, 1250, 1500, 1750, 2000],
+
     'plans' => [
         'starter' => [
             'label' => 'Starter',
-            'monthly_price_cents' => 4900,
-            'currency' => 'USD',
+            'credit_price' => 500,
             'page_count' => 5,
         ],
         'growth' => [
             'label' => 'Growth',
-            'monthly_price_cents' => 7900,
-            'currency' => 'USD',
+            'credit_price' => 1000,
             'page_count' => 10,
         ],
         'pro' => [
             'label' => 'Pro',
-            'monthly_price_cents' => 12900,
-            'currency' => 'USD',
+            'credit_price' => 2000,
             'page_count' => 15,
         ],
     ],
@@ -82,6 +81,24 @@ return [
         'marketplace_stone_contact' => ['template' => 'buildpro'],
         'marketplace_stone_cta' => ['template' => 'buildpro'],
         'marketplace_stone_page_hero' => ['template' => 'buildpro'],
+        'marketplace_harbor_hero' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_listings' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_about' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_communities' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_solutions' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_process' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_testimonials' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_team' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_home_insights' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_listings' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_market' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_paths' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_neighborhood' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_proof' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_property' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_faq' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_contact' => ['template' => 'harbor-key-realty'],
+        'marketplace_harbor_page_hero' => ['template' => 'harbor-key-realty'],
     ],
 
     'template_statuses' => ['draft', 'published', 'archived'],

@@ -71,8 +71,8 @@ final class MarketplaceTemplateService
 
         match ((string) ($filters['sort'] ?? 'popular')) {
             'newest' => $query->orderByDesc('published_at')->orderByDesc('id'),
-            'price-low' => $query->orderBy('monthly_price_cents')->orderBy('sort_order')->orderBy('id'),
-            'price-high' => $query->orderByDesc('monthly_price_cents')->orderBy('sort_order')->orderBy('id'),
+            'price-low' => $query->orderBy('credit_price')->orderBy('sort_order')->orderBy('id'),
+            'price-high' => $query->orderByDesc('credit_price')->orderBy('sort_order')->orderBy('id'),
             'name' => $query->orderBy('name')->orderBy('id'),
             default => $query->orderByDesc('is_featured')->orderBy('sort_order')->orderBy('id'),
         };
@@ -155,8 +155,8 @@ final class MarketplaceTemplateService
             ],
             'style' => $template->style_slug,
             'plan' => $template->plan,
-            'monthly_price_cents' => (int) $template->monthly_price_cents,
-            'currency' => $template->currency,
+            'credit_price' => (int) $template->credit_price,
+            'price_unit' => 'cosmic_credits',
             'page_count' => (int) $template->page_count,
             'summary' => $template->summary,
             'description' => $template->description,
@@ -242,9 +242,8 @@ final class MarketplaceTemplateService
             'style' => $template->style_slug,
             'plan' => $template->plan,
             'plan_label' => ucfirst((string) $template->plan),
-            'monthly_price_cents' => (int) $template->monthly_price_cents,
-            'monthly_price' => round(((int) $template->monthly_price_cents) / 100, 2),
-            'currency' => $template->currency,
+            'credit_price' => (int) $template->credit_price,
+            'price_unit' => 'cosmic_credits',
             'page_count' => (int) $template->page_count,
             'summary' => $template->summary,
             'description' => $template->description,
@@ -305,6 +304,15 @@ final class MarketplaceTemplateService
             if ($planRank === null) {
                 $errors[] = "{$label} uses unknown plan [{$item->plan}].";
                 continue;
+            }
+
+            $allowedCreditPrices = array_map('intval', config('cosmic_marketplace.allowed_template_credit_prices', [500, 750, 1000, 1250, 1500, 1750, 2000]));
+            $creditPrice = (int) $item->credit_price;
+            if (! in_array($creditPrice, $allowedCreditPrices, true)) {
+                $errors[] = "{$label} has invalid Cosmic Credit price [{$creditPrice}]. Allowed: ".implode(', ', $allowedCreditPrices).'.';
+            }
+            if ($creditPrice > 2000) {
+                $errors[] = "{$label} exceeds the normal Marketplace maximum of 2,000 Cosmic Credits.";
             }
 
             if ($item->pages->count() !== (int) $item->page_count) {

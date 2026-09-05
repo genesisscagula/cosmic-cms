@@ -13,8 +13,10 @@ use RuntimeException;
 
 final class TrialSiteBundleService
 {
-    public function __construct(private readonly GlobalMegaFooterService $megaFooters)
-    {
+    public function __construct(
+        private readonly GlobalMegaFooterService $megaFooters,
+        private readonly LunaTrialShellSelectionService $shellSelection,
+    ) {
     }
 
     /**
@@ -52,7 +54,7 @@ final class TrialSiteBundleService
             ],
         );
 
-        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $menu, $theme, $footer): Page {
+        $page = DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $menu, $theme, $footer): Page {
             $owner = $this->stagingOwner();
             $workspace = $this->stagingWorkspace($owner);
 
@@ -146,6 +148,16 @@ final class TrialSiteBundleService
 
             return $homePage->fresh();
         });
+
+        $freshTrial = $trial->fresh();
+        $this->shellSelection->apply(
+            $freshTrial,
+            $page->website()->firstOrFail(),
+            array_values($homeGeneration['blocks'] ?? []),
+            is_array($homeGeneration['visual_intent'] ?? null) ? $homeGeneration['visual_intent'] : [],
+        );
+
+        return $page->fresh();
     }
 
     /**
@@ -178,7 +190,7 @@ final class TrialSiteBundleService
             is_array($currentWebsite?->global_footer) ? $currentWebsite->global_footer : [],
         );
 
-        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $theme, $footer): Page {
+        $page = DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $theme, $footer): Page {
             $trial = TrialGeneration::query()->lockForUpdate()->findOrFail($trial->id);
             if ($trial->claimed_at || ! $trial->website_id) {
                 throw new RuntimeException('Only an active staged trial can be regenerated.');
@@ -283,6 +295,19 @@ final class TrialSiteBundleService
 
             return Page::query()->findOrFail((int) $manifestPages[0]['page_id']);
         });
+
+        // Re-evaluate the shell against the regenerated Home hero before the
+        // Builder/preview is reopened. This keeps full Trial regeneration on the
+        // same automatic seven-variant selection path as the first build.
+        $freshTrial = $trial->fresh();
+        $this->shellSelection->apply(
+            $freshTrial,
+            $page->website()->firstOrFail(),
+            array_values($homeGeneration['blocks'] ?? []),
+            is_array($homeGeneration['visual_intent'] ?? null) ? $homeGeneration['visual_intent'] : [],
+        );
+
+        return $page->fresh();
     }
 
     private function stagingOwner(): User

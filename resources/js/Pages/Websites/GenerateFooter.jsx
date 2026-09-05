@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { EditableText } from "./Blocks/Shared/EditableText";
 import themeCatalog from "../../../theme/theme-families.json";
 import { logoStyleForTone } from '@/Branding/logoFilters';
-import { resolveSemanticPalette } from '../../theme/semanticPalette';
+import { readableForeground, resolveSemanticPalette } from '../../theme/semanticPalette';
 import { footerVariantById, resolveShellSurface } from './Components/headerFooterVariantConfig';
 
 export const themeConfig = themeCatalog.legacyFooterFamilies;
@@ -76,7 +76,47 @@ function FooterLogo({ block, dark = false, mega = false, forceWhite = false, edi
 
 const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <button type="button" onClick={onClick} className={`${inline?'relative':'absolute right-1 top-1'} cosmic-footer-ai-control hidden h-7 w-7 items-center justify-center rounded-md border border-violet-300/40 bg-violet-600 text-xs font-bold text-white shadow-sm group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex`} aria-label={label} title={label}>✦</button> : null;
 
+function HarborCoastalFooter({ block = {}, editorMode = false, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
+    const mega = block.mega_footer || {};
+    const fallbackColumns = [
+        { title:'Quick Links', items:[{label:'Home',url:'/'},{label:'Properties',url:'/listings'},{label:'Buy',url:'/buyers'},{label:'Sell',url:'/sellers'},{label:'About Us',url:'/about'},{label:'Contact',url:'/contact'}] },
+        { title:'Our Services', items:[{label:'Residential Sales',url:'/listings'},{label:'Luxury Properties',url:'/listings'},{label:'Rentals & Leasing',url:'/listings'},{label:'Property Management',url:'/contact'},{label:'Investment Consulting',url:'/contact'},{label:'Relocation Services',url:'/contact'}] },
+        { title:'Contact Us', items:[{label:'+63 912 345 6789',url:'tel:+639123456789'},{label:'hello@harborandkey.com',url:'mailto:hello@harborandkey.com'},{label:'www.harborandkey.com',url:'/'},{label:'Mon–Sat · 9:00 AM–6:00 PM',url:'/contact'}] },
+        { title:'Our Office', items:[{label:'Harbor & Key Realty',url:'/contact'},{label:'8F The Waterfront Tower',url:'/contact'},{label:'Lahug, Cebu City 6000',url:'/contact'},{label:'View on Map →',url:'/contact'}] },
+    ];
+    const columns = normalizeColumns(Array.isArray(mega.columns) && mega.columns.length ? mega.columns : fallbackColumns);
+    const newsletter = block.newsletter || {};
+    const socialLinks = (Array.isArray(block.social_links) ? block.social_links : []).slice(0,6);
+    const copy = block.copyright || `© ${new Date().getFullYear()} Harbor & Key Realty. All Rights Reserved.`;
+    const harborLogo = logoStyleForTone(block, 'light', block.logo_filter_key || block.theme || 'midnight');
+    const harborBrandName = String(block.logo_text || block.brand || 'HARBOR & KEY REALTY').replace(/\s+REALTY$/i, '') || 'HARBOR & KEY';
+    const defaultBrandMark = <div data-cosmic-shell-element="footer-logo" data-cosmic-shell-path="footer.logo_text" className="group/footer-logo relative inline-flex items-center gap-3">
+        <svg viewBox="0 0 44 52" className="h-[48px] w-[40px] shrink-0" fill="none" stroke="#c8a052" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 19 22 5l16 14"/><path d="M11 17v29M33 17v13M11 28h22"/><path d="M22 14v11M18 19h8"/><path d="M11 36h11l4 4h10"/><circle cx="36" cy="40" r="2.2"/></svg>
+        <span className="leading-none"><span className="block font-serif text-[17px] tracking-[.055em] text-white">{harborBrandName}</span><span className="mt-1 block text-center text-[8px] font-bold tracking-[.42em] text-[#c8a052]">REALTY</span></span>
+        {editorMode && (onLogoManual || onLogoAi) ? <div className="pointer-events-none absolute -right-2 -top-2 z-[40] flex gap-1 opacity-0 transition group-hover/footer-logo:opacity-100 group-focus-within/footer-logo:opacity-100">{onLogoManual ? <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onLogoManual();}} className="pointer-events-auto rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg">Edit</button> : null}{onLogoAi ? <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onLogoAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer logo">✦</button> : null}</div> : null}
+    </div>;
+    return <div data-cosmic-shell-element="footer" data-cosmic-shell-path="footer" className="group/footer-editor relative w-full">
+        {editorMode && onAiTarget ? <button type="button" onClick={()=>onAiTarget({type:'footer',fieldPath:'footer',currentValue:'',label:'Global Footer'})} className="absolute right-4 top-3 z-[80] inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white shadow-lg" aria-label="Ask Luna about footer">✦</button> : null}
+        <section data-cosmic-footer-variant="harbor_coastal" data-cosmic-mega-theme="primary" className="w-full border-b px-6 py-10 sm:px-8 lg:px-10 lg:py-12 xl:px-[50px]" style={{background:'#071f3d',color:'#fff',borderColor:'rgba(255,255,255,.12)'}}>
+            <div className="mx-auto grid w-full max-w-[1536px] gap-9 md:grid-cols-2 xl:grid-cols-[1.22fr_.68fr_.82fr_.9fr_.9fr_1.02fr] xl:gap-7">
+                <div className="min-w-0">
+                    {harborLogo.url ? <FooterLogo block={block} dark mega forceWhite editorMode={editorMode} onManual={onLogoManual} onAi={onLogoAi}/> : defaultBrandMark}
+                    <p className="mt-4 max-w-[300px] text-[11px] leading-6 text-white/60">{mega.tagline || block.tagline || block.description || 'Connecting you to exceptional properties and experiences across Cebu and beyond.'}</p>
+                    <p className="mt-6 text-[9px] font-black uppercase tracking-[.16em] text-white/50">Follow us</p>
+                    <div className="mt-3 flex flex-wrap gap-4 text-[11px] font-bold text-white/75">{socialLinks.length ? socialLinks.map((item,index)=><a key={`${item.label}-${index}`} href={item.url||'#'} className="hover:text-white">{item.label}</a>) : <><span>f</span><span>◎</span><span>in</span><span>▶</span></>}</div>
+                </div>
+                {columns.map((column,columnIndex)=><div key={`${column.title}-${columnIndex}`} className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.14em] text-white/90">{column.title}</p><div className="mt-4 grid gap-2.5">{column.items.map((item,itemIndex)=><a key={`${item.label}-${itemIndex}`} href={item.url||'#'} className="text-[10px] leading-5 text-white/60 transition hover:text-white">{item.label}</a>)}</div></div>)}
+                <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.14em] text-white/90">{newsletter.title || 'Newsletter'}</p><p className="mt-4 text-[10px] leading-5 text-white/60">{newsletter.text || 'Be the first to get the latest property listings and news.'}</p><div className="mt-4 grid gap-2"><input type="email" placeholder={newsletter.placeholder || 'Enter your email'} className="min-h-[38px] w-full border bg-transparent px-3 text-[10px] text-white outline-none placeholder:text-white/30" style={{borderColor:'rgba(255,255,255,.28)',borderRadius:2}}/><button type="button" className="min-h-[38px] px-3 text-[9px] font-black text-white" style={{background:'#c6a052',borderRadius:2}}>{newsletter.button_label || 'SUBSCRIBE'}</button></div></div>
+            </div>
+        </section>
+        <footer className="w-full border-t px-6 py-5 sm:px-8 xl:px-[50px]" style={{background:'#071f3d',color:'#8ea1b9',borderColor:'rgba(255,255,255,.1)'}}><div className="mx-auto flex w-full max-w-[1536px] flex-col gap-3 text-[9px] sm:flex-row sm:items-center sm:justify-between"><span>{copy}</span><span className="flex flex-wrap gap-5"><a href={block.privacy_url || '/privacy-policy'}>Privacy Policy</a><a href={block.terms_url || '/terms-and-conditions'}>Terms of Use</a><a href="/sitemap.xml">Sitemap</a></span></div></footer>
+    </div>;
+}
+
 export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, globalTheme = {}, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
+    if (block.marketplace_variant === 'harbor_coastal') {
+        return <HarborCoastalFooter block={block} editorMode={editorMode} onLogoManual={onLogoManual} onLogoAi={onLogoAi} onAiTarget={onAiTarget}/>;
+    }
     // Header/Footer variant selection is the single source of truth: the global footer always renders the selected rich variant.
     const megaEnabled = true;
     const footerVariant = ['classic','primary','centered_cta','centered','split','brand','secondary'].includes(block.mega_footer?.variant) ? block.mega_footer.variant : 'classic';
@@ -115,12 +155,16 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         backgroundColor: customStyle.background_color || undefined,
         color: customStyle.text_color || undefined,
         borderColor: 'rgba(255,255,255,.12)',
+        '--cosmic-footer-text': customStyle.text_color || undefined,
         '--cosmic-footer-muted': customStyle.muted_color || customStyle.text_color || undefined,
+        '--cosmic-footer-border': 'rgba(255,255,255,.12)',
     } : {
         backgroundColor: megaSurface.background,
         color: megaSurface.text,
         borderColor: megaSurface.border,
+        '--cosmic-footer-text': megaSurface.text,
         '--cosmic-footer-muted': megaSurface.muted,
+        '--cosmic-footer-border': megaSurface.border,
     };
     const [editTarget, setEditTarget] = useState(null);
 
@@ -156,7 +200,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         }
     };
 
-    const updateMega = (patch) => onUpdate({ mega_footer: { ...(block.mega_footer || {}), ...mega, theme: requestedMegaTheme, enabled: true, ...patch } });
+    const updateMega = (patch) => onUpdate({ mega_footer: { ...(block.mega_footer || {}), ...mega, theme: effectiveMegaTheme, enabled: true, ...patch } });
     const updateColumns = (columns) => updateMega({ columns: normalizeColumns(columns) });
 
     const addColumn = () => {
@@ -208,9 +252,19 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 : 'mx-auto grid w-full gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16';
     const megaColumnsClass = centeredFooter ? 'mx-auto w-full max-w-[1000px]' : (footerVariantConfig.layout === 'brand' ? 'lg:max-w-[760px]' : 'lg:max-w-[900px]');
     const lightFooterShell = customShell ? customStyle.logo_tone === 'light' : megaSurface.tone === 'light';
-    const footerCtaStyle = lightFooterShell
-        ? { backgroundColor: '#FFFFFF', color: semanticPalette.primary || '#243447', borderColor: 'rgba(255,255,255,.88)' }
-        : { backgroundColor: semanticPalette.buttonPrimary || semanticPalette.button_primary || semanticPalette.primary || '#243447', color: semanticPalette.buttonText || semanticPalette.button_text || semanticPalette.onPrimary || semanticPalette.on_primary || '#FFFFFF', borderColor: 'transparent' };
+    const lightSurfaceVariant = ['white', 'surface'].includes(effectiveMegaTheme);
+    const footerCtaBackground = lightSurfaceVariant
+        ? (semanticPalette.buttonPrimary || semanticPalette.button_primary || semanticPalette.primary || '#243447')
+        : (megaSurface.text || '#FFFFFF');
+    const footerCtaText = lightSurfaceVariant
+        ? (semanticPalette.buttonText || semanticPalette.button_text || semanticPalette.onPrimary || semanticPalette.on_primary || '#FFFFFF')
+        : readableForeground(footerCtaBackground, megaSurface.background, 4.5);
+    const footerCtaStyle = {
+        backgroundColor: footerCtaBackground,
+        color: footerCtaText,
+        borderColor: lightSurfaceVariant ? 'transparent' : megaSurface.text,
+        '--cosmic-footer-cta-text': footerCtaText,
+    };
 
     return (
         <div data-cosmic-shell-element="footer" data-cosmic-shell-path="footer" className="group/footer-editor relative w-full">
@@ -225,7 +279,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                             {editorMode ? (
                                 <>
                                     <div data-cosmic-shell-element="footer-tagline" data-cosmic-shell-path="footer.mega_footer.tagline" className="group/footer-field relative mt-4 max-w-sm rounded-lg py-1 pr-16">
-                                        <p className={`text-sm leading-6 ${megaTheme?.sub || 'text-slate-300'}`}>{mega.tagline}</p>
+                                        <p className="cosmic-footer-muted-text text-sm leading-6">{mega.tagline}</p>
                                         <FooterAiButton onClick={()=>onAiTarget?.({type:'text',fieldPath:'footer.mega_footer.tagline',currentValue:mega.tagline,label:'Footer tagline'})} label="Ask Luna about footer tagline" />
                                         <button type="button" onClick={() => openEditor({ kind: 'tagline', title: 'Edit footer description' })} className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md border border-white/15 bg-black/20 px-2 py-1 text-[10px] text-white/70 opacity-0 transition hover:bg-white/10 group-hover/footer-field:opacity-100 focus:opacity-100" aria-label="Edit footer description">✎</button>
                                     </div>
@@ -237,13 +291,13 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                 </>
                             ) : (
                                 <>
-                                    <p className={`mt-4 max-w-sm text-sm leading-6 ${megaTheme?.sub || 'text-slate-300'}`}>{mega.tagline}</p>
+                                    <p className="cosmic-footer-muted-text mt-4 max-w-sm text-sm leading-6">{mega.tagline}</p>
                                     {footerVariantConfig.cta ? <a href={mega.primary_url || '#contact'} style={footerCtaStyle} className="mt-5 inline-flex rounded-full border px-5 py-3 text-sm font-semibold shadow-sm transition hover:opacity-85">{mega.primary_label}</a> : null}
                                 </>
                             )}
                             {editorMode ? <div className="mt-5 space-y-2 text-xs">
                                 {['email','phone','address'].map((field)=>contact[field] ? <div key={field} data-cosmic-shell-path={`footer.contact.${field}`} className="group/footer-field relative max-w-sm pr-16">
-                                    <span className={megaTheme?.sub || 'text-slate-300'}>{contact[field]}</span>
+                                    <span className="cosmic-footer-muted-text">{contact[field]}</span>
                                     <FooterAiButton onClick={()=>onAiTarget?.({type:'text',fieldPath:`footer.contact.${field}`,currentValue:contact[field],label:`Footer ${field}`})} />
                                     <button type="button" onClick={()=>openEditor({kind:'contact',field,title:`Edit footer ${field}`})} className="absolute right-8 top-0 hidden text-[10px] text-white/70 group-hover/footer-field:block">✎</button>
                                 </div> : null)}
@@ -260,12 +314,12 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                     {['email','phone','address'].filter((field)=>!contact[field]).map((field)=><button key={field} type="button" onClick={()=>openEditor({kind:'contact',field,title:`Add footer ${field}`})} className="mr-2 rounded-full border border-dashed border-current/30 px-3 py-1.5 text-[10px] font-semibold">+ {field}</button>)}
                                 </div>
                             </div> : <>
-                                {(contact.email||contact.phone||contact.address) ? <div className={`mt-5 space-y-1 text-xs ${megaTheme?.sub || 'text-slate-300'}`}>
+                                {(contact.email||contact.phone||contact.address) ? <div className="cosmic-footer-muted-text mt-5 space-y-1 text-xs">
                                     {contact.email ? <div>{contact.email}</div> : null}
                                     {contact.phone ? <div>{contact.phone}</div> : null}
                                     {contact.address ? <div>{contact.address}</div> : null}
                                 </div> : null}
-                                {socialLinks.length ? <div className="mt-4 flex flex-wrap gap-3 text-xs">{socialLinks.map((item,index)=><a key={`${item.label}-${index}`} href={item.url||'#'} className="hover:opacity-70">{item.label}</a>)}</div> : null}
+                                {socialLinks.length ? <div className="mt-4 flex flex-wrap gap-3 text-xs">{socialLinks.map((item,index)=><a key={`${item.label}-${index}`} href={item.url||'#'} className="cosmic-footer-text hover:opacity-70">{item.label}</a>)}</div> : null}
                             </>}
                         </div>
 
@@ -275,7 +329,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                     <div key={`${column.title}-${columnIndex}`} data-cosmic-shell-path={`footer.mega_footer.columns.${columnIndex}`} className="group/column group/footer-field relative min-w-0">
                                         {editorMode ? (
                                             <div className="flex items-center gap-2">
-                                                <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className={`min-w-0 flex-1 text-left text-[13px] font-bold uppercase tracking-[0.16em] transition ${megaTheme?.sub || 'text-slate-500'} hover:opacity-75`}>{column.title}</button>
+                                                <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className="cosmic-footer-muted-text min-w-0 flex-1 text-left text-[13px] font-bold uppercase tracking-[0.16em] transition hover:opacity-75">{column.title}</button>
                                                 <div className="cosmic-footer-action-bar flex gap-0.5 rounded-lg border border-slate-300/40 bg-white/95 p-0.5 opacity-0 shadow-sm transition group-hover/column:opacity-100 focus-within:opacity-100">
                                                     <FooterAiButton inline onClick={()=>onAiTarget?.({type:'footer-column',fieldPath:`footer.mega_footer.columns.${columnIndex}`,currentValue:column.title,label:`Footer column ${column.title}`})} />
                                                     <IconButton title="Move column left" disabled={columnIndex===0} onClick={() => moveColumn(columnIndex,-1)}>←</IconButton>
@@ -285,7 +339,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className={`text-[13px] font-bold uppercase tracking-[0.16em] ${megaTheme?.sub || 'text-slate-300'}`}>{column.title}</p>
+                                            <p className="cosmic-footer-muted-text text-[13px] font-bold uppercase tracking-[0.16em]">{column.title}</p>
                                         )}
 
                                         <div className="mt-3 space-y-1.5">
@@ -303,7 +357,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                                             openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' });
                                                                         }
                                                                     }}
-                                                                    className="cosmic-mega-menu-link min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-current transition hover:opacity-75"
+                                                                    className="cosmic-mega-menu-link cosmic-footer-text min-w-0 flex-1 cursor-pointer truncate text-left text-sm transition hover:opacity-75"
                                                                 >{item.label}</span>
                                                             <div className="cosmic-footer-action-bar flex shrink-0 gap-0.5 rounded-lg border border-slate-300/40 bg-white/95 p-0.5 opacity-0 shadow-sm transition group-hover/item:opacity-100 focus-within:opacity-100">
                                                                 <FooterAiButton inline onClick={()=>onAiTarget?.({type:'link',fieldPath:`footer.mega_footer.columns.${columnIndex}.items.${itemIndex}`,currentValue:item.label,currentUrl:item.url,label:'Footer menu link'})} />
@@ -314,7 +368,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <a href={item.url || '#'} className="block py-1 text-sm text-current transition hover:opacity-70">{item.label}</a>
+                                                        <a href={item.url || '#'} className="cosmic-footer-text block py-1 text-sm transition hover:opacity-70">{item.label}</a>
                                                     )}
                                                 </div>
                                             ))}
@@ -335,7 +389,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 </section>
             )}
 
-            <footer style={customShell ? {backgroundColor:customStyle.background_color || undefined,color:customStyle.muted_color || customStyle.text_color || undefined,borderColor:'rgba(255,255,255,.12)'} : (megaEnabled ? {backgroundColor:megaSurface.background,color:megaSurface.muted,borderColor:megaSurface.border} : undefined)} className={`flex w-full flex-col items-start gap-4 border-t px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 ${customShell || megaEnabled ? '' : 'border-slate-200 bg-white text-slate-500'}`}>
+            <footer style={customShell ? {backgroundColor:customStyle.background_color || undefined,color:customStyle.muted_color || customStyle.text_color || undefined,borderColor:'rgba(255,255,255,.12)','--cosmic-footer-muted':customStyle.muted_color || customStyle.text_color || undefined} : (megaEnabled ? {backgroundColor:megaSurface.background,color:megaSurface.muted,borderColor:megaSurface.border,'--cosmic-footer-muted':megaSurface.muted} : undefined)} className={`cosmic-footer-legal flex w-full flex-col items-start gap-4 border-t px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 xl:px-[50px] ${customShell || megaEnabled ? '' : 'border-slate-200 bg-white text-slate-500'}`}>
                 {megaEnabled ? (
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                         {editorMode ? (

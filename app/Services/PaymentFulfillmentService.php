@@ -128,7 +128,15 @@ class PaymentFulfillmentService
                     // direct upgrade) still need a real website. New-account purchases are
                     // provisioned by WorkspaceProvisioningService so the same paid website
                     // is reused instead of creating a duplicate.
-                    if ((int) data_get($order->metadata, 'onboarding_id', 0) <= 0) {
+                    $legacyDirectMarketplaceSubscription = (int) data_get($order->metadata, 'onboarding_id', 0) <= 0
+                        && (string) data_get($order->metadata, 'payment_purpose', '') !== 'agency_subscription'
+                        // Batch 1+ Marketplace orders explicitly carry cosmic_credits. Do not let a
+                        // payment/webhook retry on a modern checkout accidentally invoke the retired
+                        // direct-subscription template provisioning path. Historical orders without
+                        // that marker remain recoverable for backward compatibility.
+                        && (string) data_get($order->metadata, 'marketplace_template_payment_mode', '') !== 'cosmic_credits';
+
+                    if ($legacyDirectMarketplaceSubscription) {
                         try {
                             app(MarketplaceWebsiteProvisioningService::class)->provision($marketplaceCheckout->fresh());
                         } catch (\Throwable $provisioningException) {

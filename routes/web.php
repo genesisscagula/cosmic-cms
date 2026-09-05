@@ -335,11 +335,11 @@ Route::prefix(config('cosmic_marketplace.local_prefix', 'marketplace'))->group(f
         return $controller->show($request, $template);
     })->where('template', '[a-z0-9-]+')->name('marketplace.local.checkout');
 
-    Route::post('/checkout/{template}/start', function (Request $request, string $template, MarketplaceCheckoutController $controller, \App\Services\PaymentCheckoutService $payments, \App\Services\MarketplaceWebsiteProvisioningService $marketplaceProvisioning) {
+    Route::post('/checkout/{template}/start', function (Request $request, string $template, MarketplaceCheckoutController $controller) {
         if (app()->environment('production')) {
             abort(404);
         }
-        return $controller->start($request, $template, $payments, $marketplaceProvisioning);
+        return $controller->start($request, $template);
     })->middleware(['auth', 'throttle:10,1'])->where('template', '[a-z0-9-]+')->name('marketplace.local.checkout.start');
     Route::get('/checkout/{template}/status', [MarketplaceCheckoutController::class, 'status'])
         ->middleware(['auth', 'throttle:60,1'])

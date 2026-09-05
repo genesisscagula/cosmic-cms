@@ -195,18 +195,17 @@ class WorkspaceProvisioningService
                             'metadata' => array_merge($marketplaceCheckout->metadata ?? [], [
                                 'workspace_id' => $workspace->id,
                                 'website_id' => $website->id,
-                                'subscription_ready_at' => now()->toIso8601String(),
+                                'agency_subscription_ready_at' => now()->toIso8601String(),
                                 'provisioning_id' => $provisioning->id,
+                                'template_credit_confirmation_required' => true,
                             ]),
                         ])->save();
 
-                        // The normal onboarding pipeline owns website creation. Batch 6
-                        // overlays the selected Marketplace template onto that exact site
-                        // and primes Luna, keeping retries idempotent.
-                        app(MarketplaceWebsiteProvisioningService::class)->provision(
-                            $marketplaceCheckout->fresh(),
-                            $website,
-                        );
+                        // Marketplace is an Agency feature, but the template itself is
+                        // purchased separately with Cosmic Credits. The normal onboarding
+                        // pipeline may reserve/create the Website here, but it must not
+                        // install the Marketplace design kit until the customer explicitly
+                        // confirms the template credit spend in Marketplace checkout.
                     }
                 }
 

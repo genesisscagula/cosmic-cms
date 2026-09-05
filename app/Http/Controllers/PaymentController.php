@@ -65,11 +65,20 @@ class PaymentController extends Controller
             $marketplaceCheckout = $marketplaceCheckouts->forOnboarding($onboarding);
             $paymentContext = [
                 'onboarding_id' => $onboarding->id,
-                'checkout_source' => $marketplaceCheckout ? 'marketplace' : 'paid_onboarding',
+                'checkout_source' => $marketplaceCheckout ? 'marketplace_agency_onboarding' : 'paid_onboarding',
             ];
 
             if ($marketplaceCheckout) {
-                $paymentContext = array_merge($paymentContext, $marketplaceCheckouts->paymentMetadata($marketplaceCheckout));
+                // Marketplace template installation is paid with Cosmic Credits,
+                // but a brand-new Marketplace customer may still need to activate
+                // the separate Agency subscription first. This PayPal order is only
+                // for that Agency plan and never represents the template price.
+                $marketplaceCheckouts->assertAgencyPlan((string) $onboarding->selected_plan);
+                $paymentContext = array_merge(
+                    $paymentContext,
+                    $marketplaceCheckouts->paymentMetadata($marketplaceCheckout),
+                    ['payment_purpose' => 'agency_subscription'],
+                );
             }
 
             $result = $checkout->create($user, 'paypal', 'plan', $onboarding->selected_plan, $paymentContext);
@@ -192,10 +201,22 @@ class PaymentController extends Controller
 
                                     $provisioningResult = $provisioning->start($onboarding->fresh(), $paymentOrder->fresh(), 'return_url');
 
-                                    if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0 && $provisioningResult->website) {
-                                        return redirect()
-                                            ->to(app(\App\Services\MarketplaceWebsiteProvisioningService::class)->builderUrl($provisioningResult->website))
-                                            ->with('status', 'Payment confirmed. Your Marketplace website is ready — Luna can personalize it now.');
+                                    $marketplaceCheckoutId = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0);
+                                    if ($marketplaceCheckoutId > 0) {
+                                        $marketplaceCheckout = \App\Models\MarketplaceCheckout::query()
+                                            ->with('template')
+                                            ->whereKey($marketplaceCheckoutId)
+                                            ->where('user_id', $request->user()->id)
+                                            ->first();
+
+                                        if ($marketplaceCheckout?->template?->slug) {
+                                            return redirect()
+                                                ->to($this->marketplaceCheckoutUrl(
+                                                    $marketplaceCheckout->template->slug,
+                                                    ['agency_subscription' => 'active'],
+                                                ))
+                                                ->with('status', 'Agency subscription active. Confirm the Marketplace template Cosmic Credit spend to finish installation.');
+                                        }
                                     }
 
                                     return redirect()
@@ -203,7 +224,16 @@ class PaymentController extends Controller
                                         ->with('status', 'Payment confirmed. Your Cosmic CMS workspace is ready.');
                                 }
 
-                                if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0) {
+                                // Legacy recovery only: Batch 2 no longer creates direct Marketplace
+                                // template PaymentOrders. Any payment explicitly marked as an Agency
+                                // subscription must return to Cosmic Credit confirmation instead.
+                                $legacyDirectMarketplacePayment = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0
+                                    && (string) data_get($paymentOrder->metadata, 'payment_purpose', '') !== 'agency_subscription'
+                                    // New Marketplace acquisitions always declare the Cosmic Credit mode.
+                                    // Only historical Marketplace payment orders that predate that marker may
+                                    // use the direct subscription recovery path below.
+                                    && (string) data_get($paymentOrder->metadata, 'marketplace_template_payment_mode', '') !== 'cosmic_credits';
+                                if ($legacyDirectMarketplacePayment) {
                                     $checkout = \App\Models\MarketplaceCheckout::query()
                                         ->find((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id'));
                                     if ($checkout) {
@@ -211,6 +241,22 @@ class PaymentController extends Controller
                                         return redirect()
                                             ->to(app(\App\Services\MarketplaceWebsiteProvisioningService::class)->builderUrl($website))
                                             ->with('status', 'Subscription confirmed. Your Marketplace website is ready — Luna can personalize it now.');
+                                    }
+                                }
+
+                                $agencyMarketplacePayment = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0
+                                    && (string) data_get($paymentOrder->metadata, 'payment_purpose', '') === 'agency_subscription';
+                                if ($agencyMarketplacePayment) {
+                                    $checkout = \App\Models\MarketplaceCheckout::query()
+                                        ->with('template')
+                                        ->whereKey((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id'))
+                                        ->where('user_id', $request->user()->id)
+                                        ->first();
+
+                                    if ($checkout?->template?->slug) {
+                                        return redirect()
+                                            ->to($this->marketplaceCheckoutUrl($checkout->template->slug, ['agency_subscription' => 'active']))
+                                            ->with('status', 'Agency subscription active. Confirm the Marketplace template Cosmic Credit spend to continue.');
                                     }
                                 }
                             }
@@ -228,7 +274,7 @@ class PaymentController extends Controller
                     if ((int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0) {
                         return redirect()
                             ->route('dashboard')
-                            ->with('status', 'PayPal approved your Marketplace subscription. We are confirming activation now.');
+                            ->with('status', 'PayPal approved your Agency subscription. We are confirming activation before returning you to Marketplace.');
                     }
                 }
             }

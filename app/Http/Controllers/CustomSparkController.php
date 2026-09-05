@@ -2199,6 +2199,7 @@ PROMPT;
         \App\Services\LunaContextStateService $contextState,
         LunaInspectService $inspectService,
         LunaSiteAdminActionService $siteAdminActions,
+        \App\Services\LunaHeaderFooterActionService $headerFooterActions,
         \App\Services\LunaAiFlexSparkService $aiFlex,
         \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner,
         \App\Services\LunaFullPageComposerService $fullPageComposer
@@ -2292,8 +2293,27 @@ PROMPT;
             $targetIndex=-1;
             $elementContext=[];
         }
+        // Batch 3: always hydrate Luna with the current shell facts supplied by
+        // Builder. Manual header/footer changes therefore become immediately
+        // readable to Luna without waiting for a previous AI action.
+        $siteMemory=$headerFooterActions->rememberShellContext(
+            $siteMemory,
+            is_array($header)?$header:[],
+            is_array($footer)?$footer:[]
+        );
         $originalUserPrompt=trim((string)$validated['prompt']);
-        $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
+        $preferredShellScope=$assistantSurface==='contextual_popup' && in_array($scope,['header','footer'],true) ? $scope : null;
+        $shellFollowUpIntent=$headerFooterActions->resolveFollowUpIntent(
+            $originalUserPrompt,
+            $siteMemory,
+            is_array($header)?$header:[],
+            is_array($footer)?$footer:[],
+            $preferredShellScope
+        );
+        if(is_array($shellFollowUpIntent) && ($shellFollowUpIntent['source']??'')==='shell_follow_up'){
+            $validated['prompt']=(string)$shellFollowUpIntent['prompt'];
+        }
+        $scopeResolution=$scopeIntelligence->resolve((string)($validated['prompt']??$originalUserPrompt),$scope,$elementContext);
         $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
         $smartEditContract=$smartSparkEditing->contractDirective();
         $pendingActor='trial:'.$trial->id;
@@ -2381,6 +2401,34 @@ PROMPT;
                     'scope_action' => 'brand_theme',
                 ],
             ];
+        }
+
+        // Header/Footer vocabulary bridge: a direct reference to one of the
+        // seven visible variant cards is deterministic CMS shell intent. This
+        // protects Trial Luna from router ambiguity and keeps the exact manual
+        // card IDs as the source of truth.
+        if(!$resumePendingPlan && ($explicitShellVariant=(is_array($shellFollowUpIntent??null) ? $shellFollowUpIntent : $headerFooterActions->explicitVariantIntent($prompt)))){
+            $shellScope=(string)$explicitShellVariant['scope'];
+            $shellAction=(string)$explicitShellVariant['action'];
+            $canonicalIntent=array_replace_recursive(is_array($canonicalIntent)?$canonicalIntent:[],[
+                'intent'=>'action',
+                'execution_allowed'=>true,
+                'domain'=>$shellScope,
+                'operation'=>'update',
+                'leaf_operation'=>$shellAction,
+                'scope'=>$shellScope,
+                'needs_clarification'=>false,
+                'routing'=>[
+                    'menu_scope'=>$shellScope,
+                    'scope_action'=>$shellAction,
+                    'action_family'=>'update',
+                ],
+                'entities'=>[
+                    'shell_variant'=>$explicitShellVariant['variant'],
+                    'shell_variant_name'=>$explicitShellVariant['name'],
+                    'shell_intent_source'=>$explicitShellVariant['source']??'explicit',
+                ],
+            ]);
         }
 
         // Batch 2: vague selected-section visual polish is a schema edit, not
@@ -2615,6 +2663,58 @@ PROMPT;
                 'credit_balance'=>$trialCredits->balance($trial),'site_memory'=>$siteMemory,'pending_action'=>false,
                 'applied_operations'=>$verification['verified_operations']??[],
             ],$navigateUrl?200:422);
+        }
+
+        // Batch 1 — Trial Header/Footer executor. The Trial Builder now uses
+        // exactly the same seven-variant shell mutation service as the signed-in
+        // Builder. Header/footer selection is zero-credit and returns complete
+        // shell snapshots for the existing Builder draft/save flow.
+        if(!$resumePendingPlan && in_array((string)data_get($canonicalIntent,'routing.menu_scope'),['header','footer'],true)){
+            $headerFooterResult=$headerFooterActions->applyTrial(
+                $prompt,
+                $canonicalIntent,
+                is_array($header)?$header:[],
+                is_array($footer)?$footer:[],
+                $blocks
+            );
+            if(is_array($headerFooterResult) && ($headerFooterResult['handled']??false)){
+                $ok=(bool)($headerFooterResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $headerFooterResult['operations']??[],
+                    $headerFooterResult['operations']??[],
+                    $ok
+                );
+                $resolvedHeader=$headerFooterResult['header']??(is_array($header)?$header:[]);
+                $resolvedFooter=$headerFooterResult['footer']??(is_array($footer)?$footer:[]);
+                $siteMemory=$headerFooterActions->rememberShellContext(
+                    $siteMemory,
+                    $resolvedHeader,
+                    $resolvedFooter,
+                    $ok?(string)($headerFooterResult['domain']??null):null,
+                    $ok?(string)($explicitShellVariant['source']??'luna_shell_action'):null
+                );
+                return response()->json(array_filter([
+                    'reply'=>$trialNaturalReplyFromFacts([
+                        'action'=>(string)($headerFooterResult['scope_action']??$headerFooterResult['domain']??'shell').' change',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'selected_header_variant'=>data_get($headerFooterResult,'header.type'),
+                        'selected_footer_variant'=>data_get($headerFooterResult,'footer.mega_footer.variant'),
+                        'constraint'=>$ok?null:($headerFooterResult['message']??'The requested header/footer change could not be safely resolved.'),
+                    ]),
+                    'mode'=>'reply',
+                    'canonical_intent'=>$canonicalIntent,
+                    'execution_verification'=>$verification,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$trialCredits->balance($trial),
+                    'blocks'=>$blocks,
+                    'header'=>$resolvedHeader,
+                    'footer'=>$resolvedFooter,
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>$headerFooterResult['operations']??[],
+                ],static fn($value)=>$value!==null),$ok?200:422);
+            }
         }
 
         // Trial typography edits use the same deterministic token router as the
@@ -2961,7 +3061,7 @@ PROMPT;
         $tailwindEditContext=$selected ? $tailwindMutations->plannerContext($selected,$elementContext) : [];
 
         $system='You are Luna, the invisible website editor. Return JSON only: {"operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"tailwind_mutations":[{"slot":"rendered slot id","add":["Tailwind utility"],"remove":["conflicting current utility"]}],"instruction":""}],"header_changes":{},"footer_changes":{},"brand_color_family":null,"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
-For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], mega_enabled, and mega_footer {enabled,theme,variant (classic|primary|centered_cta|centered|split|brand|secondary),tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Preserve unrelated footer fields. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. For a DARK supplied HEX, the exact primary may own the hero and headings with contrast-safe light foregrounds. For a LIGHT supplied HEX, preserve the exact HEX as the brand/CTA anchor but use a derived dark secondary for headings and a dark hero so light buttons remain clearly visible. The server enforces one of these two patterns and may repair unsafe palette values.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. If the user directly asks to change/switch the theme without naming a family, choose one suitable different color family now and emit a theme operation; do not ask which theme or ask for confirmation. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions that are not explicit theme-change requests, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish visual/content edits from structural redesigns. Text/image/link/name/label changes and vague style requests such as more premium/modern/polished edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Only explicit requests for another/different/new layout, redesign/rebuild, slider/video-hero conversion, or a different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
+For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: the selected Mega Footer variant is the shell source of truth. footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], and mega_footer {variant (classic|primary|centered_cta|centered|split|brand|secondary),tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Do not emit or rely on retired mega_enabled/enabled/theme toggles to choose layout; variant determines the shell/background. Preserve unrelated footer fields and the user\'s light-logo/filter choice. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. For a DARK supplied HEX, the exact primary may own the hero and headings with contrast-safe light foregrounds. For a LIGHT supplied HEX, preserve the exact HEX as the brand/CTA anchor but use a derived dark secondary for headings and a dark hero so light buttons remain clearly visible. The server enforces one of these two patterns and may repair unsafe palette values.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. If the user directly asks to change/switch the theme without naming a family, choose one suitable different color family now and emit a theme operation; do not ask which theme or ask for confirmation. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions that are not explicit theme-change requests, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish visual/content edits from structural redesigns. Text/image/link/name/label changes and vague style requests such as more premium/modern/polished edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Only explicit requests for another/different/new layout, redesign/rebuild, slider/video-hero conversion, or a different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
         $system="INTERNAL TARGET/CHANGE PLANNER. Intermediate output is JSON only. Never return reply, message, response, suggestion, question, confirmation copy, or any user-facing text.\n".$system;
         $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. For button shape requests, square/sharp means add rounded-none and remove conflicting rounded-* utilities on button/cta slots; pill/fully-rounded means add rounded-full and remove conflicting rounded-* utilities. Card/corner radius requests must target card slots, never button slots. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
         if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
@@ -5726,7 +5826,23 @@ LUNA CUSTOMIZATION PLAN:
             $targetIndex=-1;
             $elementContext=[];
         }
-        $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
+        $siteMemory=$headerFooterActions->rememberShellContext(
+            $siteMemory,
+            is_array($header)?$header:[],
+            is_array($footer)?$footer:[]
+        );
+        $preferredShellScope=$assistantSurface==='contextual_popup' && in_array($scope,['header','footer'],true) ? $scope : null;
+        $shellFollowUpIntent=$headerFooterActions->resolveFollowUpIntent(
+            $originalUserPrompt,
+            $siteMemory,
+            is_array($header)?$header:[],
+            is_array($footer)?$footer:[],
+            $preferredShellScope
+        );
+        if(is_array($shellFollowUpIntent) && ($shellFollowUpIntent['source']??'')==='shell_follow_up'){
+            $validated['prompt']=(string)$shellFollowUpIntent['prompt'];
+        }
+        $scopeResolution=$scopeIntelligence->resolve((string)($validated['prompt']??$originalUserPrompt),$scope,$elementContext);
         $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
         // Hotfix: pageChat must initialize the smart-edit planner contract
         // before any conversational or mutation planning branch references it.
@@ -5819,6 +5935,32 @@ LUNA CUSTOMIZATION PLAN:
                     'scope_action' => 'brand_theme',
                 ],
             ];
+        }
+
+        // Batch 3 shell-memory bridge: authenticated Luna now resolves the
+        // same explicit and relative seven-card vocabulary as Trial Luna.
+        if(!$resumePendingPlan && ($explicitShellVariant=(is_array($shellFollowUpIntent??null) ? $shellFollowUpIntent : $headerFooterActions->explicitVariantIntent($prompt)))){
+            $shellScope=(string)$explicitShellVariant['scope'];
+            $shellAction=(string)$explicitShellVariant['action'];
+            $canonicalIntent=array_replace_recursive(is_array($canonicalIntent)?$canonicalIntent:[],[
+                'intent'=>'action',
+                'execution_allowed'=>true,
+                'domain'=>$shellScope,
+                'operation'=>'update',
+                'leaf_operation'=>$shellAction,
+                'scope'=>$shellScope,
+                'needs_clarification'=>false,
+                'routing'=>[
+                    'menu_scope'=>$shellScope,
+                    'scope_action'=>$shellAction,
+                    'action_family'=>'update',
+                ],
+                'entities'=>[
+                    'shell_variant'=>$explicitShellVariant['variant'],
+                    'shell_variant_name'=>$explicitShellVariant['name'],
+                    'shell_intent_source'=>$explicitShellVariant['source']??'explicit',
+                ],
+            ]);
         }
 
         // Batch 2: vague selected-section visual polish is a schema edit, not
@@ -6381,7 +6523,8 @@ LUNA CUSTOMIZATION PLAN:
                 $prompt,
                 $canonicalIntent,
                 is_array($header)?$header:[],
-                is_array($footer)?$footer:[]
+                is_array($footer)?$footer:[],
+                $blocks
             );
             if(is_array($headerFooterResult) && ($headerFooterResult['handled']??false)){
                 $ok=(bool)($headerFooterResult['success']??false);
@@ -6389,6 +6532,15 @@ LUNA CUSTOMIZATION PLAN:
                     $headerFooterResult['operations']??[],
                     $headerFooterResult['operations']??[],
                     $ok
+                );
+                $resolvedHeader=$headerFooterResult['header']??(is_array($header)?$header:[]);
+                $resolvedFooter=$headerFooterResult['footer']??(is_array($footer)?$footer:[]);
+                $siteMemory=$headerFooterActions->rememberShellContext(
+                    $siteMemory,
+                    $resolvedHeader,
+                    $resolvedFooter,
+                    $ok?(string)($headerFooterResult['domain']??null):null,
+                    $ok?(string)($explicitShellVariant['source']??'luna_shell_action'):null
                 );
                 return response()->json(array_filter([
                     'reply'=>$naturalReplyFromFacts([
@@ -6403,8 +6555,8 @@ LUNA CUSTOMIZATION PLAN:
                     'credit_cost'=>0,
                     'credit_balance'=>$user ? $credits->balance($user) : null,
                     'blocks'=>$blocks,
-                    'header'=>$headerFooterResult['header']??(is_array($header)?$header:[]),
-                    'footer'=>$headerFooterResult['footer']??(is_array($footer)?$footer:[]),
+                    'header'=>$resolvedHeader,
+                    'footer'=>$resolvedFooter,
                     'site_memory'=>$siteMemory,
                     'pending_action'=>false,
                     'applied_operations'=>$headerFooterResult['operations']??[],
@@ -7455,7 +7607,7 @@ RULES:
 - Use ONLY spark_key values present in USABLE SPARK CATALOG.
 - HEADER NAVIGATION: when the target is Header Navigation or the user asks to add/remove/rename/reorder menu items, create/remove submenus, use `header_changes` only. Return the COMPLETE resulting `menu` array with items shaped as {label,url,children}. Maximum nesting is 3 levels total. Preserve unrelated menu items. Do not return `mega_menu_enabled`; header navigation does not support mega menus. Do not alter body sections for a navigation-only request.
 
-- FOOTER: when target scope is footer, use `footer_changes` only unless the user explicitly requests a body/header change. Preserve the existing footer and return only intended changed fields. Mega footer columns use {title,items:[{label,url}]}; contact uses {email,phone,address}; social links use [{label,url}]. Manual-equivalent footer structure is global site state.
+- FOOTER: when target scope is footer, use `footer_changes` only unless the user explicitly requests a body/header change. Preserve the existing footer and return only intended changed fields. The canonical footer layout is mega_footer.variant: classic|primary|centered_cta|centered|split|brand|secondary. Do not use a separate Mega Footer on/off toggle. Mega footer columns use {title,items:[{label,url}]}; contact uses {email,phone,address}; social links use [{label,url}]. Preserve light-logo/filter permission. Manual-equivalent footer structure is global site state.
 - CROSS-PAGE REFERENCES: when the user says match Home/About/Services/etc, use SIBLING PAGE REFERENCES as design context. Preserve current-page content unless explicitly asked to replace it. Edit the current page only; never claim another page changed.
 - SPARK SELECTION RANKING: requested media/capability/aliases are the strongest signal; current selected section intent/category is second; layout/style/industry/position fit are third. Do NOT prefer Hero merely because a candidate is a Hero.
 - A request for "slider" means consider EVERY catalog item whose media=slider, aliases mention slider/carousel/slideshow, or capabilities include supports-slider. Then choose the one whose intent best matches the selected section. Example: testimonials -> testimonial carousel; portfolio/work -> gallery/project slider; opening banner -> hero slider.
@@ -7483,7 +7635,7 @@ RULES:
 - Page scope: you may coordinate multiple operations and theme changes, max 8 operations.
 - page_style may be balanced, clean, or premium only when explicitly requested. Use it for requests like "make the page premium/clean/balanced".
 - Header/footer changes only if explicitly requested or essential to a page-wide theme request.
-- Header language mapping: "float header", "overlay header", "header over hero/banner", "transparent header" means header_changes.overlay_header_on_banner=true. "put header above/outside the banner", "solid header", or "disable overlay" means false.
+- HEADER SHELL: the canonical header layout is the selected variant: classic_header|primary_header|split_navigation_header|centered_header|overlay_hero_header|overlay_centered_header|secondary_header. Overlay state is derived from overlay_hero_header/overlay_centered_header; do not treat overlay_header_on_banner as an independent design toggle. Preserve the user's light-logo/filter permission.
 - DESIGN SAFETY CONTRACT: Cosmic owns raw CSS/HTML/JS and unsafe implementation mechanics. Tailwind utilities may be emitted ONLY inside operation.tailwind_mutations for rendered slot ids supplied in TAILWIND EDIT CONTEXT; never expose them to the user, never rewrite markup, and never emit arbitrary CSS/style payloads.
 - Accept normal design intent (make it more prominent, more breathing room, darker/lighter, rounded, cleaner, premium, change layout) only through existing safe schema fields, registered layouts, theme/page_style, or bounded existing design controls. If the exact request cannot be represented safely, emit no styling operation and explain briefly that Luna can apply a design-system-safe equivalent instead.
 - RELATIVE DESIGN RULE: when the user says a selected section should feel "more premium", "more modern", "more polished", "better", or "more visually interesting", KEEP the current Spark/layout and emit an edit operation. Let the selected-Spark full-schema editor decide the exact Tailwind/content patch. Replace the Spark only when the user explicitly asks for another/different/new layout, redesign/rebuild, or conversion to another section type.

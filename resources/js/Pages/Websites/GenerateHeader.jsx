@@ -199,17 +199,22 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                     onManual={onLogoManual}
                     onAi={onLogoClick}
                 />
+            ) : (customShell && block.marketplace_variant === 'harbor_luxury' ? (
+                <div data-cosmic-shell-element="logo" data-cosmic-shell-path="header.logo_text" className="flex shrink-0 items-center gap-3">
+                    <svg viewBox="0 0 44 52" className="h-[52px] w-[44px] shrink-0" fill="none" stroke="#c8a052" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 19 22 5l16 14"/><path d="M11 17v29M33 17v13M11 28h22"/><path d="M22 14v11M18 19h8"/><path d="M11 36h11l4 4h10"/><circle cx="36" cy="40" r="2.2"/></svg>
+                    <span className="leading-none"><span className="block font-serif text-[21px] tracking-[.055em] text-white">{String(block.logo_text || 'HARBOR & KEY REALTY').replace(/\s+REALTY$/i,'')}</span><span className="mt-1 block text-center text-[9px] font-bold tracking-[.42em] text-[#c8a052]">REALTY</span></span>
+                </div>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
                     className={`text-xl font-extrabold tracking-wide ${customShell ? 'text-[color:var(--cosmic-custom-text)]' : (overlay ? 'text-white' : textColor)} cursor-pointer`}
                     onSave={(val) => onUpdate({ logo_text: val })}
                 />
-            )}
+            ))}
             <nav className="flex w-full items-center justify-between gap-4 lg:w-auto lg:justify-start lg:gap-6">
                 <HeaderNavigation
                     items={menuItems}
-                    textClass={`${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor} font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
+                    textClass={`${customShell ? 'text-[color:var(--cosmic-custom-nav)] hover:opacity-70' : subColor} font-medium ${customShell ? '' : (overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900')}`}
                     textStyle={customShell ? {fontSize:`${Number(customStyle.nav_size || 14)}px`} : undefined}
                     onUpdate={(menu) => onUpdate({ menu })}
                     pageTargets={pageTargets}

@@ -22,6 +22,9 @@ export const SPARK_EXTRA_TYPES = Object.freeze([
     'video',
     'divider',
     'spacer',
+    'list',
+    'quote',
+    'stat',
 ]);
 
 const EXTRA_TYPE_SET = new Set(SPARK_EXTRA_TYPES);
@@ -148,6 +151,15 @@ const normalizeExtraData = (type, rawData) => {
                 size: cleanEnum(data.size, ['xs', 'sm', 'md', 'lg', 'xl', '2xl'], 'md'),
             };
 
+        case 'list':
+            return { items: (Array.isArray(data.items) ? data.items : []).slice(0, 40).map((item) => cleanString(typeof item === 'object' ? (item.text ?? item.label ?? item.value ?? '') : item, 1000)).filter(Boolean) };
+
+        case 'quote':
+            return { text: cleanString(data.text), cite: cleanString(data.cite, 500) };
+
+        case 'stat':
+            return { value: cleanString(data.value, 500), label: cleanString(data.label, 500) };
+
         default:
             return {};
     }
@@ -159,10 +171,14 @@ export const normalizeSparkExtraItem = (item) => {
     const type = cleanString(item.type, 80).toLowerCase();
     if (!EXTRA_TYPE_SET.has(type)) return null;
 
+    const style = isPlainObject(item.style) ? Object.fromEntries(Object.entries(item.style).slice(0, 64).filter(([key, value]) => /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key) && ['string','number','boolean'].includes(typeof value))) : {};
+    const meta = isPlainObject(item.meta) ? { style_mode: cleanEnum(item.meta.style_mode, ['global','custom'], 'global'), responsive_mode: cleanEnum(item.meta.responsive_mode, ['auto','custom'], 'auto'), auto_align: cleanBoolean(item.meta.auto_align, true) } : {};
     return {
         id: normalizeExtraId(item.id),
         type,
         data: normalizeExtraData(type, item.data),
+        ...(Object.keys(style).length ? { style } : {}),
+        ...(Object.keys(meta).length ? { meta } : {}),
     };
 };
 

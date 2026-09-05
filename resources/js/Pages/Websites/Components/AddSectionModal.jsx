@@ -588,6 +588,7 @@ export default function AddSectionModal({
     onClose,
     onAdd,
     onCustomize = null,
+    onBuildOwn = null,
     onReplace = null,
     websiteContext = "",
     websiteId = null,
@@ -1200,6 +1201,22 @@ export default function AddSectionModal({
                                         <div className="min-w-0">
                                             <div className="cosmic-section-type-title">Start Blank with Luna</div>
                                             <div className="cosmic-section-type-meta cosmic-section-type-meta--accent">Describe it — Luna picks the closest Spark</div>
+                                        </div>
+                                        <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { if (onBuildOwn) { onBuildOwn({ insertionContext }); onClose(); } }}
+                                    className="group cosmic-section-type-card cosmic-section-type-card--build-own min-h-40 text-left"
+                                    data-card-kind="build-own"
+                                    data-tone="emerald"
+                                >
+                                    <div className="cosmic-section-type-icon"><SectionTypeIcon icon="grid" /></div>
+                                    <div className="cosmic-section-type-card__footer">
+                                        <div className="min-w-0">
+                                            <div className="cosmic-section-type-title">Build Your Own</div>
+                                            <div className="cosmic-section-type-description">Start with a smart blank section, then drag rows, columns and elements into place.</div>
                                         </div>
                                         <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>

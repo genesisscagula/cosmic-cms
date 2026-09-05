@@ -34,7 +34,14 @@ final class MarketplaceWebsiteProvisioningService
             if ($recordedWebsiteId > 0) {
                 $recorded = Website::query()->where('user_id', $user->id)->find($recordedWebsiteId);
                 if ($recorded) {
-                    return $recorded;
+                    if ($checkout->status === MarketplaceCheckout::STATUS_COMPLETED) {
+                        return $recorded;
+                    }
+
+                    // Batch 2 reserves the Website in the same transaction as the
+                    // credit debit. A recorded Website that is not completed yet
+                    // is therefore the exact site that should be finished here.
+                    $existingWebsite = $recorded;
                 }
             }
 
@@ -71,6 +78,55 @@ final class MarketplaceWebsiteProvisioningService
         ]);
     }
 
+    /**
+     * Reserve the one normal Website record that this credit purchase will own.
+     * The caller must check and lock the shared Agency website allowance before
+     * invoking this method. Keeping the reservation in the debit transaction
+     * prevents Studio + Marketplace races and gives provisioning retries a stable
+     * Website target without a second template charge.
+     */
+    public function reserveWebsite(MarketplaceCheckout $checkout, ?User $lockedUser = null): Website
+    {
+        return DB::transaction(function () use ($checkout, $lockedUser) {
+            $checkout = MarketplaceCheckout::query()
+                ->with(['template', 'user'])
+                ->lockForUpdate()
+                ->findOrFail($checkout->id);
+
+            if (! $checkout->credit_transaction_id) {
+                throw new RuntimeException('Marketplace credits must be confirmed before reserving a website.');
+            }
+
+            $template = $checkout->template;
+            $user = $lockedUser ?: $checkout->user;
+
+            if (! $template || ! $user || (int) $user->id !== (int) $checkout->user_id) {
+                throw new RuntimeException('Marketplace website reservation is missing its template or account.');
+            }
+
+            $recordedWebsiteId = (int) data_get($checkout->metadata, 'website_id', 0);
+            if ($recordedWebsiteId > 0) {
+                $recorded = Website::query()->where('user_id', $user->id)->find($recordedWebsiteId);
+                if ($recorded) {
+                    return $recorded;
+                }
+            }
+
+            $workspace = $this->workspaceFor($user, $template);
+            $website = $this->createWebsite($user, $workspace, $template, $checkout, false);
+
+            $checkout->forceFill([
+                'metadata' => array_merge($checkout->metadata ?? [], [
+                    'workspace_id' => $workspace->id,
+                    'website_id' => $website->id,
+                    'website_reserved_at' => now()->toIso8601String(),
+                ]),
+            ])->save();
+
+            return $website;
+        });
+    }
+
     private function workspaceFor(User $user, MarketplaceTemplate $template): Workspace
     {
         $workspace = $user->ownedWorkspaces()->oldest('id')->first();
@@ -99,9 +155,14 @@ final class MarketplaceWebsiteProvisioningService
         return $workspace;
     }
 
-    private function createWebsite(User $user, Workspace $workspace, MarketplaceTemplate $template, MarketplaceCheckout $checkout): Website
-    {
-        if ($message = app(AgencyWebsiteLimitService::class)->validationMessage($user)) {
+    private function createWebsite(
+        User $user,
+        Workspace $workspace,
+        MarketplaceTemplate $template,
+        MarketplaceCheckout $checkout,
+        bool $enforceLimit = true,
+    ): Website {
+        if ($enforceLimit && ($message = app(AgencyWebsiteLimitService::class)->validationMessage($user))) {
             throw new RuntimeException($message);
         }
 

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketplaceTemplate;
 use App\Services\MarketplaceTemplateService;
-use App\Services\MarketplaceCheckoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -13,10 +12,8 @@ use Inertia\Response;
 
 final class MarketplaceController extends Controller
 {
-    public function __construct(
-        private readonly MarketplaceTemplateService $templates,
-        private readonly MarketplaceCheckoutService $checkouts,
-    ) {
+    public function __construct(private readonly MarketplaceTemplateService $templates)
+    {
     }
 
     public function index(Request $request): Response
@@ -113,9 +110,6 @@ final class MarketplaceController extends Controller
         $preview['detail_path'] = $detailPath;
         $preview['demo_path'] = $demoPath;
         $preview['demo_embed_path'] = $demoPath.'?embed=1';
-        $billingPlan = $this->checkouts->planSummary((string) $preview['plan']);
-        $preview['monthly_price_cents'] = $billingPlan['price_cents'];
-        $preview['monthly_price'] = $billingPlan['price'];
         $preview['checkout_path'] = $this->marketplacePath($request, '/checkout/'.rawurlencode($template));
 
         // Detail needs the complete page map and shell, but not the large block payload.
@@ -173,9 +167,6 @@ final class MarketplaceController extends Controller
         $preview['demo_path'] = $baseDemoPath;
         $preview['current_demo_path'] = $currentPath;
         $preview['embed_path'] = $currentPath.'?embed=1';
-        $billingPlan = $this->checkouts->planSummary((string) $preview['plan']);
-        $preview['monthly_price_cents'] = $billingPlan['price_cents'];
-        $preview['monthly_price'] = $billingPlan['price'];
         $preview['checkout_path'] = $this->marketplacePath($request, '/checkout/'.rawurlencode($template));
         $preview['pages'] = collect($preview['pages'])->map(function (array $item) use ($baseDemoPath, $embed) {
             $path = ($item['slug'] ?? 'home') === 'home' ? $baseDemoPath : $baseDemoPath.'/'.rawurlencode((string) $item['slug']);
@@ -254,8 +245,6 @@ final class MarketplaceController extends Controller
         $detailPath = $this->marketplacePath($request, "/templates/{$template->slug}");
         $demoPath = $this->marketplacePath($request, "/templates/{$template->slug}/demo");
         $checkoutPath = $this->marketplacePath($request, "/checkout/{$template->slug}");
-        $billingPlan = $this->checkouts->planSummary((string) $template->plan);
-
         return [
             'id' => $template->id,
             'slug' => $template->slug,
@@ -265,9 +254,8 @@ final class MarketplaceController extends Controller
             'style' => $template->style_slug,
             'plan' => ucfirst($template->plan),
             'planKey' => $template->plan,
-            'price' => $billingPlan['price'],
-            'priceCents' => $billingPlan['price_cents'],
-            'currency' => $template->currency,
+            'creditPrice' => (int) $template->credit_price,
+            'priceUnit' => 'cosmic_credits',
             'pages' => (int) $template->page_count,
             'title' => $headline,
             'copy' => $template->summary ?: $template->description,
@@ -289,16 +277,13 @@ final class MarketplaceController extends Controller
     private function plans(): array
     {
         return collect(config('cosmic_marketplace.plans', []))
-            ->map(function (array $plan, string $key) {
-                $billing = $this->checkouts->planSummary($key);
-                return [
-                    'key' => $key,
-                    'name' => $plan['label'] ?? $billing['label'],
-                    'price' => $billing['price'],
-                    'pageCount' => (int) ($plan['page_count'] ?? 0),
-                    'currency' => $billing['currency'],
-                ];
-            })->values()->all();
+            ->map(fn (array $plan, string $key) => [
+                'key' => $key,
+                'name' => (string) ($plan['label'] ?? ucfirst($key)),
+                'creditPrice' => (int) ($plan['credit_price'] ?? 0),
+                'pageCount' => (int) ($plan['page_count'] ?? 0),
+                'priceUnit' => 'cosmic_credits',
+            ])->values()->all();
     }
 
     private function marketplacePath(Request $request, string $path): string

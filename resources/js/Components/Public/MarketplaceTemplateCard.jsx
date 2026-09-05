@@ -109,9 +109,14 @@ export default function MarketplaceTemplateCard({ template, index = 0, example =
                 </div>
 
                 <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
-                        {template?.aiPersonalization !== false && <span>✦ AI setup</span>}
-                        {template?.websiteCare && <span>· Website care</span>}
+                    <div>
+                        {Number(template?.creditPrice || 0) > 0 ? (
+                            <p className="text-sm font-black text-[#07132c]">{Number(template.creditPrice).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">Cosmic Credits</span></p>
+                        ) : null}
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
+                            {template?.aiPersonalization !== false && <span>✦ AI setup</span>}
+                            {template?.websiteCare && <span>· Website care</span>}
+                        </div>
                     </div>
                     <div className="flex gap-2">
                         <Link href={demoPath} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 px-3 text-[10px] font-black text-slate-700 transition hover:border-emerald-200 hover:text-emerald-800">Live demo</Link>

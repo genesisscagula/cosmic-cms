@@ -38,7 +38,7 @@ const decorativePreview = {
     industry: 'business',
     industryLabel: 'Premium Business Website',
     plan: 'Growth',
-    price: 99,
+    creditPrice: 1000,
     pages: 10,
     title: 'A premium website, ready to become yours.',
     copy: 'Choose a complete website and let Luna personalize the details for your business.',
@@ -128,8 +128,8 @@ function TemplateCard({ template, catalogPath = '/marketplace/templates' }) {
                 </ul>
 
                 <div className="mt-5 flex items-end gap-1">
-                    <span className="text-3xl font-black tracking-[-.04em] text-slate-950">${template.price}</span>
-                    <span className="pb-1 text-sm font-semibold text-slate-500">/month</span>
+                    <span className="text-3xl font-black tracking-[-.04em] text-slate-950">{Number(template.creditPrice || 0).toLocaleString()}</span>
+                    <span className="pb-1 text-sm font-semibold text-slate-500">Cosmic Credits</span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-[.82fr_1.18fr] gap-2.5">
@@ -167,7 +167,7 @@ export default function MarketplaceIndex({ canLogin = true, canRegister = true, 
     const heroTemplates = templates.length ? templates : [decorativePreview, decorativePreview, decorativePreview];
     const pricing = plans.map((plan) => ({
         ...plan,
-        description: pricingCopy[plan.key]?.description || 'A complete managed website subscription.',
+        description: pricingCopy[plan.key]?.description || 'A one-install Marketplace template price.',
         featured: Boolean(pricingCopy[plan.key]?.featured),
         items: [`${plan.pageCount} page website`, ...(pricingCopy[plan.key]?.items || [])],
     }));
@@ -397,9 +397,9 @@ export default function MarketplaceIndex({ canLogin = true, canRegister = true, 
                     <section id="pricing" className="scroll-mt-20 border-y border-slate-200 bg-[#f8f9fd]">
                         <div className="mx-auto max-w-[1180px] px-5 py-20 sm:px-7 lg:px-10">
                             <div className="text-center">
-                                <p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">Website + care in one subscription</p>
-                                <h2 className="mt-3 text-3xl font-black tracking-[-.04em] text-slate-950 sm:text-4xl">Simple, Transparent Pricing</h2>
-                                <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-500">Choose your website, personalize it, and keep it cared for. Hosting, SSL, backups, security, and ongoing website care are included.</p>
+                                <p className="text-xs font-black uppercase tracking-[.18em] text-violet-600">One template installation · Cosmic Credits</p>
+                                <h2 className="mt-3 text-3xl font-black tracking-[-.04em] text-slate-950 sm:text-4xl">Simple Marketplace Pricing</h2>
+                                <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-500">Marketplace templates use Cosmic Credits for one installation into a normal Agency website. Normal editing does not charge the template price again, and AI usage keeps its existing credit rules.</p>
                             </div>
 
                             <div className="mt-10 grid gap-5 lg:grid-cols-3">
@@ -408,11 +408,11 @@ export default function MarketplaceIndex({ canLogin = true, canRegister = true, 
                                         {plan.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-600 px-4 py-1 text-[9px] font-black uppercase tracking-[.16em] text-white shadow-lg">Most Popular</span>}
                                         <h3 className="text-xl font-black text-slate-950">{plan.name}</h3>
                                         <p className="mt-2 min-h-[44px] text-sm leading-6 text-slate-500">{plan.description}</p>
-                                        <div className="mt-6 flex items-end gap-1"><span className="text-4xl font-black tracking-[-.05em] text-slate-950">${plan.price}</span><span className="pb-1 text-sm font-bold text-slate-500">/month</span></div>
+                                        <div className="mt-6 flex items-end gap-2"><span className="text-4xl font-black tracking-[-.05em] text-slate-950">{Number(plan.creditPrice || 0).toLocaleString()}</span><span className="pb-1 text-sm font-bold text-slate-500">Cosmic Credits</span></div>
                                         <ul className="mt-6 space-y-3 border-t border-slate-100 pt-6 text-sm font-semibold text-slate-600">
                                             {plan.items.map((item) => <li key={item} className="flex gap-2"><span className="font-black text-emerald-600">✓</span>{item}</li>)}
                                         </ul>
-                                        <Link href={`/pricing?source=marketplace&plan=${plan.key}`} className={`mt-7 flex min-h-12 items-center justify-center rounded-xl px-5 text-sm font-black transition ${plan.featured ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700' : 'border border-slate-300 bg-white text-slate-900 hover:border-violet-300 hover:text-violet-700'}`}>Get Started</Link>
+                                        <Link href={`${catalogPath}?plan=${plan.key}`} className={`mt-7 flex min-h-12 items-center justify-center rounded-xl px-5 text-sm font-black transition ${plan.featured ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700' : 'border border-slate-300 bg-white text-slate-900 hover:border-violet-300 hover:text-violet-700'}`}>Browse {plan.name} Templates</Link>
                                     </article>
                                 ))}
                             </div>
@@ -423,7 +423,7 @@ export default function MarketplaceIndex({ canLogin = true, canRegister = true, 
                         <div className="mx-auto max-w-[1480px] px-5 py-16 sm:px-7 lg:px-10">
                             <div className="grid gap-6 rounded-[28px] border border-slate-200 bg-gradient-to-r from-white via-violet-50/45 to-white p-7 shadow-[0_20px_60px_rgba(15,23,42,.06)] md:grid-cols-3 md:p-9">
                                 <div className="flex gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-violet-100 text-xl text-violet-700">◇</span><div><h3 className="font-black text-slate-950">14-Day Peace of Mind</h3><p className="mt-2 text-sm leading-6 text-slate-500">Review your new website and make changes before you fully settle into your new online home.</p></div></div>
-                                <div className="flex gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-indigo-100 text-xl text-indigo-700">♧</span><div><h3 className="font-black text-slate-950">Real Website Care</h3><p className="mt-2 text-sm leading-6 text-slate-500">Hosting, SSL, backups, updates, security, and ongoing support are built into the subscription.</p></div></div>
+                                <div className="flex gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-indigo-100 text-xl text-indigo-700">♧</span><div><h3 className="font-black text-slate-950">Real Website Care</h3><p className="mt-2 text-sm leading-6 text-slate-500">Hosting, SSL, backups, updates, security, and ongoing support continue through your Agency plan.</p></div></div>
                                 <div className="flex gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-100 text-xl text-amber-700">★</span><div><h3 className="font-black text-slate-950">Built to Stay Editable</h3><p className="mt-2 text-sm leading-6 text-slate-500">Your website remains fully customizable in Cosmic Studio without requiring code.</p></div></div>
                             </div>
                         </div>

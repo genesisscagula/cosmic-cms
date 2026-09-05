@@ -25,11 +25,11 @@ final class SeedMarketplaceTemplates extends Command
             ucfirst($template->plan),
             $template->pages_count,
             $template->navigation_items_count,
-            '$'.number_format(((int) $template->monthly_price_cents) / 100, 0).'/mo',
+            number_format((int) $template->credit_price).' credits',
             $template->status,
         ])->all();
 
-        $this->table(['Template', 'Plan', 'Pages', 'Nav items', 'Price', 'Status'], $rows);
+        $this->table(['Template', 'Plan', 'Pages', 'Nav items', 'Cosmic Credits', 'Status'], $rows);
 
         if ($this->option('audit')) {
             $errors = $templates->validationErrors();

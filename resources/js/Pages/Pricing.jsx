@@ -201,8 +201,8 @@ const faqs = [
         answer: 'Yes. Cosmic CMS is designed so you can start with the plan that fits today and move to a different tier as your website, content, or client portfolio grows.',
     },
     {
-        question: 'Are Marketplace templates included in the subscription?',
-        answer: 'Your subscription controls the website and feature tier. Marketplace templates and design assets follow their own access or credit rules, and an installed Marketplace website keeps its own reusable design kit for future pages.',
+        question: 'How are Marketplace templates charged?',
+        answer: 'Marketplace is available to Agency plans. Your Agency subscription controls account access and the shared website allowance, while each Marketplace template installation uses its displayed Cosmic Credit price. Normal editing does not charge the template price again.',
     },
     {
         question: 'What is the difference between Business and Agency?',

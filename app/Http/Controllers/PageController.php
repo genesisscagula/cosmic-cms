@@ -790,10 +790,32 @@ class PageController extends Controller
             $website->business_description ? "Business description: {$website->business_description}" : null,
         ]);
 
+        $websiteSettings = is_array($website->settings) ? $website->settings : [];
+        $isMarketplaceWebsite = data_get($websiteSettings, 'marketplace.source') === 'marketplace'
+            || (bool) data_get($websiteSettings, 'marketplace.template_id');
+        $marketplaceDesignKit = (array) data_get($websiteSettings, 'marketplace.design_kit', []);
+        $marketplaceContext = $isMarketplaceWebsite ? array_filter([
+            'Website source: Marketplace.',
+            data_get($websiteSettings, 'marketplace.template_slug')
+                ? 'Installed Marketplace template: '.data_get($websiteSettings, 'marketplace.template_slug').'.'
+                : null,
+            data_get($websiteSettings, 'marketplace.template_version')
+                ? 'Installed template version: '.data_get($websiteSettings, 'marketplace.template_version').'.'
+                : null,
+            data_get($marketplaceDesignKit, 'header_variant')
+                ? 'Installed header variant: '.data_get($marketplaceDesignKit, 'header_variant').'.'
+                : null,
+            data_get($marketplaceDesignKit, 'footer_variant')
+                ? 'Installed footer variant: '.data_get($marketplaceDesignKit, 'footer_variant').'.'
+                : null,
+            'Preserve the installed Marketplace design language by default. Prefer its saved design kit, existing page/section patterns, colors, typography, spacing, cards, CTA patterns, header and footer instead of unrelated generic Sparks or themes. Explicit customer redesign requests may change the customer-owned copy, but never modify the master Marketplace template.',
+        ]) : [];
+
         $websiteContext = trim(implode("\n", array_filter([
             'Generate professional website content for the following business.',
             "Business Name: {$website->name}",
             ...$profileContext,
+            ...$marketplaceContext,
             "Page: {$page->title}",
             'Language: English.',
             'Write naturally and professionally. Do not invent awards, certifications, employee names, years of experience, customer statistics, or other unverifiable facts.',
@@ -890,6 +912,33 @@ class PageController extends Controller
             $builderPreviewUrl = app(PreviewDeploymentService::class)->urlForPage($website, $page);
         }
 
+
+        $trialHeaderBlock = null;
+        $trialFooterBlock = null;
+        if ($isTrialMode && $trial) {
+            $trialMenu = collect($trial->menu_structure ?? [])->map(fn (array $menuPage) => [
+                'label' => (string) ($menuPage['title'] ?? 'Page'),
+                'url' => (bool) ($menuPage['is_home'] ?? false) ? 'home' : (string) ($menuPage['slug'] ?? '#'),
+            ])->values()->all();
+            $trialHeaderBlock = HeaderFooterVariantContract::normalizeHeader(array_replace(
+                is_array($website->global_header) ? $website->global_header : [],
+                [
+                    'logo_text' => $trial->business_name,
+                    'logo_image_url' => $trial->logo_url ?: data_get($website->global_header, 'logo_image_url', '/storage/branding/your-logo.png'),
+                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
+                    'menu' => $trialMenu,
+                ],
+            ));
+            $trialFooterBlock = HeaderFooterVariantContract::normalizeFooter(array_replace(
+                is_array($website->global_footer) ? $website->global_footer : [],
+                [
+                    'logo_text' => $trial->business_name,
+                    'logo_image_url' => $trial->logo_url ?: data_get($website->global_footer, 'logo_image_url', '/storage/branding/your-logo.png'),
+                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
+                ],
+            ));
+        }
+
         return Inertia::render('Websites/Builder', [
             // Builder is token-aware and intentionally lives outside the normal
             // authenticated route group, so pass theme access explicitly instead
@@ -950,51 +999,8 @@ class PageController extends Controller
             'pageStyle' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style),
             'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, PageStyleRegistry::normalize($website->page_style ?: $page->page_style)),
             'trialMode' => $isTrialMode,
-            'globalHeaderBlock' => $isTrialMode
-                ? [
-                    'type' => 'classic_header',
-                    'logo_text' => $trial->business_name,
-                    'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
-                    'logo_height' => max(42, (int) data_get($trial->preview_theme, 'logo_height', 60)),
-                    'logo_max_width' => max(220, (int) data_get($trial->preview_theme, 'logo_max_width', 300)),
-                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
-                    'overlay_header_on_banner' => (bool) data_get($trial->preview_theme, 'overlay_header_on_banner', false),
-                    'cta_label' => 'Get Started',
-                    'cta_url' => '#',
-                    'menu' => collect($trial->menu_structure ?? [])
-                        ->map(fn (array $menuPage) => [
-                            'label' => $menuPage['title'],
-                            'url' => ($menuPage['is_home'] ?? false) ? 'home' : $menuPage['slug'],
-                        ])
-                        ->values()
-                        ->all(),
-                ]
-                : $website->global_header,
-            'globalFooterBlock' => $isTrialMode
-                ? [
-                    'type' => 'minimal_footer',
-                'mega_enabled' => true,
-                'mega_footer' => [
-                    'enabled' => true,
-                    'variant' => 'classic',
-                    'theme' => 'white',
-                    'tagline' => 'A premium information-rich footer.',
-                    'primary_label' => 'Get in touch',
-                    'primary_url' => '#contact',
-                    'columns' => [
-                        ['title' => 'Company', 'items' => [['label' => 'About us', 'url' => '#about'], ['label' => 'Careers', 'url' => '#careers'], ['label' => 'Contact', 'url' => '#contact']]],
-                        ['title' => 'Services', 'items' => [['label' => 'What we do', 'url' => '#services'], ['label' => 'Solutions', 'url' => '#solutions'], ['label' => 'Pricing', 'url' => '#pricing']]],
-                        ['title' => 'Resources', 'items' => [['label' => 'Insights', 'url' => '#insights'], ['label' => 'Guides', 'url' => '#guides'], ['label' => 'Updates', 'url' => '#updates']]],
-                    ],
-                ],
-                    'theme' => 'white',
-                    'logo_text' => $trial->business_name,
-                    'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
-                    'logo_height' => max(36, min(56, (int) data_get($trial->preview_theme, 'logo_height', 48))),
-                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
-                    'copyright' => '© '.now()->year.'. All rights reserved.',
-                ]
-                : $website->global_footer,
+            'globalHeaderBlock' => $isTrialMode ? $trialHeaderBlock : $website->global_header,
+            'globalFooterBlock' => $isTrialMode ? $trialFooterBlock : $website->global_footer,
             'trialToken' => $trial?->token,
             'websiteMediaPack' => ! $isTrialMode ? [
                 'status' => $website->mediaPack?->status ?? 'missing',
@@ -1122,10 +1128,12 @@ class PageController extends Controller
             $rules['global_header'] = ['nullable', 'array'];
             $rules['global_footer'] = ['nullable', 'array'];
         } else {
-            // Trial builder exposes only the global overlay-header switch. The
-            // shared trial website shell must never be mutated by guest sessions.
+            // Each trial owns an isolated Website shell. Luna and the Header/Footer
+            // selector therefore save the same canonical seven-variant snapshots
+            // used by Preview/Live instead of persisting only the retired overlay
+            // boolean and losing footer changes on refresh.
             $rules['global_header'] = ['nullable', 'array'];
-            $rules['global_header.overlay_header_on_banner'] = ['nullable', 'boolean'];
+            $rules['global_footer'] = ['nullable', 'array'];
         }
 
         $validated = $request->validate($rules);
@@ -1225,6 +1233,10 @@ class PageController extends Controller
                     : (array) $trial->preview_theme;
                 if (array_key_exists('global_header', $validated)) {
                     $previewTheme['overlay_header_on_banner'] = (bool) data_get($validated, 'global_header.overlay_header_on_banner', false);
+                    $previewTheme['trial_header_variant'] = (string) data_get($validated, 'global_header.type', 'classic_header');
+                }
+                if (array_key_exists('global_footer', $validated)) {
+                    $previewTheme['trial_footer_variant'] = (string) data_get($validated, 'global_footer.mega_footer.variant', 'classic');
                 }
                 $trialUpdate['preview_theme'] = $previewTheme;
                 if (array_key_exists('theme_settings', $validated)) {
@@ -1233,6 +1245,16 @@ class PageController extends Controller
                     $trialUpdate['logo_theme_synced_theme'] = data_get($validated, 'theme_settings.logo_theme_synced_theme', $trial->logo_theme_synced_theme);
                 }
                 $trial->update($trialUpdate);
+
+                // Persist the isolated Trial Website shell before staging publish.
+                // TrialStagingPublisherService, conversion/provisioning and Builder
+                // reloads all read these exact canonical snapshots.
+                if (array_key_exists('global_header', $validated)) $website->global_header = $validated['global_header'];
+                if (array_key_exists('global_footer', $validated)) $website->global_footer = $validated['global_footer'];
+                if (array_key_exists('theme_settings', $validated)) $website->theme_settings = $validated['theme_settings'];
+                if (array_key_exists('global_header', $validated) || array_key_exists('global_footer', $validated) || array_key_exists('theme_settings', $validated)) {
+                    $website->save();
+                }
                 return;
             }
 

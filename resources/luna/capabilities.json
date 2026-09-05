@@ -620,6 +620,85 @@
       ]
     },
     {
+      "id": "header.variants",
+      "name": "Header Variations",
+      "category": "header",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "header"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "zero_manual",
+      "can_do": [
+        "select White + Primary CTA header",
+        "select Primary Contrast header",
+        "select Center Logo + CTA header",
+        "select Center Logo header without CTA",
+        "select Overlay Hero header",
+        "select Overlay Center Logo header",
+        "select Secondary Surface header"
+      ],
+      "limits": {
+        "variant_count": 7,
+        "overlay_requires_first_hero_or_banner": true
+      },
+      "cannot_do": [
+        "treat the old overlay toggle as a separate source of truth",
+        "invent a header variant outside the seven supported layouts"
+      ],
+      "fallback": "Use White + Primary CTA when the requested header name is not recognized.",
+      "verification": "Verify global_header.type matches one canonical header variant and overlay state is derived from it.",
+      "tags": [
+        "header",
+        "variant",
+        "layout",
+        "overlay",
+        "center logo",
+        "primary",
+        "secondary"
+      ],
+      "aliases": [
+        "white header",
+        "classic header",
+        "primary header",
+        "primary contrast header",
+        "center logo with cta",
+        "center logo without cta",
+        "centered header",
+        "split navigation header",
+        "overlay hero header",
+        "overlay centered header",
+        "overlay center logo",
+        "secondary header",
+        "secondary surface header"
+      ],
+      "keywords": [
+        "header",
+        "white",
+        "classic",
+        "primary",
+        "center",
+        "centered",
+        "logo",
+        "cta",
+        "split",
+        "navigation",
+        "overlay",
+        "hero",
+        "secondary",
+        "surface",
+        "variant"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
       "id": "header.mega_menu",
       "name": "Header Mega Menu",
       "category": "header",
@@ -712,6 +791,86 @@
       ]
     },
     {
+      "id": "footer.variants",
+      "name": "Mega Footer Variations",
+      "category": "footer",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "footer"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "zero_manual",
+      "can_do": [
+        "select White Mega footer",
+        "select Primary Mega footer",
+        "select Centered + CTA footer",
+        "select Centered Minimal footer",
+        "select Split Editorial footer",
+        "select Primary Brand footer",
+        "select Secondary Surface footer"
+      ],
+      "limits": {
+        "variant_count": 7,
+        "max_columns": 4,
+        "max_links_per_column": 6,
+        "max_social_links": 6
+      },
+      "cannot_do": [
+        "treat Mega Footer as an independent on/off design toggle",
+        "invent a footer variant outside the seven supported layouts"
+      ],
+      "fallback": "Use White Mega when the requested footer name is not recognized.",
+      "verification": "Verify global_footer.mega_footer.variant matches one canonical footer variant and its background is derived from that variant.",
+      "tags": [
+        "footer",
+        "mega footer",
+        "variant",
+        "layout",
+        "primary",
+        "secondary",
+        "centered",
+        "editorial",
+        "brand"
+      ],
+      "aliases": [
+        "white mega footer",
+        "classic footer",
+        "primary mega footer",
+        "centered cta footer",
+        "centered footer with cta",
+        "centered minimal footer",
+        "split editorial footer",
+        "brand footer",
+        "primary brand footer",
+        "secondary footer",
+        "secondary surface footer"
+      ],
+      "keywords": [
+        "footer",
+        "mega",
+        "white",
+        "classic",
+        "primary",
+        "centered",
+        "cta",
+        "minimal",
+        "split",
+        "editorial",
+        "brand",
+        "secondary",
+        "surface",
+        "variant"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
       "id": "footer.standard",
       "name": "Global Footer",
       "category": "footer",
@@ -786,7 +945,7 @@
       "confirmation": "direct",
       "credit_behavior": "runtime_defined",
       "can_do": [
-        "enable or disable Mega Footer",
+        "select and switch among supported Mega Footer variations",
         "manage columns",
         "manage links in columns",
         "edit CTA/tagline/contact/social content"
@@ -799,7 +958,7 @@
       "cannot_do": [
         "treat Mega Footer as a header Mega Menu"
       ],
-      "fallback": "Use standard footer if Mega Footer is not desired.",
+      "fallback": "Use the White Mega variation for the simplest full footer layout.",
       "verification": "Validate footer schema limits and persistence.",
       "tags": [
         "branding",
@@ -809,13 +968,15 @@
       ],
       "aliases": [
         "edit cta/tagline/contact/social content",
-        "enable or disable mega footer",
         "footer mega",
         "large footer",
         "manage columns",
         "manage links in columns",
         "mega footer",
-        "multi-column footer"
+        "multi-column footer",
+        "switch mega footer layout",
+        "change mega footer variation",
+        "mega footer variant"
       ],
       "keywords": [
         "column",
@@ -823,9 +984,7 @@
         "contact",
         "content",
         "cta",
-        "disable",
         "edit",
-        "enable",
         "footer",
         "in",
         "large",
@@ -1187,7 +1346,6 @@
         "CAPABILITIES.md"
       ]
     },
-
     {
       "id": "conversation.contextual_ai_icon",
       "name": "Contextual AI Icon Chat",
@@ -1207,7 +1365,7 @@
         "open the normal Luna chat with selected target context",
         "show Luna typing/looking-at state instead of a separate green context bubble",
         "keep the selected section/element/header/footer attached to the same chat",
-        "offer Edit manually \u00b7 0 credits inside the same chat",
+        "offer Edit manually · 0 credits inside the same chat",
         "preserve the existing global Luna conversation rather than creating another assistant"
       ],
       "cannot_do": [
@@ -1233,7 +1391,7 @@
         "contextual ai icon chat",
         "conversation contextual ai icon",
         "edit manually",
-        "offer edit manually \u00b7 0 credits inside the same chat",
+        "offer edit manually · 0 credits inside the same chat",
         "open the normal luna chat with selected target context"
       ],
       "keywords": [

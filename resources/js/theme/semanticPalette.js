@@ -49,6 +49,23 @@ export const readableForeground = (background, preferred = null, minimumRatio = 
         .sort((left, right) => contrastRatio(right, safeBackground) - contrastRatio(left, safeBackground))[0] || '#0F172A';
 };
 
+export const readableMutedForeground = (background, preferred = null, minimumRatio = 4.5) => {
+    const safeBackground = normalizeHex(background, '#FFFFFF');
+    const safePreferred = normalizeHex(preferred);
+    if (safePreferred && contrastRatio(safePreferred, safeBackground) >= minimumRatio) return safePreferred;
+
+    const foreground = readableForeground(safeBackground, safePreferred, minimumRatio);
+    let low = 0;
+    let high = 1;
+    for (let index = 0; index < 18; index += 1) {
+        const mid = (low + high) / 2;
+        const candidate = mixHex(foreground, safeBackground, mid);
+        if (contrastRatio(candidate, safeBackground) >= minimumRatio) high = mid;
+        else low = mid;
+    }
+    return mixHex(foreground, safeBackground, Math.min(1, high + 0.015));
+};
+
 const valueHex = (source, keys, fallback) => {
     for (const key of keys) {
         const value = normalizeHex(source?.[key]);
@@ -119,9 +136,9 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
     const shellSecondary = valueHex(raw, ['headerFooterSecondary', 'header_footer_secondary', 'shellSecondary', 'shell_secondary'],
         colorLuminance(brandSurface) >= 0.72 ? mixHex(primary, white, 0.10) : brandSurface);
     const shellSecondaryText = readableForeground(shellSecondary, valueHex(raw, ['headerFooterSecondaryText', 'header_footer_secondary_text', 'shellSecondaryText', 'shell_secondary_text'], null));
-    const shellSecondaryMuted = valueHex(raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted'], mixHex(shellSecondaryText, shellSecondary, 0.68));
+    const shellSecondaryMuted = readableMutedForeground(shellSecondary, valueHex(raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted'], mixHex(shellSecondaryText, shellSecondary, 0.68)));
     const shellSecondaryBorder = valueHex(raw, ['headerFooterSecondaryBorder', 'header_footer_secondary_border', 'shellSecondaryBorder', 'shell_secondary_border'], mixHex(shellSecondaryText, shellSecondary, 0.18));
-    const shellSecondaryTone = String(rawShell?.headerFooterSecondaryTone || rawShell?.header_footer_secondary_tone || (colorLuminance(shellSecondary) >= 0.58 ? 'light' : 'dark'));
+    const shellSecondaryTone = colorLuminance(shellSecondary) >= 0.58 ? 'light' : 'dark';
     const palette = {
         family: familyKey,
         source_color: valueHex(raw, ['source_color', 'sourceColor'], primary),

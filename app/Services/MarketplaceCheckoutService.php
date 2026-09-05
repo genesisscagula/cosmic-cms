@@ -28,11 +28,14 @@ class MarketplaceCheckoutService
             throw new RuntimeException('The selected Marketplace website is no longer available.');
         }
 
-        $this->assertPersonalPlan((string) $template->plan);
+        // The template's starter/growth/pro value is a Marketplace design tier,
+        // not the customer's subscription. Marketplace access itself is Agency-only.
+        $this->assertTemplateTier((string) $template->plan);
 
         return $template;
     }
 
+    /** @deprecated Legacy subscription recovery only; do not use for Marketplace template pricing. */
     public function billingPriceCents(string $planKey): int
     {
         $plan = $this->plans->find($planKey);
@@ -44,10 +47,11 @@ class MarketplaceCheckoutService
         return (int) round(((float) $plan['price_usd']) * 100);
     }
 
+    /** @deprecated Legacy subscription recovery only; Marketplace pricing uses template.credit_price. */
     public function planSummary(string $planKey): array
     {
         $plan = $this->plans->find($planKey);
-        $this->assertPersonalPlan($planKey);
+        $this->assertTemplateTier($planKey);
 
         if (! is_array($plan)) {
             throw new RuntimeException('The selected website plan is unavailable.');
@@ -71,11 +75,19 @@ class MarketplaceCheckoutService
             throw new RuntimeException('This onboarding can no longer change its Marketplace website.');
         }
 
-        // The Marketplace template defines the monthly plan for an unpaid setup.
-        // Re-selecting a website therefore safely replaces any abandoned plan
-        // choice before a new PayPal subscription is created.
+        $selectedPlan = (string) $onboarding->selected_plan;
+        try {
+            $this->assertAgencyPlan($selectedPlan);
+        } catch (\Throwable) {
+            // Marketplace is an Agency feature. A Marketplace selection made while
+            // an unpaid Personal onboarding is open moves that onboarding to the
+            // entry Agency tier rather than using the template's design tier as a
+            // PayPal plan key.
+            $selectedPlan = 'agency_starter';
+        }
+
         $onboarding->forceFill([
-            'selected_plan' => (string) $template->plan,
+            'selected_plan' => $selectedPlan,
             'industry' => (string) $template->industry_label,
             'status' => 'pending_payment',
             'metadata' => array_merge($onboarding->metadata ?? [], [
@@ -83,6 +95,7 @@ class MarketplaceCheckoutService
                 'marketplace_template_id' => $template->id,
                 'marketplace_template_slug' => $template->slug,
                 'marketplace_template_version' => $template->version,
+                'marketplace_template_payment_mode' => 'cosmic_credits',
                 'marketplace_selection_updated_at' => now()->toIso8601String(),
             ]),
         ])->save();
@@ -92,7 +105,7 @@ class MarketplaceCheckoutService
 
     public function createForOnboarding(User $user, PendingOnboarding $onboarding, MarketplaceTemplate $template): MarketplaceCheckout
     {
-        $this->assertPlanCoversTemplate((string) $onboarding->selected_plan, (string) $template->plan);
+        $this->assertAgencyPlan((string) $onboarding->selected_plan);
 
         $checkout = MarketplaceCheckout::query()
             ->where('pending_onboarding_id', $onboarding->id)
@@ -106,11 +119,14 @@ class MarketplaceCheckoutService
             'pending_onboarding_id' => $onboarding->id,
             'selected_plan' => (string) $onboarding->selected_plan,
             'status' => MarketplaceCheckout::STATUS_ACCOUNT_CREATED,
-            'amount_minor' => $this->billingPriceCents((string) $onboarding->selected_plan),
+            'amount_minor' => 0,
             'currency' => 'USD',
             'source' => 'marketplace',
             'expires_at' => now()->addDays(7),
-            'metadata' => $this->templateMetadata($template),
+            'metadata' => array_merge($this->templateMetadata($template), [
+                'agency_plan_at_selection' => (string) $onboarding->selected_plan,
+                'agency_subscription_required' => true,
+            ]),
         ];
 
         if ($checkout) {
@@ -135,10 +151,56 @@ class MarketplaceCheckoutService
             ->first();
     }
 
+    public function latestForUserTemplate(User $user, MarketplaceTemplate $template): ?MarketplaceCheckout
+    {
+        return MarketplaceCheckout::query()
+            ->where('user_id', $user->id)
+            ->where('marketplace_template_id', $template->id)
+            ->where('status', '!=', MarketplaceCheckout::STATUS_EXPIRED)
+            ->latest('id')
+            ->first();
+    }
+
     /**
-     * Persist a Marketplace selection for an existing account. This keeps the
-     * exact website/template version attached even when no new onboarding record
-     * is required (for example, an already-active subscriber or a plan upgrade).
+     * Return the current Marketplace installation intent. Completed installs are
+     * deliberately reused on ordinary reload/reopen so refreshes cannot silently
+     * create a new charge. A second installation requires an explicit new intent.
+     */
+    public function ensureAgencyIntent(User $user, MarketplaceTemplate $template, bool $forceNew = false): MarketplaceCheckout
+    {
+        $this->assertAgencyPlan($user->effectivePlanKey());
+
+        if (! $forceNew) {
+            $existing = $this->latestForUserTemplate($user, $template);
+            if ($existing) {
+                return $existing->fresh(['template', 'creditTransaction']);
+            }
+        }
+
+        return MarketplaceCheckout::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'marketplace_template_id' => $template->id,
+            'pending_onboarding_id' => null,
+            'payment_order_id' => null,
+            'credit_transaction_id' => null,
+            'selected_plan' => $user->effectivePlanKey(),
+            'status' => MarketplaceCheckout::STATUS_SELECTED,
+            'amount_minor' => 0,
+            'currency' => 'USD',
+            'source' => 'marketplace',
+            'expires_at' => now()->addDays(7),
+            'metadata' => array_merge($this->templateMetadata($template), [
+                'existing_account' => true,
+                'agency_plan_at_selection' => $user->effectivePlanKey(),
+                'selection_updated_at' => now()->toIso8601String(),
+            ]),
+        ])->fresh(['template', 'creditTransaction']);
+    }
+
+    /**
+     * @deprecated Legacy subscription selection only. New Marketplace installs
+     * use ensureAgencyIntent() and Cosmic Credits.
      */
     public function createForUserSelection(
         User $user,
@@ -146,7 +208,7 @@ class MarketplaceCheckoutService
         string $selectedPlan,
         string $status = MarketplaceCheckout::STATUS_SELECTED,
     ): MarketplaceCheckout {
-        $this->assertPersonalPlan($selectedPlan);
+        $this->assertTemplateTier($selectedPlan);
         $this->assertPlanCoversTemplate($selectedPlan, (string) $template->plan);
 
         $checkout = MarketplaceCheckout::query()
@@ -162,12 +224,13 @@ class MarketplaceCheckoutService
             'marketplace_template_id' => $template->id,
             'selected_plan' => $selectedPlan,
             'status' => $status,
-            'amount_minor' => $this->billingPriceCents($selectedPlan),
+            'amount_minor' => 0,
             'currency' => 'USD',
             'source' => 'marketplace',
             'expires_at' => now()->addDays(7),
             'metadata' => array_merge($checkout?->metadata ?? [], $this->templateMetadata($template), [
                 'existing_account' => true,
+                'legacy_subscription_selection' => true,
                 'selection_updated_at' => now()->toIso8601String(),
             ]),
         ];
@@ -182,6 +245,7 @@ class MarketplaceCheckoutService
         ]))->fresh(['template']);
     }
 
+    /** @deprecated Marketplace is now Agency-only; kept for legacy recovery code. */
     public function userPlanCoversTemplate(User $user, MarketplaceTemplate $template): bool
     {
         $planKey = strtolower(trim((string) $user->plan_key));
@@ -213,19 +277,23 @@ class MarketplaceCheckoutService
             'marketplace_template_id' => $checkout->marketplace_template_id,
             'marketplace_template_slug' => $checkout->template?->slug,
             'marketplace_template_version' => $checkout->template?->version,
+            'marketplace_template_payment_mode' => 'cosmic_credits',
             'checkout_source' => 'marketplace',
         ];
     }
 
+    /**
+     * Link the separate Agency subscription payment to a saved Marketplace
+     * selection. This PaymentOrder pays for Agency access only; template credits
+     * are never deducted or represented by this order.
+     */
     public function linkPaymentOrder(MarketplaceCheckout $checkout, PaymentOrder $order): void
     {
-        // A normal billing checkout may be resumed by PaymentCheckoutService. In
-        // that case the PaymentOrder predates the Marketplace selection, so merge
-        // the selection metadata here as well as when a fresh order is created.
         $order->forceFill([
             'metadata' => array_merge(
                 $order->metadata ?? [],
                 $this->paymentMetadata($checkout),
+                ['payment_purpose' => 'agency_subscription'],
             ),
         ])->save();
 
@@ -234,7 +302,7 @@ class MarketplaceCheckoutService
             'status' => MarketplaceCheckout::STATUS_PENDING_PAYMENT,
             'metadata' => array_merge($checkout->metadata ?? [], [
                 'payment_order_reference' => $order->reference,
-                'payment_started_at' => now()->toIso8601String(),
+                'agency_subscription_payment_started_at' => now()->toIso8601String(),
             ]),
         ])->save();
     }
@@ -247,19 +315,35 @@ class MarketplaceCheckoutService
             return;
         }
 
-        MarketplaceCheckout::query()->whereKey($checkoutId)->update([
+        $checkout = MarketplaceCheckout::query()->find($checkoutId);
+        if (! $checkout || $checkout->credit_transaction_id || $checkout->status === MarketplaceCheckout::STATUS_COMPLETED) {
+            return;
+        }
+
+        $checkout->forceFill([
             'status' => MarketplaceCheckout::STATUS_PAYMENT_CANCELLED,
-            'updated_at' => now(),
-        ]);
+            'metadata' => array_merge($checkout->metadata ?? [], [
+                'agency_subscription_payment_cancelled_at' => now()->toIso8601String(),
+            ]),
+        ])->save();
     }
 
     public function assertPlanCoversTemplate(string $selectedPlan, string $requiredPlan): void
     {
-        $this->assertPersonalPlan($selectedPlan);
-        $this->assertPersonalPlan($requiredPlan);
+        $this->assertTemplateTier($selectedPlan);
+        $this->assertTemplateTier($requiredPlan);
 
         if ($this->plans->rank($selectedPlan) < $this->plans->rank($requiredPlan)) {
             throw new RuntimeException('This website requires the '.Str::headline($requiredPlan).' plan or higher.');
+        }
+    }
+
+    public function assertAgencyPlan(string $planKey): void
+    {
+        $plan = $this->plans->find($planKey);
+
+        if (! is_array($plan) || ($plan['family'] ?? null) !== 'agency') {
+            throw new RuntimeException('Marketplace is an Agency feature. Choose an Agency Starter, Growth, or Pro plan.');
         }
     }
 
@@ -269,6 +353,8 @@ class MarketplaceCheckoutService
             'template_slug' => $template->slug,
             'template_name' => $template->name,
             'template_version' => (int) $template->version,
+            'credit_price' => (int) $template->credit_price,
+            'price_unit' => 'cosmic_credits',
             'industry_slug' => $template->industry_slug,
             'industry_label' => $template->industry_label,
             'website_care_included' => (bool) $template->website_care_included,
@@ -276,12 +362,12 @@ class MarketplaceCheckoutService
         ];
     }
 
-    private function assertPersonalPlan(string $planKey): void
+    private function assertTemplateTier(string $planKey): void
     {
         $plan = $this->plans->find($planKey);
 
         if (! is_array($plan) || ($plan['family'] ?? null) !== 'personal') {
-            throw new RuntimeException('Marketplace websites require a Personal Starter, Growth, or Pro plan.');
+            throw new RuntimeException('Marketplace template tier must be Starter, Growth, or Pro.');
         }
     }
 }

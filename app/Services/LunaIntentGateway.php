@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\HeaderFooterVariantContract;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -932,8 +933,8 @@ Return JSON only and exactly one key:
 Choose the single top-level CMS menu that owns the requested action:
 - sparks: edit/add/remove/reorder/redesign a page section/Spark or an element inside a Spark, including screenshot/reference-driven reconstruction. Screenshot/reference actions route here even when the supplied screenshot represents a whole page; the deeper reference_spark router decides whole_page vs single_spark.
 - global: site-wide design/content tokens or changes explicitly applying across the whole website.
-- header: header shell/layout/logo/header-specific styling, excluding navigation structure when navigation is the main request.
-- footer: footer shell/layout/content/footer-specific styling.
+- header: header shell/layout/logo/header-specific styling, excluding navigation structure when navigation is the main request. Header variant vocabulary includes White + Primary CTA, Primary Contrast, Center Logo + CTA, Center Logo without CTA, Overlay Hero, Overlay Center Logo, and Secondary Surface.
+- footer: footer shell/layout/content/footer-specific styling. Footer variant vocabulary includes White Mega, Primary Mega, Centered + CTA, Centered Minimal, Split Editorial, Primary Brand, and Secondary Surface.
 - navigation: menus, menu links, submenus, ordering, destinations, or navigation structure.
 - theme: site theme, brand/color family, theme palette, fonts when requested as a theme/brand-wide change.
 - page: page creation/deletion/rename/slug/page-level settings or whole-page composition when no specific Spark is the target.
@@ -1012,6 +1013,14 @@ PROMPT;
         // reference_spark owns the deeper whole_page|single_spark distinction.
         if(preg_match('/\b(screenshot|screen shot|reference image|design reference|mockup|mock-up|attached image|attached screenshot)\b/i',$message)) return 'sparks';
 
+        // A contextual Header/Footer popup is already an explicit transport
+        // target. Recognize the canonical seven-card vocabulary even when a
+        // short command omits the word header/footer (for example "Center Logo").
+        $uiScope=(string)($context['ui_scope']??'');
+        $assistantSurface=(string)($context['assistant_surface']??'');
+        if($assistantSurface==='contextual_popup' && $uiScope==='header' && HeaderFooterVariantContract::detectHeaderVariant($message)!==null) return 'header';
+        if($assistantSurface==='contextual_popup' && $uiScope==='footer' && HeaderFooterVariantContract::detectFooterVariant($message)!==null) return 'footer';
+
         // Explicitly named top-level features first.
         if(preg_match('/\b(publish|republish|unpublish|go live|make (?:it|this|the (?:page|site|website)) live)\b/i',$message)) return 'publish';
         if(preg_match('/\b(menu|menus|navigation|nav link|menu link|submenu|sub-menu)\b/i',$message)) return 'navigation';
@@ -1054,6 +1063,7 @@ PROMPT;
             return 'edit_global';
         }
         if($scope==='header'){
+            if(HeaderFooterVariantContract::detectHeaderVariant($message)!==null) return 'change_header';
             if(preg_match('/\b(custom|unique|bespoke)\b.{0,25}\bheader\b|\bheader\b.{0,25}\b(custom|unique|bespoke)\b/i',$message)) return 'custom_header';
             if(preg_match('/\b(overlay|over the hero|over hero|over the banner|over banner)\b/i',$message)) return 'overlay_header';
             if(preg_match('/\btransparent\b/i',$message)) return 'transparent_header';
@@ -1066,6 +1076,7 @@ PROMPT;
             return 'edit_header';
         }
         if($scope==='footer'){
+            if(HeaderFooterVariantContract::detectFooterVariant($message)!==null) return 'change_footer';
             if(preg_match('/\b(custom|unique|bespoke)\b.{0,25}\bfooter\b|\bfooter\b.{0,25}\b(custom|unique|bespoke)\b/i',$message)) return 'custom_footer';
             if(preg_match('/\b(mega footer|mega-footer)\b/i',$message)) return 'mega_footer';
             if(preg_match('/\b(simple|minimal)\b.{0,20}\bfooter\b|\bfooter\b.{0,20}\b(simple|minimal)\b/i',$message)) return 'simple_footer';

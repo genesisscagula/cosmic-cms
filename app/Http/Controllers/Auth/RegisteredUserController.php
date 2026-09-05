@@ -53,7 +53,10 @@ class RegisteredUserController extends Controller
             }
         }
 
-        $selectedPlan = $marketplaceTemplate?->plan ?: ($trial?->selected_plan ?: $request->string('plan')->toString());
+        $requestedPlan = $request->string('plan')->toString();
+        $selectedPlan = $marketplaceTemplate
+            ? (str_starts_with($requestedPlan, 'agency_') ? $requestedPlan : 'agency_starter')
+            : ($trial?->selected_plan ?: $requestedPlan);
 
         if (! in_array($selectedPlan, $validPlans, true)) {
             return redirect()->route('pricing');
@@ -69,7 +72,7 @@ class RegisteredUserController extends Controller
                 'industry' => $marketplaceTemplate->industry_label,
                 'plan' => (string) $marketplaceTemplate->plan,
                 'pages' => (int) $marketplaceTemplate->page_count,
-                'price' => $marketplaceCheckouts->planSummary((string) $marketplaceTemplate->plan)['price'],
+                'creditPrice' => (int) $marketplaceTemplate->credit_price,
             ] : null,
         ]);
     }
@@ -120,7 +123,7 @@ class RegisteredUserController extends Controller
         if (! empty($validated['marketplace_template'])) {
             try {
                 $marketplaceTemplate = $marketplaceCheckouts->publishedTemplate($validated['marketplace_template']);
-                $marketplaceCheckouts->assertPlanCoversTemplate($validated['selected_plan'], (string) $marketplaceTemplate->plan);
+                $marketplaceCheckouts->assertAgencyPlan($validated['selected_plan']);
             } catch (\Throwable $exception) {
                 throw ValidationException::withMessages([
                     'marketplace_template' => $exception->getMessage() ?: 'The selected Marketplace website is unavailable.',

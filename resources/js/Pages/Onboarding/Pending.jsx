@@ -154,7 +154,7 @@ export default function Pending({ onboarding, marketplaceTemplate = null, status
             forceLight
             title={paymentConfirmed ? 'Your workspace is almost ready' : "You're one step away"}
             subtitle={paymentConfirmed
-                ? 'Payment is confirmed. We are applying your plan, credits, website, and starter Sparks.'
+                ? 'Payment is confirmed. We are activating your Agency plan and preparing your workspace.'
                 : 'Your account and business details are saved. Complete secure PayPal checkout to activate your workspace.'}
         >
             <Head title="Cosmic CMS" />
@@ -205,7 +205,7 @@ export default function Pending({ onboarding, marketplaceTemplate = null, status
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600">Marketplace website selected</p>
                                     <p className="mt-1 font-extrabold text-slate-950">{marketplaceTemplate.name}</p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-500">{marketplaceTemplate.industry} · {marketplaceTemplate.pages} pages</p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-500">{marketplaceTemplate.industry} · {marketplaceTemplate.pages} pages · Template credits confirmed separately after Agency activation</p>
                                 </div>
                                 <span className="w-fit rounded-full border border-violet-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700">Saved through checkout</span>
                             </div>
@@ -308,10 +308,10 @@ export default function Pending({ onboarding, marketplaceTemplate = null, status
                         <ul className="mt-4 space-y-3 text-sm text-slate-600">
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your private Cosmic CMS workspace</span></li>
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your one-time included credits and plan access</span></li>
-                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>{marketplaceTemplate ? `${marketplaceTemplate.name} Marketplace website` : 'Your generated trial website and business profile'}</span></li>
+                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>{marketplaceTemplate ? `${marketplaceTemplate.name} selection saved — Cosmic Credit confirmation follows` : 'Your generated trial website and business profile'}</span></li>
                         </ul>
                         <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">
-                            Your website remains protected until PayPal confirmation and provisioning are complete.
+                            Your Agency subscription is handled securely through PayPal. Marketplace template credits are not deducted on this screen.
                         </div>
                         <div className="mt-6 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-600">
                             <span className="rounded-lg bg-slate-50 px-3 py-2 text-center">Secure PayPal</span>

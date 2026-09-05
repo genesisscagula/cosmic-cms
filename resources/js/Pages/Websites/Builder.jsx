@@ -15,6 +15,7 @@ import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 import GlobalStylingModal from "./Components/GlobalStylingModal";
 import HeaderFooterVariantsModal from "./Components/HeaderFooterVariantsModal";
+import LegoElementsPanel from "./Components/LegoElementsPanel";
 import { footerVariantById, headerVariantById, normalizeFooterVariantState, normalizeHeaderVariantState } from "./Components/headerFooterVariantConfig";
 
 import ThemeSelector from "./Theme/ThemeSelector";
@@ -25,7 +26,9 @@ import { resolveSemanticPalette } from "../../theme/semanticPalette";
 import { BlockRegistry } from "./BlockRegistry";
 import { createSparkTailwindRuntime, hasSparkTailwindSchema } from "./Blocks/Shared/sparkTailwindRuntime";
 import { cloneSparkFieldExtrasWithFreshIds, normalizeBlockFieldExtras } from "./Blocks/Shared/sparkExtrasContract";
+import { chooseHybridSparkDefaultInsertionTarget, createHybridSparkExtraFromLegoType, createHybridSparkExtraFromLegoNode, hybridSparkExtraToLegoNode, canInsertLegoTypeIntoHybridSpark } from "./Blocks/Shared/hybridSparkInsertionContract";
 import { findPrimaryNestedRepeater, findRepeaterForFieldPath, getNestedValue, mutateNestedRepeater, updateNestedValue } from "./Blocks/Shared/nestedRepeaterEngine";
+import { createAiFlexRow, createAiFlexColumn, createAiFlexExtra, AI_FLEX_STRUCTURE_CONTRACT, AI_FLEX_STRUCTURE_VERSION } from "./Blocks/Shared/aiFlexStructureContract";
 import { cosmicTypographyVars } from "./Components/CosmicTypography";
 import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSection";
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
@@ -489,6 +492,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [legoPanelOpen, setLegoPanelOpen] = useState(false);
+    const [legoActiveBlockIndex, setLegoActiveBlockIndex] = useState(null);
+    const [legoHybridTarget, setLegoHybridTarget] = useState(null);
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -2553,6 +2559,176 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         setIsModalOpen(false);
         return protectedMerge.preservedCount;
+    };
+
+    const buildYourOwnBlock = () => ({
+        type: 'luna_custom_section',
+        custom_spark_key: `lego-${Date.now()}`,
+        custom_spark_saved: false,
+        semantic_type: 'content',
+        source_type: 'build_your_own',
+        category: 'content',
+        layout: 'lego',
+        alignment: 'left',
+        density: 'balanced',
+        heading: '',
+        text: '',
+        items: [],
+        elements: [createAiFlexRow()],
+        theme: 'auto',
+        ai_flex: {
+            source: 'build_your_own',
+            mode: 'manual_lego',
+            skip_spark_match: true,
+            generated: false,
+            structure_contract: AI_FLEX_STRUCTURE_CONTRACT,
+            structure_version: AI_FLEX_STRUCTURE_VERSION,
+            structure_storage: 'elements',
+            responsive_strategy: 'smart_auto',
+            responsive_version: 1,
+            design_origin: marketplaceWebsite ? 'marketplace' : 'studio',
+            inherit_global_design: true,
+            inherit_marketplace_design_kit: marketplaceWebsite,
+            marketplace_template_id: marketplaceWebsite ? (website?.settings?.marketplace?.template_id || null) : null,
+            marketplace_template_slug: marketplaceWebsite ? (website?.settings?.marketplace?.template_slug || null) : null,
+            marketplace_template_version: marketplaceWebsite ? (website?.settings?.marketplace?.template_version || null) : null,
+        },
+    });
+
+    const addBuildYourOwnSection = () => {
+        const block = buildYourOwnBlock();
+        const blocks = [...(data.blocks || [])];
+        let insertionIndex = blocks.length;
+        if (sparkInsertTarget) {
+            const anchorByKey = sparkInsertTarget.anchorRenderKey ? blocks.findIndex((candidate) => candidate?._renderKey === sparkInsertTarget.anchorRenderKey) : -1;
+            const anchorIndex = anchorByKey >= 0 ? anchorByKey : Math.min(Math.max(Number(sparkInsertTarget.index) || 0, 0), Math.max(blocks.length - 1, 0));
+            insertionIndex = sparkInsertTarget.position === 'above' ? anchorIndex : Math.min(anchorIndex + 1, blocks.length);
+            blocks.splice(insertionIndex, 0, { ...block, _renderKey: createRenderKey() });
+        } else {
+            blocks.push({ ...block, _renderKey: createRenderKey() });
+        }
+        setData('blocks', blocks);
+        setSparkInsertTarget(null);
+        setIsModalOpen(false);
+        setLegoActiveBlockIndex(insertionIndex);
+        setLegoPanelOpen(true);
+        window.setTimeout(() => document.querySelector(`[data-cosmic-block-index="${insertionIndex}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+    };
+
+    const removeHybridSparkExtraFromBlocks = (blocks, source) => {
+        const sourceIndex = Number(source?.sourceBlockIndex);
+        if (!Number.isInteger(sourceIndex) || !blocks?.[sourceIndex]) return false;
+        const target = String(source?.sourceTargetPath || '').trim();
+        const side = source?.sourcePlacement === 'before' ? 'before' : 'after';
+        const extraId = String(source?.sourceExtraId || '').trim();
+        const slots = blocks[sourceIndex]?.field_extras?.[target];
+        if (!slots || !Array.isArray(slots[side]) || !extraId) return false;
+        const before = slots[side].length;
+        slots[side] = slots[side].filter((item) => String(item?.id || '') !== extraId);
+        if (!slots.before?.length && !slots.after?.length) delete blocks[sourceIndex].field_extras[target];
+        return before !== slots[side]?.length;
+    };
+
+    const insertHybridSparkExtra = (blockIndex, targetPath, placement, type, payload = null) => {
+        const index = Number(blockIndex);
+        if (!Number.isInteger(index) || !data.blocks?.[index] || data.blocks[index]?.ai_flex?.source === 'build_your_own') return false;
+        const portableNode = payload?.node && typeof payload.node === 'object' ? payload.node : null;
+        const extra = portableNode ? createHybridSparkExtraFromLegoNode(portableNode) : createHybridSparkExtraFromLegoType(type);
+        if (!extra) {
+            showCosmicNotification({
+                title: 'Element is not portable yet',
+                message: 'This Spark slot accepts portable Heading, Text, Button, Image, Icon, Badge, Video, Divider, Spacer, List, Quote, and Stat elements. Keep larger composites in a free-layout row for now.',
+                tone: 'info', mode: 'toast', duration: 3200,
+            });
+            return false;
+        }
+        const target = String(targetPath || '').trim();
+        if (!target) return false;
+        const side = placement === 'before' ? 'before' : 'after';
+        const blocks = cloneBuilderEditValue(data.blocks || []);
+        if (payload?.kind === 'existing') {
+            const sourceBlockIndex = Number(payload?.sourceBlockIndex);
+            const rowIndex = Number(payload?.rowIndex), columnIndex = Number(payload?.columnIndex), itemIndex = Number(payload?.itemIndex);
+            const source = blocks?.[sourceBlockIndex]?.elements?.[rowIndex]?.children?.[columnIndex]?.children;
+            if (Array.isArray(source) && source[itemIndex]) source.splice(itemIndex, 1);
+        } else if (payload?.kind === 'hybrid-extra') {
+            removeHybridSparkExtraFromBlocks(blocks, payload);
+        }
+        const block = blocks[index];
+        block.field_extras = block.field_extras && typeof block.field_extras === 'object' ? block.field_extras : {};
+        const slots = block.field_extras[target] && typeof block.field_extras[target] === 'object'
+            ? block.field_extras[target]
+            : { before: [], after: [] };
+        slots.before = Array.isArray(slots.before) ? slots.before : [];
+        slots.after = Array.isArray(slots.after) ? slots.after : [];
+        slots[side].push(extra);
+        block.field_extras[target] = slots;
+        block.hybrid_spark = {
+            ...(block.hybrid_spark || {}),
+            enabled: true,
+            insertion_contract: 'field_extras_v2',
+            insertion_version: 2,
+        };
+        setData('blocks', blocks);
+        return true;
+    };
+
+    const moveHybridExtraToFreeLayout = ({ destinationBlockIndex, rowIndex, columnIndex, payload }) => {
+        const targetBlockIndex = Number(destinationBlockIndex);
+        if (!Number.isInteger(targetBlockIndex) || data.blocks?.[targetBlockIndex]?.ai_flex?.source !== 'build_your_own') return false;
+        const node = payload?.node || hybridSparkExtraToLegoNode(payload?.extra);
+        if (!node) return false;
+        const blocks = cloneBuilderEditValue(data.blocks || []);
+        if (payload?.kind === 'hybrid-extra') removeHybridSparkExtraFromBlocks(blocks, payload);
+        if (payload?.kind === 'existing') {
+            const sourceBlockIndex = Number(payload?.sourceBlockIndex);
+            const sourceRow = Number(payload?.rowIndex), sourceColumn = Number(payload?.columnIndex), sourceItem = Number(payload?.itemIndex);
+            const source = blocks?.[sourceBlockIndex]?.elements?.[sourceRow]?.children?.[sourceColumn]?.children;
+            if (Array.isArray(source) && source[sourceItem]) source.splice(sourceItem, 1);
+        }
+        const column = blocks?.[targetBlockIndex]?.elements?.[rowIndex]?.children?.[columnIndex];
+        if (!column) return false;
+        column.children = Array.isArray(column.children) ? column.children : [];
+        const columnCount = Math.max(1, blocks[targetBlockIndex]?.elements?.[rowIndex]?.children?.length || 1);
+        const nextNode = { ...node, _cosmic_context: { ...(node._cosmic_context || {}), columns: columnCount } };
+        column.children.push(nextNode);
+        setData('blocks', blocks);
+        return true;
+    };
+
+    const insertLegoItem = (type, requestedBlockIndex = null) => {
+        const index = Number.isInteger(requestedBlockIndex) ? requestedBlockIndex : legoActiveBlockIndex;
+        if (!Number.isInteger(index) || !data.blocks?.[index]) return;
+        if (data.blocks[index]?.ai_flex?.source !== 'build_your_own') {
+            const registry = BlockRegistry[data.blocks[index]?.type];
+            const requestedHybrid = legoHybridTarget && legoHybridTarget.blockIndex === index ? legoHybridTarget : null;
+            const target = requestedHybrid?.targetPath || chooseHybridSparkDefaultInsertionTarget(data.blocks[index], registry?.schema);
+            if (!target) {
+                showCosmicNotification({ title: 'No safe insertion zone', message: 'This Spark does not expose a safe editable content anchor yet.', tone: 'info', mode: 'toast', duration: 2600 });
+                return;
+            }
+            insertHybridSparkExtra(index, target, requestedHybrid?.placement || 'after', type);
+            setLegoHybridTarget(null);
+            return;
+        }
+        const blocks = cloneBuilderEditValue(data.blocks || []);
+        const block = blocks[index];
+        if (!Array.isArray(block.elements) || !block.elements.length) block.elements = [createAiFlexRow()];
+        if (String(type).startsWith('row_')) {
+            const count = Math.max(1, Math.min(6, Number(String(type).split('_')[1]) || 1));
+            const width = Math.round((100 / count) * 100) / 100;
+            block.elements.push({ ...createAiFlexRow(), children: Array.from({ length: count }, () => createAiFlexColumn(width)) });
+        } else {
+            const row = block.elements[block.elements.length - 1];
+            if (!Array.isArray(row.children) || !row.children.length) row.children = [createAiFlexColumn(100)];
+            row.children[0].children = Array.isArray(row.children[0].children) ? row.children[0].children : [];
+            let item = createAiFlexExtra(type);
+            const columnCount = Math.max(1, row.children.length || 1);
+            item = { ...item, _cosmic_auto_align: true, _cosmic_style_mode: item._cosmic_style_mode || 'global', _cosmic_responsive_mode: item._cosmic_responsive_mode || 'auto', _cosmic_context: { columns: columnCount }, style: { ...(item.style || {}) } };
+            if (item._cosmic_style_mode === 'global') { delete item.style.text_align; delete item.style.self_align; }
+            row.children[0].children.push(item);
+        }
+        setData('blocks', blocks);
     };
 
     const addBlock = (block) => {
@@ -6293,7 +6469,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 let compact = compactValue(source) || {};
                 let encoded = JSON.stringify(compact);
                 if (encoded.length <= maxChars) return compact;
-                const preferred = ['design_direction','spacing','corners','heading_scale','theme_primary','theme_context','routing_context','context_state','responsive','visual_qa','design_critic','last_direction_at'];
+                const preferred = ['design_direction','spacing','corners','heading_scale','theme_primary','theme_context','shell_context','routing_context','context_state','responsive','builder_context','design_origin','marketplace_context','visual_qa','design_critic','last_direction_at'];
                 compact = Object.fromEntries(preferred.filter((key)=>Object.prototype.hasOwnProperty.call(compact,key)).map((key)=>[key,compact[key]]));
                 encoded = JSON.stringify(compact);
                 if (encoded.length <= maxChars) return compact;
@@ -6318,6 +6494,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     heading_scale: compact.heading_scale,
                     theme_primary: compact.theme_primary,
                     theme_context: compact.theme_context,
+                    shell_context: compact.shell_context,
+                    builder_context: compact.builder_context,
+                    design_origin: compact.design_origin,
+                    marketplace_context: compact.marketplace_context,
                     context_state: compact.context_state ? {
                         current: compact.context_state.current,
                         last_verified_action: compact.context_state.last_verified_action,
@@ -6325,7 +6505,32 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     last_direction_at: compact.last_direction_at,
                 };
             };
-            form.append('site_memory', JSON.stringify(compactLunaSiteMemoryForRequest(lunaSiteMemory || {})));
+                        const marketplaceSettingsForLuna = website?.settings?.marketplace || {};
+            const builderDesignContextForLuna = {
+                builder: 'cosmic_lego',
+                structure_contract: AI_FLEX_STRUCTURE_CONTRACT,
+                responsive_strategy: 'smart_auto_with_optional_device_overrides',
+                responsive_defaults: { tablet: 'adaptive_1_or_2_columns', mobile: 'single_column', global_tokens: true },
+                design_origin: marketplaceWebsite ? 'marketplace' : 'studio',
+                preserve_global_styling: true,
+                preserve_marketplace_design_kit: marketplaceWebsite,
+            };
+            const marketplaceContextForLuna = marketplaceWebsite ? {
+                template_id: marketplaceSettingsForLuna?.template_id || null,
+                template_slug: marketplaceSettingsForLuna?.template_slug || null,
+                template_version: marketplaceSettingsForLuna?.template_version || null,
+                header_variant: marketplaceDesignKit?.header_variant || null,
+                footer_variant: marketplaceDesignKit?.footer_variant || null,
+                design_kit: marketplaceDesignKit || null,
+                instruction: 'Preserve the installed customer-owned Marketplace design language by default. New Lego elements inherit this design kit unless the customer explicitly requests a redesign.',
+            } : null;
+            const enrichedLunaSiteMemory = {
+                ...(lunaSiteMemory || {}),
+                builder_context: builderDesignContextForLuna,
+                design_origin: marketplaceWebsite ? 'marketplace' : 'studio',
+                ...(marketplaceContextForLuna ? { marketplace_context: marketplaceContextForLuna } : {}),
+            };
+            form.append('site_memory', JSON.stringify(compactLunaSiteMemoryForRequest(enrichedLunaSiteMemory)));
             if (page?.id) form.append('current_page_id', String(page.id));
             const popupTargetScope = editSession?.open
                 ? (editSession.scope === 'section' || Number.isInteger(editSession.blockIndex) ? 'section' : lunaScope.type)
@@ -6360,6 +6565,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }
             }
             let requestElementContext = lunaElementTarget ? { ...lunaElementTarget } : {};
+            const activeLunaBlockIndex = lunaAssistantSurface === 'contextual_popup' && Number.isInteger(editSession?.blockIndex) ? editSession.blockIndex : lunaScope.blockIndex;
+            const activeLunaBlock = Number.isInteger(activeLunaBlockIndex) ? requestEditState.blocks?.[activeLunaBlockIndex] : null;
+            if (activeLunaBlock?.ai_flex?.source === 'build_your_own') {
+                requestElementContext.lego_builder = {
+                    structure_contract: AI_FLEX_STRUCTURE_CONTRACT,
+                    responsive_strategy: activeLunaBlock?.ai_flex?.responsive_strategy || 'smart_auto',
+                    design_origin: activeLunaBlock?.ai_flex?.design_origin || (marketplaceWebsite ? 'marketplace' : 'studio'),
+                    inherit_global_design: true,
+                    inherit_marketplace_design_kit: marketplaceWebsite,
+                };
+            }
             const collectTailwindInventory = (sectionNode, limit = 160) => {
                 const seen = new Set();
                 const inventory = [];
@@ -6853,6 +7069,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             commerce,
             contentWorkspace,
             builderMode: true,
+            hybridSparkBuilder: block?.ai_flex?.source !== 'build_your_own',
+            onInsertHybridExtra: ({ targetPath, placement, type, payload }) => insertHybridSparkExtra(index, targetPath, placement, type, payload),
+            onLegoExternalDrop: ({ rowIndex, columnIndex, payload }) => moveHybridExtraToFreeLayout({ destinationBlockIndex: index, rowIndex, columnIndex, payload }),
+            onSelectHybridSlot: ({ targetPath, placement }) => {
+                setLegoActiveBlockIndex(index);
+                setLegoHybridTarget({ blockIndex: index, targetPath, placement: placement === 'before' ? 'before' : 'after' });
+                setLegoPanelOpen(true);
+            },
+            onUnsupportedHybridType: (type) => {
+                if (!canInsertLegoTypeIntoHybridSpark(type)) showCosmicNotification({ title: 'Advanced Spark compatibility comes next', message: 'This Spark slot supports portable single elements. Keep larger card/grid/gallery composites inside a free-layout section.', tone: 'info', mode: 'toast', duration: 3000 });
+            },
 
             blockIndex: index,
             tailwind: createSparkTailwindRuntime(block),
@@ -7098,6 +7325,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                               />}
                         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{background:universalOverlay}}/>
                     </> : null}
+                    <button type="button" className="cosmic-lego-open-panel" onClick={() => { setLegoActiveBlockIndex(index); setLegoHybridTarget(null); setLegoPanelOpen(true); }}><span aria-hidden="true">▦</span> {block?.ai_flex?.source === 'build_your_own' ? 'Elements' : 'Insert Elements'}</button>
                     <div className={`cosmic-render-content ${universalEnabled && universalType==='video' ? 'relative z-[1]' : ''}`}><Component {...blockProps} /></div>
                 </div>
             );
@@ -8126,7 +8354,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] > .cosmic-render-content > section,
                         .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] > .cosmic-render-content > div > section:first-child,
                         .cosmic-builder-spark [data-cosmic-media-banner="true"],
-                        .cosmic-builder-spark section[data-cosmic-hero-theme] {
+                        .cosmic-builder-spark section[data-cosmic-hero-theme],
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="hero"] [data-cosmic-background-media="true"],
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] [data-cosmic-background-media="true"],
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="hero"] img,
+                        .cosmic-builder-spark > [data-cosmic-render-shell][data-cosmic-layout-mode="immersive"] img,
+                        .cosmic-builder-spark [data-cosmic-media-banner="true"] [data-cosmic-background-media="true"],
+                        .cosmic-builder-spark [data-cosmic-media-banner="true"] img {
                             border-radius: 0 !important;
                         }
                         /* Contextual overlay clearance must come after shared section spacing. */
@@ -8554,6 +8788,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
             </div>
             
+            <LegoElementsPanel
+                open={legoPanelOpen}
+                onClose={() => setLegoPanelOpen(false)}
+                onInsert={insertLegoItem}
+                activeBlockIndex={legoActiveBlockIndex}
+                hybridMode={Number.isInteger(legoActiveBlockIndex) && data.blocks?.[legoActiveBlockIndex]?.ai_flex?.source !== 'build_your_own'}
+            />
+
             {layoutPreview?.catalogItem && (
                 <GlobalSparkPreviewModal
                     spark={layoutPreview.catalogItem}
@@ -8600,6 +8842,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     onClose={() => { setSparksMarketplaceOpen(false); setSparksMarketplaceCategory(null); }}
                     onAdd={addBlock}
                     onCustomize={beginNewSectionEdit}
+                    onBuildOwn={addBuildYourOwnSection}
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
@@ -8628,6 +8871,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
                     onAdd={addBlock}
                     onCustomize={beginNewSectionEdit}
+                    onBuildOwn={addBuildYourOwnSection}
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}

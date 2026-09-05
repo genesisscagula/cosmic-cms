@@ -1,3 +1,4 @@
+import { colorLuminance, readableForeground, readableMutedForeground } from '@/theme/semanticPalette';
 export const HEADER_VARIANTS = [
     { id: 'classic_header', name: 'White + Primary CTA', description: 'White header, original/colored logo and a primary CTA.', tone: 'dark', background: 'white', layout: 'standard', cta: 'primary' },
     { id: 'primary_header', name: 'Primary Contrast', description: 'Primary background, light logo/navigation and a white CTA.', tone: 'light', background: 'primary', layout: 'standard', cta: 'white' },
@@ -82,38 +83,48 @@ export const headerVariantById = (id) => HEADER_VARIANTS.find((item) => item.id 
 export const footerVariantById = (id) => FOOTER_VARIANTS.find((item) => item.id === id) || FOOTER_VARIANTS[0];
 
 export const resolveShellSurface = (mode, palette = {}) => {
+    const guardText = (background, preferred) => readableForeground(background, preferred, 4.5);
+    const guardMuted = (background, preferred) => readableMutedForeground(background, preferred, 4.5);
     if (mode === 'primary') {
+        const background = palette.primary || '#243447';
+        const text = guardText(background, palette.onPrimary || palette.on_primary || '#FFFFFF');
         return {
-            background: palette.primary || '#243447',
-            text: palette.onPrimary || palette.on_primary || '#FFFFFF',
-            muted: palette.onPrimary || palette.on_primary || '#FFFFFF',
+            background,
+            text,
+            muted: guardMuted(background, text),
             border: 'color-mix(in srgb, currentColor 18%, transparent)',
-            tone: 'light',
+            tone: colorLuminance(text) >= 0.58 ? 'light' : 'dark',
         };
     }
     if (mode === 'secondary') {
-        const tone = palette.shellSecondaryTone || palette.shell_secondary_tone || 'dark';
+        const shellTone = palette.shellSecondaryTone || palette.shell_secondary_tone || 'dark';
+        const background = palette.shellSecondary || palette.shell_secondary || palette.secondary || '#30475E';
+        const text = guardText(background, palette.shellSecondaryText || palette.shell_secondary_text || (shellTone === 'light' ? '#0F172A' : '#FFFFFF'));
         return {
-            background: palette.shellSecondary || palette.shell_secondary || palette.secondary || '#30475E',
-            text: palette.shellSecondaryText || palette.shell_secondary_text || (tone === 'light' ? '#0F172A' : '#FFFFFF'),
-            muted: palette.shellSecondaryMuted || palette.shell_secondary_muted || (tone === 'light' ? '#64748B' : 'rgba(255,255,255,.72)'),
-            border: palette.shellSecondaryBorder || palette.shell_secondary_border || (tone === 'light' ? '#E2E8F0' : 'rgba(255,255,255,.16)'),
-            tone: tone === 'light' ? 'dark' : 'light',
+            background,
+            text,
+            muted: guardMuted(background, palette.shellSecondaryMuted || palette.shell_secondary_muted || (shellTone === 'light' ? '#64748B' : '#FFFFFF')),
+            border: palette.shellSecondaryBorder || palette.shell_secondary_border || (shellTone === 'light' ? '#E2E8F0' : 'rgba(255,255,255,.16)'),
+            tone: shellTone === 'light' ? 'dark' : 'light',
         };
     }
     if (mode === 'surface') {
+        const background = palette.surface || '#F8FAFC';
+        const text = guardText(background, palette.heading || palette.onSurface || palette.on_surface || '#0F172A');
         return {
-            background: palette.surface || '#F8FAFC',
-            text: palette.heading || palette.onSurface || palette.on_surface || '#0F172A',
-            muted: palette.muted || '#64748B',
+            background,
+            text,
+            muted: guardMuted(background, palette.muted || '#64748B'),
             border: palette.border || '#E2E8F0',
             tone: 'dark',
         };
     }
+    const background = '#FFFFFF';
+    const text = guardText(background, palette.heading || palette.onSurface || palette.on_surface || '#0F172A');
     return {
-        background: '#FFFFFF',
-        text: palette.heading || palette.onSurface || palette.on_surface || '#0F172A',
-        muted: palette.muted || '#64748B',
+        background,
+        text,
+        muted: guardMuted(background, palette.muted || '#64748B'),
         border: palette.border || '#E2E8F0',
         tone: 'dark',
     };

@@ -95,12 +95,11 @@ final class ThemeColorResolver
         $shellSecondary = $this->hex($raw, ['headerFooterSecondary', 'header_footer_secondary', 'shellSecondary', 'shell_secondary'],
             $this->contrast->luminance($brandSurface) >= 0.72 ? $this->contrast->mix($primary, $white, 0.10) : $brandSurface);
         $shellSecondaryText = $this->contrast->readableForeground($shellSecondary, $this->nullableHex($raw, ['headerFooterSecondaryText', 'header_footer_secondary_text', 'shellSecondaryText', 'shell_secondary_text']));
-        $shellSecondaryMuted = $this->hex($raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted'], $this->contrast->mix($shellSecondaryText, $shellSecondary, 0.68));
+        $shellSecondaryMuted = $this->contrast->readableMutedForeground($shellSecondary, $this->nullableHex($raw, ['headerFooterSecondaryMuted', 'header_footer_secondary_muted', 'shellSecondaryMuted', 'shell_secondary_muted']) ?? $this->contrast->mix($shellSecondaryText, $shellSecondary, 0.68));
         $shellSecondaryBorder = $this->hex($raw, ['headerFooterSecondaryBorder', 'header_footer_secondary_border', 'shellSecondaryBorder', 'shell_secondary_border'], $this->contrast->mix($shellSecondaryText, $shellSecondary, 0.18));
-        $declaredShellSecondaryTone = strtolower(trim((string) ($raw['headerFooterSecondaryTone'] ?? $raw['header_footer_secondary_tone'] ?? $raw['shellSecondaryTone'] ?? $raw['shell_secondary_tone'] ?? '')));
-        $shellSecondaryTone = in_array($declaredShellSecondaryTone, ['light', 'dark'], true)
-            ? $declaredShellSecondaryTone
-            : ($this->contrast->luminance($shellSecondary) >= 0.58 ? 'light' : 'dark');
+        // Tone describes the actual shell surface, so derive it from the resolved
+        // background rather than trusting stale family metadata.
+        $shellSecondaryTone = $this->contrast->luminance($shellSecondary) >= 0.58 ? 'light' : 'dark';
 
         $gradient = [
             'from' => $this->hex($rawGradient, ['from'], $this->contrast->mix('#000000', $primary, 0.58)),

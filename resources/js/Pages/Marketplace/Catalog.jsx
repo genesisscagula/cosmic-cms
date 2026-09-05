@@ -64,7 +64,7 @@ function TemplateCard({ template, favorite, onFavorite }) {
                     <li className="flex items-center gap-2"><span className="text-emerald-600">✓</span>{template.pages} Pages</li>
                     {template.features.slice(0, 2).map((feature) => <li key={feature} className="flex items-center gap-2"><span className="text-emerald-600">✓</span>{feature}</li>)}
                 </ul>
-                <div className="mt-5 flex items-end gap-1"><span className="text-3xl font-black tracking-[-.04em] text-slate-950">${template.price}</span><span className="pb-1 text-sm font-semibold text-slate-500">/month</span></div>
+                <div className="mt-5 flex items-end gap-2"><span className="text-3xl font-black tracking-[-.04em] text-slate-950">{Number(template.creditPrice || 0).toLocaleString()}</span><span className="pb-1 text-sm font-semibold text-slate-500">Cosmic Credits</span></div>
                 <div className="mt-5 grid grid-cols-[.82fr_1.18fr] gap-2.5">
                     <Link href={template.demoPath} className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 transition hover:bg-slate-50">Preview</Link>
                     <Link href={checkoutHref} className="flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 text-center text-sm font-black text-white shadow-lg shadow-violet-200 transition hover:from-violet-700 hover:to-indigo-700">Get This Website</Link>

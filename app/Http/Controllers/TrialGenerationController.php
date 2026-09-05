@@ -18,6 +18,7 @@ use App\Services\TrialBrandContextService;
 use App\Services\InitialTrialLogoService;
 use App\Services\LunaPexelsVideoService;
 use App\Services\LunaSiteBundlePlannerService;
+use App\Services\LunaTrialShellSelectionService;
 use App\Services\TrialSiteBundleService;
 use App\Services\TrialStagingPublisherService;
 use Illuminate\Http\Request;
@@ -84,6 +85,7 @@ class TrialGenerationController extends Controller
         private readonly InitialTrialLogoService $initialTrialLogo,
         private readonly LunaPexelsVideoService $lunaVideos,
         private readonly LunaSiteBundlePlannerService $siteBundlePlanner,
+        private readonly LunaTrialShellSelectionService $trialShellSelection,
         private readonly TrialSiteBundleService $trialSiteBundles,
         private readonly TrialStagingPublisherService $trialStagingPublisher,
     ) {
@@ -745,6 +747,19 @@ class TrialGenerationController extends Controller
             });
 
             $trial->refresh();
+
+            // A full regeneration establishes a new Home composition, so let the
+            // same Luna shell selector re-evaluate Header + Mega Footer after the
+            // new prompt/theme/hero are committed.
+            if ($trial->website) {
+                $this->trialShellSelection->apply(
+                    $trial,
+                    $trial->website,
+                    array_values($generated['blocks'] ?? []),
+                    is_array($generated['visual_intent'] ?? null) ? $generated['visual_intent'] : [],
+                );
+                $trial->refresh();
+            }
 
             // Regeneration follows the same database-owned sequential queue
             // contract as a fresh demo. Dispatch before returning so closing the

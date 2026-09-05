@@ -308,6 +308,65 @@ import {
     MarketplaceStonePageHeroBlock, MarketplaceStonePageHeroSchema,
 } from "./Blocks/Marketplace/MarketplaceBatch2Blocks";
 
+import {
+    MarketplaceNorthfieldHeroBlock, MarketplaceNorthfieldHeroSchema,
+    MarketplaceNorthfieldPracticeBlock, MarketplaceNorthfieldPracticeSchema,
+    MarketplaceNorthfieldAuthorityBlock, MarketplaceNorthfieldAuthoritySchema,
+    MarketplaceNorthfieldProcessBlock, MarketplaceNorthfieldProcessSchema,
+    MarketplaceNorthfieldProofBlock, MarketplaceNorthfieldProofSchema,
+    MarketplaceNorthfieldTeamBlock, MarketplaceNorthfieldTeamSchema,
+    MarketplaceNorthfieldFaqBlock, MarketplaceNorthfieldFaqSchema,
+    MarketplaceNorthfieldContactBlock, MarketplaceNorthfieldContactSchema,
+    MarketplaceNorthfieldCtaBlock, MarketplaceNorthfieldCtaSchema,
+    MarketplaceNorthfieldPageHeroBlock, MarketplaceNorthfieldPageHeroSchema,
+} from "./Blocks/Marketplace/MarketplaceBatch3Blocks";
+
+import {
+    MarketplaceClearflowHeroBlock, MarketplaceClearflowHeroSchema,
+    MarketplaceClearflowServicesBlock, MarketplaceClearflowServicesSchema,
+    MarketplaceClearflowTrustBlock, MarketplaceClearflowTrustSchema,
+    MarketplaceClearflowProcessBlock, MarketplaceClearflowProcessSchema,
+    MarketplaceClearflowProofBlock, MarketplaceClearflowProofSchema,
+    MarketplaceClearflowFaqBlock, MarketplaceClearflowFaqSchema,
+    MarketplaceClearflowContactBlock, MarketplaceClearflowContactSchema,
+    MarketplaceClearflowCtaBlock, MarketplaceClearflowCtaSchema,
+    MarketplaceClearflowPageHeroBlock, MarketplaceClearflowPageHeroSchema,
+} from "./Blocks/Marketplace/MarketplaceBatch4Blocks";
+
+import {
+    MarketplaceHarborHeroBlock, MarketplaceHarborHeroSchema,
+    MarketplaceHarborHomeListingsBlock, MarketplaceHarborHomeListingsSchema,
+    MarketplaceHarborHomeAboutBlock, MarketplaceHarborHomeAboutSchema,
+    MarketplaceHarborHomeCommunitiesBlock, MarketplaceHarborHomeCommunitiesSchema,
+    MarketplaceHarborHomeSolutionsBlock, MarketplaceHarborHomeSolutionsSchema,
+    MarketplaceHarborHomeProcessBlock, MarketplaceHarborHomeProcessSchema,
+    MarketplaceHarborHomeTestimonialsBlock, MarketplaceHarborHomeTestimonialsSchema,
+    MarketplaceHarborHomeTeamBlock, MarketplaceHarborHomeTeamSchema,
+    MarketplaceHarborHomeInsightsBlock, MarketplaceHarborHomeInsightsSchema,
+    MarketplaceHarborHomeCtaBlock, MarketplaceHarborHomeCtaSchema,
+    MarketplaceHarborListingsBlock, MarketplaceHarborListingsSchema,
+    MarketplaceHarborMarketBlock, MarketplaceHarborMarketSchema,
+    MarketplaceHarborPathsBlock, MarketplaceHarborPathsSchema,
+    MarketplaceHarborNeighborhoodBlock, MarketplaceHarborNeighborhoodSchema,
+    MarketplaceHarborProofBlock, MarketplaceHarborProofSchema,
+    MarketplaceHarborPropertyBlock, MarketplaceHarborPropertySchema,
+    MarketplaceHarborFaqBlock, MarketplaceHarborFaqSchema,
+    MarketplaceHarborContactBlock, MarketplaceHarborContactSchema,
+    MarketplaceHarborPageHeroBlock, MarketplaceHarborPageHeroSchema,
+} from "./Blocks/Marketplace/MarketplaceBatch5Blocks";
+
+import {
+    MarketplacePurespaceHeroBlock, MarketplacePurespaceHeroSchema,
+    MarketplacePurespaceServicesBlock, MarketplacePurespaceServicesSchema,
+    MarketplacePurespacePromiseBlock, MarketplacePurespacePromiseSchema,
+    MarketplacePurespaceChecklistBlock, MarketplacePurespaceChecklistSchema,
+    MarketplacePurespaceProofBlock, MarketplacePurespaceProofSchema,
+    MarketplacePurespaceFaqBlock, MarketplacePurespaceFaqSchema,
+    MarketplacePurespaceContactBlock, MarketplacePurespaceContactSchema,
+    MarketplacePurespaceCtaBlock, MarketplacePurespaceCtaSchema,
+    MarketplacePurespacePageHeroBlock, MarketplacePurespacePageHeroSchema,
+} from "./Blocks/Marketplace/MarketplaceBatch6Blocks";
+
 const RawBlockRegistry = {
     luna_custom_section: { component: LunaCustomSectionBlock, schema: LunaCustomSectionSchema },
     commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
@@ -945,13 +1004,76 @@ const RawBlockRegistry = {
     marketplace_stone_cta: { component: MarketplaceStoneCtaBlock, schema: MarketplaceStoneCtaSchema },
     marketplace_stone_page_hero: { component: MarketplaceStonePageHeroBlock, schema: MarketplaceStonePageHeroSchema },
 
+    // Marketplace Batch 3 — Northfield Legal.
+    marketplace_northfield_hero: { component: MarketplaceNorthfieldHeroBlock, schema: MarketplaceNorthfieldHeroSchema },
+    marketplace_northfield_practice: { component: MarketplaceNorthfieldPracticeBlock, schema: MarketplaceNorthfieldPracticeSchema },
+    marketplace_northfield_authority: { component: MarketplaceNorthfieldAuthorityBlock, schema: MarketplaceNorthfieldAuthoritySchema },
+    marketplace_northfield_process: { component: MarketplaceNorthfieldProcessBlock, schema: MarketplaceNorthfieldProcessSchema },
+    marketplace_northfield_proof: { component: MarketplaceNorthfieldProofBlock, schema: MarketplaceNorthfieldProofSchema },
+    marketplace_northfield_team: { component: MarketplaceNorthfieldTeamBlock, schema: MarketplaceNorthfieldTeamSchema },
+    marketplace_northfield_faq: { component: MarketplaceNorthfieldFaqBlock, schema: MarketplaceNorthfieldFaqSchema },
+    marketplace_northfield_contact: { component: MarketplaceNorthfieldContactBlock, schema: MarketplaceNorthfieldContactSchema },
+    marketplace_northfield_cta: { component: MarketplaceNorthfieldCtaBlock, schema: MarketplaceNorthfieldCtaSchema },
+    marketplace_northfield_page_hero: { component: MarketplaceNorthfieldPageHeroBlock, schema: MarketplaceNorthfieldPageHeroSchema },
+
+    // Marketplace Batch 4 — ClearFlow Plumbing.
+    marketplace_clearflow_hero: { component: MarketplaceClearflowHeroBlock, schema: MarketplaceClearflowHeroSchema },
+    marketplace_clearflow_services: { component: MarketplaceClearflowServicesBlock, schema: MarketplaceClearflowServicesSchema },
+    marketplace_clearflow_trust: { component: MarketplaceClearflowTrustBlock, schema: MarketplaceClearflowTrustSchema },
+    marketplace_clearflow_process: { component: MarketplaceClearflowProcessBlock, schema: MarketplaceClearflowProcessSchema },
+    marketplace_clearflow_proof: { component: MarketplaceClearflowProofBlock, schema: MarketplaceClearflowProofSchema },
+    marketplace_clearflow_faq: { component: MarketplaceClearflowFaqBlock, schema: MarketplaceClearflowFaqSchema },
+    marketplace_clearflow_contact: { component: MarketplaceClearflowContactBlock, schema: MarketplaceClearflowContactSchema },
+    marketplace_clearflow_cta: { component: MarketplaceClearflowCtaBlock, schema: MarketplaceClearflowCtaSchema },
+    marketplace_clearflow_page_hero: { component: MarketplaceClearflowPageHeroBlock, schema: MarketplaceClearflowPageHeroSchema },
+
+    // Marketplace Batch 5 — Harbor & Key Realty.
+    marketplace_harbor_hero: { component: MarketplaceHarborHeroBlock, schema: MarketplaceHarborHeroSchema },
+    marketplace_harbor_home_listings: { component: MarketplaceHarborHomeListingsBlock, schema: MarketplaceHarborHomeListingsSchema },
+    marketplace_harbor_home_about: { component: MarketplaceHarborHomeAboutBlock, schema: MarketplaceHarborHomeAboutSchema },
+    marketplace_harbor_home_communities: { component: MarketplaceHarborHomeCommunitiesBlock, schema: MarketplaceHarborHomeCommunitiesSchema },
+    marketplace_harbor_home_solutions: { component: MarketplaceHarborHomeSolutionsBlock, schema: MarketplaceHarborHomeSolutionsSchema },
+    marketplace_harbor_home_process: { component: MarketplaceHarborHomeProcessBlock, schema: MarketplaceHarborHomeProcessSchema },
+    marketplace_harbor_home_testimonials: { component: MarketplaceHarborHomeTestimonialsBlock, schema: MarketplaceHarborHomeTestimonialsSchema },
+    marketplace_harbor_home_team: { component: MarketplaceHarborHomeTeamBlock, schema: MarketplaceHarborHomeTeamSchema },
+    marketplace_harbor_home_insights: { component: MarketplaceHarborHomeInsightsBlock, schema: MarketplaceHarborHomeInsightsSchema },
+    marketplace_harbor_home_cta: { component: MarketplaceHarborHomeCtaBlock, schema: MarketplaceHarborHomeCtaSchema },
+    marketplace_harbor_listings: { component: MarketplaceHarborListingsBlock, schema: MarketplaceHarborListingsSchema },
+    marketplace_harbor_market: { component: MarketplaceHarborMarketBlock, schema: MarketplaceHarborMarketSchema },
+    marketplace_harbor_paths: { component: MarketplaceHarborPathsBlock, schema: MarketplaceHarborPathsSchema },
+    marketplace_harbor_neighborhood: { component: MarketplaceHarborNeighborhoodBlock, schema: MarketplaceHarborNeighborhoodSchema },
+    marketplace_harbor_proof: { component: MarketplaceHarborProofBlock, schema: MarketplaceHarborProofSchema },
+    marketplace_harbor_property: { component: MarketplaceHarborPropertyBlock, schema: MarketplaceHarborPropertySchema },
+    marketplace_harbor_faq: { component: MarketplaceHarborFaqBlock, schema: MarketplaceHarborFaqSchema },
+    marketplace_harbor_contact: { component: MarketplaceHarborContactBlock, schema: MarketplaceHarborContactSchema },
+    marketplace_harbor_page_hero: { component: MarketplaceHarborPageHeroBlock, schema: MarketplaceHarborPageHeroSchema },
+
+    // Marketplace Batch 6 — PureSpace Cleaning.
+    marketplace_purespace_hero: { component: MarketplacePurespaceHeroBlock, schema: MarketplacePurespaceHeroSchema },
+    marketplace_purespace_services: { component: MarketplacePurespaceServicesBlock, schema: MarketplacePurespaceServicesSchema },
+    marketplace_purespace_promise: { component: MarketplacePurespacePromiseBlock, schema: MarketplacePurespacePromiseSchema },
+    marketplace_purespace_checklist: { component: MarketplacePurespaceChecklistBlock, schema: MarketplacePurespaceChecklistSchema },
+    marketplace_purespace_proof: { component: MarketplacePurespaceProofBlock, schema: MarketplacePurespaceProofSchema },
+    marketplace_purespace_faq: { component: MarketplacePurespaceFaqBlock, schema: MarketplacePurespaceFaqSchema },
+    marketplace_purespace_contact: { component: MarketplacePurespaceContactBlock, schema: MarketplacePurespaceContactSchema },
+    marketplace_purespace_cta: { component: MarketplacePurespaceCtaBlock, schema: MarketplacePurespaceCtaSchema },
+    marketplace_purespace_page_hero: { component: MarketplacePurespacePageHeroBlock, schema: MarketplacePurespacePageHeroSchema },
+
 };
 
 const NormalizedBlockRegistry = normalizeBlockRegistry(RawBlockRegistry);
 
 const wrapSparkComponentWithFieldExtras = (Component, schema, type) => {
     if (typeof Component !== 'function') return Component;
-    const WrappedSparkComponent = (props) => <SparkFieldExtrasProvider block={props?.block} schema={schema}>
+    const WrappedSparkComponent = (props) => <SparkFieldExtrasProvider
+        block={props?.block}
+        schema={schema}
+        builderMode={Boolean(props?.builderMode && props?.hybridSparkBuilder)}
+        blockIndex={props?.blockIndex}
+        onInsertHybridExtra={props?.onInsertHybridExtra}
+        onSelectHybridSlot={props?.onSelectHybridSlot}
+        onUnsupportedHybridType={props?.onUnsupportedHybridType}
+    >
         <Component {...props} />
     </SparkFieldExtrasProvider>;
     WrappedSparkComponent.displayName = `SparkFieldExtras(${Component.displayName || Component.name || type || 'Spark'})`;

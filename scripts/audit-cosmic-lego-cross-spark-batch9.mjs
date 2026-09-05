@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+const read=(p)=>fs.readFileSync(p,'utf8');
+const checks=[];
+const add=(name,ok)=>checks.push([name,Boolean(ok)]);
+const builder=read('resources/js/Pages/Websites/Builder.jsx');
+const lego=read('resources/js/Pages/Websites/Blocks/General/LunaCustomSectionBlock.jsx');
+const runtime=read('resources/js/Pages/Websites/Blocks/Shared/SparkFieldExtrasRuntime.jsx');
+const hybrid=read('resources/js/Pages/Websites/Blocks/Shared/hybridSparkInsertionContract.js');
+const php=read('app/Helpers/CmsHtmlCompiler.php');
+const support=read('app/Support/SparkExtrasContract.php');
+add('hybrid contract v2', /HYBRID_SPARK_INSERTION_VERSION = 2/.test(hybrid));
+add('portable node -> extra converter', /createHybridSparkExtraFromLegoNode/.test(hybrid));
+add('extra -> portable node converter', /hybridSparkExtraToLegoNode/.test(hybrid));
+add('free lego payload carries node', /node:legoClone\(node\)/.test(lego));
+add('free lego payload carries block', /sourceBlockIndex:blockIndex/.test(lego));
+add('spark extras are draggable', /kind: 'hybrid-extra'/.test(runtime));
+add('spark drop receives payload', /onInsertHybridExtra\?\.\(\{ targetPath, placement, type, payload \}\)/.test(runtime));
+add('builder removes source hybrid extra', /removeHybridSparkExtraFromBlocks/.test(builder));
+add('builder moves to free layout', /moveHybridExtraToFreeLayout/.test(builder));
+add('cross free-layout move removes source', /payload\?\.kind === 'existing'/.test(builder));
+for (const type of ['list','quote','stat']) {
+ add(`${type} client contract`, new RegExp(`'${type}'`).test(hybrid) && new RegExp(`'${type}'`).test(runtime));
+ add(`${type} server contract`, new RegExp(`'${type}'`).test(support) && new RegExp(`\\$type === '${type}'`).test(php));
+}
+add('style metadata preserved client', /style: clonePortable\(node\.style \|\| \{\}\)/.test(hybrid));
+add('style metadata preserved server', /\$normalized\['style'\]/.test(support));
+const failed=checks.filter(([,ok])=>!ok);
+checks.forEach(([name,ok])=>console.log(`${ok?'PASS':'FAIL'} ${name}`));
+console.log(`\n${checks.length-failed.length}/${checks.length} passed`);
+if(failed.length) process.exit(1);
