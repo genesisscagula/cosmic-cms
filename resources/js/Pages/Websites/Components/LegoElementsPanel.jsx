@@ -53,13 +53,14 @@ const GROUPS = [
     ]},
 ];
 
-export default function LegoElementsPanel({ open, onClose, onInsert, activeBlockIndex = null, hybridMode = false }) {
+export default function LegoElementsPanel({ open, onClose, onInsert, onAddSection, onAddRow, activeBlockIndex = null, hybridMode = false }) {
     const [query, setQuery] = useState('');
     const groups = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return GROUPS;
-        return GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => item.label.toLowerCase().includes(q)) })).filter((group) => group.items.length);
-    }, [query]);
+        if (!q) return hybridMode ? GROUPS : GROUPS.filter((group) => group.label !== 'Layout');
+        const source = hybridMode ? GROUPS : GROUPS.filter((group) => group.label !== 'Layout');
+        return source.map((group) => ({ ...group, items: group.items.filter((item) => item.label.toLowerCase().includes(q)) })).filter((group) => group.items.length);
+    }, [query, hybridMode]);
 
     if (!open) return null;
     return <aside className="cosmic-lego-panel" aria-label="Build Your Own elements">
@@ -67,8 +68,13 @@ export default function LegoElementsPanel({ open, onClose, onInsert, activeBlock
             <div><div className="cosmic-lego-panel__eyebrow">Build Your Own</div><strong>Elements</strong></div>
             <button type="button" onClick={onClose} aria-label="Close elements panel">×</button>
         </div>
+        {!hybridMode ? <div className="cosmic-lego-panel__structure">
+            <button type="button" className="is-primary" onClick={() => onAddSection?.(activeBlockIndex)}><span aria-hidden="true">＋</span><strong>Add Section</strong><small>New Build Your Own section</small></button>
+            <button type="button" onClick={() => onAddRow?.(1, activeBlockIndex)}><span aria-hidden="true">▭</span><strong>Add Row</strong><small>Start with 1 column</small></button>
+        </div> : null}
+        {!hybridMode ? <div className="cosmic-lego-panel__layouts"><div className="cosmic-lego-panel__layouts-label">Row layout</div><div className="cosmic-lego-panel__layouts-grid">{[1,2,3,4,5,6].map((count)=><button key={count} type="button" onClick={() => onAddRow?.(count, activeBlockIndex)} title={`Add ${count}-column row`}><span aria-hidden="true">{count}</span><small>{count} Column{count>1?'s':''}</small></button>)}</div></div> : null}
         <div className="cosmic-lego-panel__search"><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search elements…" aria-label="Search elements" /></div>
-        <div className="cosmic-lego-panel__hint">{hybridMode ? 'Drag core elements into the dotted Spark insertion zones. Click adds to the selected/best safe slot.' : 'Drag into a column, or click to add to the active section.'}</div>
+        <div className="cosmic-lego-panel__hint">{hybridMode ? 'Drag core elements into the dotted Spark insertion zones. Click adds to the selected/best safe slot.' : 'Drag elements into the selected section. Layout and section controls stay above the library.'}</div>
         <div className="cosmic-lego-panel__body">
             {groups.map((group) => <section key={group.label}>
                 <h3>{group.label}</h3>

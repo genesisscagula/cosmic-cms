@@ -3,6 +3,7 @@ import { BlockRegistry } from '../Websites/BlockRegistry';
 import { createSparkTailwindRuntime, hasSparkTailwindSchema } from '../Websites/Blocks/Shared/sparkTailwindRuntime';
 import { colorFamilies } from '../../theme/colorFamilies';
 import { resolveSemanticPalette } from '../../theme/semanticPalette';
+import { legoSurfaceVars as resolveLegoSurfaceVars, resolveLegoSectionSurface } from '../../theme/legoSurface';
 import { cosmicTypographyVars } from '../Websites/Components/CosmicTypography';
 import { cosmicSectionVars, cosmicLocalSectionVars } from '../Websites/Components/CosmicSection';
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars } from '../Websites/Components/CosmicBackground';
@@ -21,6 +22,7 @@ const marketplaceDesignPalette = (websiteTheme = {}) => {
         secondary: design.surface_alt || design.surface || '#ffffff',
         accent: design.accent || design.primary || '#0f172a',
         page: design.page || '#ffffff',
+        dark: design.dark || design.primary || '#0f172a',
         heading: design.heading || '#0f172a',
         body: design.body || '#475569',
         muted: design.body || '#64748b',
@@ -132,12 +134,15 @@ const templatePreviewRenderVars = (block, websiteTheme = {}, index = 0) => {
             '--cosmic-accent': semanticPalette.accent,
             '--cosmic-bg-white': semanticPalette.white,
             '--cosmic-bg-surface': semanticPalette.surface,
+            '--cosmic-bg-surface-alt': semanticPalette.surface_alt,
             '--cosmic-bg-primary': semanticPalette.primary,
             '--cosmic-bg-primary-surface': semanticPalette.brand_surface,
             '--cosmic-bg-accent': semanticPalette.accent,
             '--cosmic-brand-primary': semanticPalette.primary,
             '--cosmic-brand-secondary': semanticPalette.secondary,
             '--cosmic-brand-accent': semanticPalette.accent,
+            '--cosmic-brand-surface': semanticPalette.brand_surface,
+            '--cosmic-color-dark': semanticPalette.dark,
             '--cosmic-color-heading': semanticPalette.heading,
             '--cosmic-color-body': semanticPalette.body,
             '--cosmic-color-muted': semanticPalette.muted,
@@ -272,8 +277,14 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
         } : {}),
     };
     const resolvedTheme = resolveTemplatePreviewTheme(hydratedBlock, index);
-    const previewBlock = { ...hydratedBlock, resolvedTheme };
+    const configuredLegoSurface = ['auto','white','slate','primary'].includes(hydratedBlock?.section_surface) ? hydratedBlock.section_surface : 'auto';
+    const resolvedLegoSurface = resolveLegoSectionSurface(configuredLegoSurface, resolvedTheme);
+    const previewBlock = { ...hydratedBlock, resolvedTheme, resolvedLegoSurface };
     const { vars, localCardSurface, heroNeedsDefaultPadding, hasLegacyDesignTypography } = templatePreviewRenderVars(previewBlock, websiteTheme, index);
+    const isLegoBuild = previewBlock?.ai_flex?.source === 'build_your_own';
+    const activeFamilyKey = String(websiteTheme?.primary || 'midnight');
+    const legoPalette = resolveSemanticPalette(activeFamilyKey, websiteTheme || {});
+    const legoVars = isLegoBuild ? resolveLegoSurfaceVars(resolvedLegoSurface, legoPalette) : {};
     const blockType = String(block?.type || '').toLowerCase();
     const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
     const isLedgerMarketplace = blockType.startsWith('marketplace_ledger_');
@@ -337,7 +348,7 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
             data-luna-design={hasLunaDesign ? '1' : undefined}
             data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
             className={`cosmic-render-shell ${hasLunaDesign ? 'cosmic-luna-design-host' : ''}`}
-            style={{ ...vars, ...emberPaletteVars, ...ledgerPaletteVars }}
+            style={{ ...vars, ...legoVars, ...emberPaletteVars, ...ledgerPaletteVars }}
         >
             <div className="cosmic-render-content pointer-events-none">
                 <Component

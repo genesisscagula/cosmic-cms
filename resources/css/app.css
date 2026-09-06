@@ -15107,7 +15107,7 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 .cosmic-lego-panel__body{scrollbar-gutter:stable}.cosmic-flex-list{display:grid;gap:8px;color:var(--cosmic-local-body-color,var(--cosmic-color-body,#3f3f46));font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6))}.cosmic-flex-quote{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));border-left-color:var(--cosmic-local-accent,var(--cosmic-brand-primary,#30475E))!important}.cosmic-flex-icon{color:var(--cosmic-local-accent,var(--cosmic-brand-primary,#30475E))}.cosmic-flex-video,.cosmic-flex-image{max-width:100%;height:auto}.cosmic-lego-panel__grid button{touch-action:none}
 
 /* Cosmic Lego Builder — Batch 6: individual element inspector + reset-to-global */
-.cosmic-lego-item.is-selected{outline:2px solid color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 70%,transparent);outline-offset:5px}.cosmic-lego-item__edit{position:absolute;right:28px;top:-12px;z-index:6;display:none;min-height:26px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:#0f172a;padding:3px 8px;color:#fff;font-size:10px;font-weight:800}.cosmic-lego-item:hover>.cosmic-lego-item__edit,.cosmic-lego-item.is-selected>.cosmic-lego-item__edit{display:block}
+.cosmic-lego-item.is-selected{outline:2px solid color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 70%,transparent);outline-offset:5px}.cosmic-lego-item__actions{position:absolute;right:28px;top:-13px;z-index:7;display:none;align-items:center;gap:4px}.cosmic-lego-item:hover>.cosmic-lego-item__actions,.cosmic-lego-item.is-selected>.cosmic-lego-item__actions{display:flex}.cosmic-lego-item__actions button{min-height:27px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:#0f172a;padding:3px 8px;color:#fff;font-size:10px;font-weight:800;box-shadow:0 5px 14px rgba(2,6,23,.18)}.cosmic-lego-item__actions .cosmic-lego-item__delete{background:#7f1d1d}.cosmic-lego-item__actions button:hover{filter:brightness(1.12)}
 .cosmic-lego-inspector{position:fixed;right:18px;top:112px;z-index:10360;width:320px;max-height:calc(100vh - 138px);display:flex;flex-direction:column;border:1px solid rgba(148,163,184,.28);border-radius:20px;background:rgba(255,255,255,.98);color:#0f172a;box-shadow:0 24px 70px rgba(2,6,23,.26);backdrop-filter:blur(18px);overflow:hidden}.dark .cosmic-lego-inspector{background:rgba(15,23,42,.98);color:#f8fafc}.cosmic-lego-inspector__head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px 11px;border-bottom:1px solid rgba(148,163,184,.18)}.cosmic-lego-inspector__head small{display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.14em;font-size:9px;font-weight:800;color:#7c3aed}.cosmic-lego-inspector__head strong{display:block;text-transform:capitalize;font-size:16px}.cosmic-lego-inspector__head>button{width:34px;height:34px;border:1px solid rgba(148,163,184,.22);border-radius:10px;background:transparent;color:inherit;font-size:20px}.cosmic-lego-inspector__tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.16)}.cosmic-lego-inspector__tabs button{min-height:36px;border:0;border-radius:9px;background:transparent;color:inherit;font-size:11px;font-weight:800}.cosmic-lego-inspector__tabs button[data-active="true"]{background:color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 12%,transparent);color:var(--cosmic-brand-primary,#7c3aed)}.cosmic-lego-inspector__body{overflow:auto;padding:14px 15px}.cosmic-lego-inspector__fields{display:grid;gap:13px}.cosmic-lego-inspector__fields label{display:grid;gap:6px;min-width:0}.cosmic-lego-inspector__fields label>span,.cosmic-lego-inherit>span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b}.cosmic-lego-inspector__fields :is(input,select,textarea){width:100%;min-height:40px;border:1px solid rgba(148,163,184,.28);border-radius:10px;background:rgba(248,250,252,.72);padding:8px 10px;color:#0f172a;font-size:13px;outline:none}.dark .cosmic-lego-inspector__fields :is(input,select,textarea){background:rgba(255,255,255,.05);color:#f8fafc}.cosmic-lego-inspector__fields :is(input,select,textarea):focus{border-color:var(--cosmic-brand-primary,#7c3aed);box-shadow:0 0 0 2px color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 12%,transparent)}.cosmic-lego-inspector__split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cosmic-lego-inherit{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border-radius:10px;background:color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 7%,transparent)}.cosmic-lego-inherit strong{font-size:11px;color:var(--cosmic-brand-primary,#7c3aed)}.cosmic-lego-inspector__note{margin:0;padding:11px;border-radius:10px;background:rgba(148,163,184,.09);font-size:11px;line-height:1.55;color:#64748b}.cosmic-lego-inspector__foot{display:flex;justify-content:space-between;gap:8px;padding:12px 14px;border-top:1px solid rgba(148,163,184,.18)}.cosmic-lego-inspector__foot button{min-height:38px;border:1px solid rgba(148,163,184,.28);border-radius:10px;background:transparent;padding:7px 11px;color:inherit;font-size:11px;font-weight:800}.cosmic-lego-inspector__foot .danger{color:#b91c1c}
 @media(max-width:900px){.cosmic-lego-inspector{left:10px;right:10px;top:84px;width:auto;max-height:52vh}.cosmic-lego-inspector__split{grid-template-columns:1fr 1fr}}@media(max-width:520px){.cosmic-lego-inspector__split{grid-template-columns:1fr}}
 
@@ -15182,3 +15182,111 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 .cosmic-custom-section[data-cosmic-lego-surface="primary"] .cosmic-flex-divider,.cosmic-custom-section[data-cosmic-lego-surface="slate"] .cosmic-flex-divider{border-color:var(--cosmic-lego-border)!important}
 @media(max-width:900px){.cosmic-lego-surface-picker{right:12px;top:12px}.cosmic-lego-surface-picker>span{display:none}}
 @media(max-width:640px){.cosmic-lego-surface-picker{left:12px;right:auto;top:58px}.cosmic-lego-surface-picker button{padding:5px 7px;font-size:9px}}
+
+/* Cosmic Lego Builder hotfix 17 — sane element defaults / semantic card context */
+.cosmic-custom-section[data-cosmic-lego-surface] .cosmic-flex-accordion>div,.cosmic-custom-section[data-cosmic-lego-surface] .cosmic-flex-tabs [role="tabpanel"]{--cosmic-lego-element-heading:var(--cosmic-lego-card-heading);--cosmic-lego-element-body:var(--cosmic-lego-card-text)}
+.cosmic-custom-section[data-cosmic-lego-surface] .cosmic-flex-accordion button{color:var(--cosmic-lego-card-heading)!important}
+.cosmic-custom-section[data-cosmic-lego-surface] .cosmic-flex-accordion [style*="line-height"]{color:var(--cosmic-lego-card-text)!important}
+.cosmic-lego-canvas .cosmic-flex-card>.cosmic-flex-heading[data-cosmic-style-mode="global"]{max-width:none;margin-inline:0!important;text-align:inherit}
+.cosmic-lego-canvas .cosmic-flex-card>.cosmic-flex-text[data-cosmic-style-mode="global"]{max-width:none;margin-inline:0!important;text-align:inherit;font-size:var(--cosmic-type-card-body-size,.975rem);line-height:var(--cosmic-type-card-body-line,1.65)}
+.cosmic-lego-canvas .cosmic-flex-card .cosmic-flex-button{width:max-content;max-width:100%}
+.cosmic-lego-canvas .cosmic-flex-image,.cosmic-lego-canvas .cosmic-flex-video{aspect-ratio:var(--cosmic-lego-media-ratio,16/10);min-height:180px;object-fit:cover}
+
+/* Cosmic Lego Builder Batch 13 — organized build panel + compact section controls */
+.cosmic-lego-panel{width:316px;max-height:calc(100vh - 132px)}
+.cosmic-lego-panel__structure{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 12px}
+.cosmic-lego-panel__structure button{min-width:0;min-height:70px;border:1px solid rgba(255,255,255,.11);border-radius:14px;background:rgba(255,255,255,.045);color:#e2e8f0;padding:10px 11px;text-align:left;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center}
+.cosmic-lego-panel__structure button>span{grid-row:1/3;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.07);font-size:16px;font-weight:900}
+.cosmic-lego-panel__structure button strong{font-size:12px;line-height:1.2}.cosmic-lego-panel__structure button small{font-size:9px;line-height:1.3;color:#94a3b8}
+.cosmic-lego-panel__structure button.is-primary{border-color:rgba(167,139,250,.42);background:rgba(124,58,237,.16)}
+.cosmic-lego-panel__structure button:hover,.cosmic-lego-panel__structure button:focus-visible{border-color:rgba(167,139,250,.65);background:rgba(124,58,237,.16)}
+.cosmic-lego-panel__layouts{padding:0 14px 12px}.cosmic-lego-panel__layouts-label{margin-bottom:7px;color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.cosmic-lego-panel__layouts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cosmic-lego-panel__layouts-grid button{min-height:46px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.035);color:#cbd5e1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;cursor:pointer}
+.cosmic-lego-panel__layouts-grid button>span{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:rgba(167,139,250,.12);color:#c4b5fd;font-size:10px;font-weight:900}.cosmic-lego-panel__layouts-grid button>small{font-size:9px;font-weight:700}
+.cosmic-lego-panel__layouts-grid button:hover,.cosmic-lego-panel__layouts-grid button:focus-visible{border-color:rgba(167,139,250,.62);background:rgba(124,58,237,.12)}
+.cosmic-lego-surface-picker{position:absolute;right:18px;top:18px;z-index:46;display:flex;align-items:center;gap:7px;padding:5px 6px 5px 10px;border:1px solid rgba(148,163,184,.24);border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(15,23,42,.10);backdrop-filter:blur(10px)}
+.cosmic-lego-surface-picker>span{color:#64748b;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.cosmic-lego-surface-picker select{height:30px;max-width:126px;border:0;border-radius:8px;background:rgba(124,58,237,.08);color:#6d28d9;padding:0 26px 0 9px;font-size:10px;font-weight:800;outline:none}
+.cosmic-lego-surface-picker select:focus-visible{box-shadow:0 0 0 2px rgba(124,58,237,.25)}
+.cosmic-lego-add-row{display:none!important}
+@media(max-width:900px){.cosmic-lego-panel{width:auto}.cosmic-lego-panel__structure{grid-template-columns:1fr 1fr}.cosmic-lego-panel__layouts-grid{grid-template-columns:repeat(6,minmax(0,1fr))}.cosmic-lego-panel__layouts-grid button{flex-direction:column;gap:2px}.cosmic-lego-surface-picker{right:12px;top:12px}}
+@media(max-width:520px){.cosmic-lego-panel__structure{grid-template-columns:1fr}.cosmic-lego-panel__layouts-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.cosmic-lego-surface-picker{left:12px;right:auto;top:58px}}
+
+/* Cosmic Lego drag/drop targeting — Elementor-style visual guidance */
+.cosmic-lego-canvas.is-dragging .cosmic-lego-column{
+    border-style:dashed;
+    opacity:.82;
+    transition:border-color .14s ease,background-color .14s ease,box-shadow .14s ease,opacity .14s ease;
+}
+.cosmic-lego-canvas.is-dragging .cosmic-lego-column.is-drop-target{
+    opacity:1;
+    border-style:solid;
+    border-color:var(--cosmic-brand-primary,#7c3aed);
+    background:color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 7%,transparent);
+    box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 18%,transparent),0 0 0 3px color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 8%,transparent);
+}
+.cosmic-lego-column__drop-label{
+    position:absolute;
+    top:8px;
+    right:8px;
+    z-index:12;
+    pointer-events:none;
+    border-radius:999px;
+    background:var(--cosmic-brand-primary,#7c3aed);
+    padding:5px 9px;
+    color:var(--cosmic-color-on-primary,#fff);
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.02em;
+    box-shadow:0 6px 18px rgba(15,23,42,.12);
+}
+.cosmic-lego-insert-line{
+    position:relative;
+    height:8px;
+    margin:-4px 0;
+    z-index:10;
+    pointer-events:none;
+}
+.cosmic-lego-canvas.is-dragging .cosmic-lego-insert-line{pointer-events:auto}
+.cosmic-lego-insert-line::before{
+    content:"";
+    position:absolute;
+    left:8px;
+    right:8px;
+    top:50%;
+    height:2px;
+    border-radius:999px;
+    background:transparent;
+    transform:translateY(-50%);
+    transition:background-color .12s ease,box-shadow .12s ease;
+}
+.cosmic-lego-insert-line span{
+    position:absolute;
+    left:50%;
+    top:50%;
+    opacity:0;
+    transform:translate(-50%,-50%);
+    border-radius:999px;
+    background:var(--cosmic-brand-primary,#7c3aed);
+    padding:3px 8px;
+    color:var(--cosmic-color-on-primary,#fff);
+    font-size:9px;
+    font-weight:800;
+    white-space:nowrap;
+    pointer-events:none;
+}
+.cosmic-lego-insert-line.is-active::before{
+    background:var(--cosmic-brand-primary,#7c3aed);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 14%,transparent);
+}
+.cosmic-lego-insert-line.is-active span{opacity:1}
+.cosmic-lego-canvas.is-dragging .cosmic-lego-item{opacity:.94}
+.cosmic-lego-canvas.is-dragging .cosmic-lego-dropzone{opacity:.72}
+.cosmic-custom-section[data-cosmic-lego-surface="primary"] .cosmic-lego-column.is-drop-target{
+    border-color:color-mix(in srgb,var(--cosmic-on-primary,#fff) 78%,var(--cosmic-brand-primary,#7c3aed));
+    background:color-mix(in srgb,var(--cosmic-on-primary,#fff) 8%,transparent);
+    box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--cosmic-on-primary,#fff) 20%,transparent),0 0 0 3px color-mix(in srgb,var(--cosmic-on-primary,#fff) 9%,transparent);
+}
+@media (prefers-reduced-motion:reduce){
+    .cosmic-lego-canvas.is-dragging .cosmic-lego-column,.cosmic-lego-insert-line::before{transition:none}
+}

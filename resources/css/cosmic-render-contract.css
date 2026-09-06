@@ -324,14 +324,10 @@
     gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap,24px));
 }
 .cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-local-stack-gap,var(--cosmic-section-gap,20px))}
-.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{
-    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display,inherit));
-    font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size,clamp(2rem,4vw,3.5rem)));
-    line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line,1.05));
-    font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight,700));
-    letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking,-.03em));
-    color:var(--cosmic-local-h2-color,var(--cosmic-color-heading,#27272a));
-}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display,inherit));color:var(--cosmic-lego-element-heading,var(--cosmic-lego-heading,var(--cosmic-color-heading,#27272a)))}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h2"]{font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size,clamp(2rem,4vw,3.5rem)));line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line,1.05));font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight,700));letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking,-.03em))}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h3"]{font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size,clamp(1.35rem,2vw,1.75rem)));line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line,1.08));font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight,700));letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking,-.025em))}
+.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h4"]{font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size,clamp(1.125rem,1.5vw,1.35rem)));line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line,1.15));font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight,700));letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking,-.015em))}
 .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-text{
     font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));
     font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size,16px));
@@ -348,17 +344,17 @@
 .cosmic-lego-row-runtime:not([data-cosmic-column-count="1"]) [data-cosmic-style-mode="global"].cosmic-flex-button{align-self:flex-start}
 @media(max-width:900px){
     .cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-section-gap-tablet,var(--cosmic-section-gap,18px))}
-    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{font-size:var(--cosmic-type-h2-size-tablet,var(--cosmic-type-h2-size,2.5rem))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h2"]{font-size:var(--cosmic-type-h2-size-tablet,var(--cosmic-type-h2-size,2.5rem))}.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h3"]{font-size:var(--cosmic-type-h3-size-tablet,var(--cosmic-type-h3-size,1.6rem))}.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h4"]{font-size:var(--cosmic-type-h4-size-tablet,var(--cosmic-type-h4-size,1.3rem))}
 }
 @media(max-width:640px){
     .cosmic-lego-canvas .cosmic-flex-column{gap:var(--cosmic-section-gap-mobile,var(--cosmic-section-gap,14px))}
-    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading{font-size:var(--cosmic-type-h2-size-mobile,var(--cosmic-type-h2-size,2rem))}
+    .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h2"]{font-size:var(--cosmic-type-h2-size-mobile,var(--cosmic-type-h2-size,2rem))}.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h3"]{font-size:var(--cosmic-type-h3-size-mobile,var(--cosmic-type-h3-size,1.5rem))}.cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-heading[data-cosmic-type="h4"]{font-size:var(--cosmic-type-h4-size-mobile,var(--cosmic-type-h4-size,1.25rem))}
     .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-text{font-size:var(--cosmic-type-body-size-mobile,var(--cosmic-type-body-size,16px))}
     .cosmic-lego-canvas [data-cosmic-style-mode="global"].cosmic-flex-button{min-height:var(--cosmic-button-height-mobile,var(--cosmic-button-height,48px));width:100%;align-self:stretch}
 }
 
 /* Cosmic Lego Builder Batch 3 — exported core element parity */
-.cosmic-lego-canvas .cosmic-flex-list{display:grid;gap:8px;color:var(--cosmic-local-body-color,var(--cosmic-color-body,#3f3f46));font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6))}.cosmic-lego-canvas .cosmic-flex-quote{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));border-left-color:var(--cosmic-local-accent,var(--cosmic-brand-primary,#30475E))!important}.cosmic-lego-canvas .cosmic-flex-video,.cosmic-lego-canvas .cosmic-flex-image{max-width:100%;height:auto}
+.cosmic-lego-canvas .cosmic-flex-list{display:grid;gap:8px;color:var(--cosmic-lego-element-body,var(--cosmic-lego-body,var(--cosmic-local-body-color,var(--cosmic-color-body,#3f3f46))));font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6))}.cosmic-lego-canvas .cosmic-flex-quote{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body,inherit));border-left-color:var(--cosmic-local-accent,var(--cosmic-brand-primary,#30475E))!important}.cosmic-lego-canvas .cosmic-flex-video,.cosmic-lego-canvas .cosmic-flex-image{max-width:100%;height:auto}
 
 /* Cosmic Lego Builder Batch 6 — local overrides are persisted in node.style and rendered by the shared compiler contract. */
 .cosmic-lego-canvas [data-cosmic-style-mode="custom"]{box-sizing:border-box}

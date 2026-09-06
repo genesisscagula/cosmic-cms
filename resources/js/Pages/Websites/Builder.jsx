@@ -22,6 +22,7 @@ import ThemeSelector from "./Theme/ThemeSelector";
 import PageStyleSelector from "./PageStyle/PageStyleSelector";
 import { colorFamilies, installCustomBrandTheme } from "../../theme/colorFamilies";
 import { resolveSemanticPalette } from "../../theme/semanticPalette";
+import { legoSurfaceVars as resolveLegoSurfaceVars, resolveLegoSectionSurface } from "../../theme/legoSurface";
 
 import { BlockRegistry } from "./BlockRegistry";
 import { createSparkTailwindRuntime, hasSparkTailwindSchema } from "./Blocks/Shared/sparkTailwindRuntime";
@@ -2596,14 +2597,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         },
     });
 
-    const addBuildYourOwnSection = () => {
+    const addBuildYourOwnSection = (options = null) => {
         const block = buildYourOwnBlock();
         const blocks = [...(data.blocks || [])];
+        const requestedAfter = Number.isInteger(options?.afterIndex) ? options.afterIndex : null;
         let insertionIndex = blocks.length;
         if (sparkInsertTarget) {
             const anchorByKey = sparkInsertTarget.anchorRenderKey ? blocks.findIndex((candidate) => candidate?._renderKey === sparkInsertTarget.anchorRenderKey) : -1;
             const anchorIndex = anchorByKey >= 0 ? anchorByKey : Math.min(Math.max(Number(sparkInsertTarget.index) || 0, 0), Math.max(blocks.length - 1, 0));
             insertionIndex = sparkInsertTarget.position === 'above' ? anchorIndex : Math.min(anchorIndex + 1, blocks.length);
+            blocks.splice(insertionIndex, 0, { ...block, _renderKey: createRenderKey() });
+        } else if (requestedAfter !== null && blocks[requestedAfter]) {
+            insertionIndex = Math.min(requestedAfter + 1, blocks.length);
             blocks.splice(insertionIndex, 0, { ...block, _renderKey: createRenderKey() });
         } else {
             blocks.push({ ...block, _renderKey: createRenderKey() });
@@ -2614,6 +2619,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLegoActiveBlockIndex(insertionIndex);
         setLegoPanelOpen(true);
         window.setTimeout(() => document.querySelector(`[data-cosmic-block-index="${insertionIndex}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+    };
+
+    const addLegoRowFromPanel = (columnCount = 1, requestedBlockIndex = null) => {
+        const count = Math.max(1, Math.min(6, Number(columnCount) || 1));
+        insertLegoItem(`row_${count}`, requestedBlockIndex);
     };
 
     const removeHybridSparkExtraFromBlocks = (blocks, source) => {
@@ -7052,10 +7062,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
     const renderBlock = (block, index) => {
 
         const resolvedTheme = resolveBlockTheme(block, index);
-        const configuredLegoSurface = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'white';
-        const resolvedLegoSurface = configuredLegoSurface === 'auto'
-            ? (resolvedTheme === 'primary' ? 'primary' : (resolvedTheme === 'surface' ? 'surface' : 'white'))
-            : configuredLegoSurface;
+        const configuredLegoSurface = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'auto';
+        const resolvedLegoSurface = resolveLegoSectionSurface(configuredLegoSurface, resolvedTheme);
 
         const blockProps = {
 
@@ -7169,12 +7177,15 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 // Old section composition stays intact. The `surface` role is
                 // now a light tint derived from the exact primary brand color.
                 '--cosmic-bg-surface': semanticPalette.surface,
+                '--cosmic-bg-surface-alt': semanticPalette.surface_alt,
                 '--cosmic-bg-primary': semanticPalette.primary,
                 '--cosmic-bg-primary-surface': semanticPalette.brand_surface,
                 '--cosmic-bg-accent': semanticPalette.accent,
                 '--cosmic-brand-primary': semanticPalette.primary,
                 '--cosmic-brand-secondary': semanticPalette.secondary,
                 '--cosmic-brand-accent': semanticPalette.accent,
+                '--cosmic-brand-surface': semanticPalette.brand_surface,
+                '--cosmic-color-dark': semanticPalette.dark,
                 '--cosmic-color-heading': semanticPalette.heading,
                 '--cosmic-color-body': semanticPalette.body,
                 '--cosmic-color-muted': semanticPalette.muted,
@@ -7277,59 +7288,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             };
 
             const isLegoBuild = block?.ai_flex?.source === 'build_your_own';
-            const legoSurfaceMode = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'white';
-            const legoSurface = legoSurfaceMode === 'auto'
-                ? (resolvedTheme === 'primary' ? 'primary' : (resolvedTheme === 'surface' ? 'surface' : 'white'))
-                : legoSurfaceMode;
-            const legoSurfaceVars = isLegoBuild ? (legoSurface === 'primary' ? {
-                '--cosmic-lego-section-bg':'var(--cosmic-bg-primary,var(--cosmic-brand-primary,#243447))',
-                '--cosmic-lego-heading':'var(--cosmic-color-on-primary,var(--cosmic-color-on-dark,#ffffff))',
-                '--cosmic-lego-body':'var(--cosmic-on-primary-muted,color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 78%,transparent))',
-                '--cosmic-lego-muted':'var(--cosmic-on-primary-muted,color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 62%,transparent))',
-                '--cosmic-lego-icon':'var(--cosmic-color-on-primary,#ffffff)',
-                '--cosmic-lego-card-bg':'var(--cosmic-bg-primary-surface,color-mix(in srgb,var(--cosmic-bg-primary,#243447) 82%,white 18%))',
-                '--cosmic-lego-card-heading':'var(--cosmic-color-on-dark,var(--cosmic-color-on-primary,#ffffff))',
-                '--cosmic-lego-card-text':'color-mix(in srgb,var(--cosmic-color-on-dark,var(--cosmic-color-on-primary,#ffffff)) 78%,transparent)',
-                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-on-primary,#ffffff) 22%,transparent)',
-                '--cosmic-lego-button-bg':'var(--cosmic-bg-white,#ffffff)',
-                '--cosmic-lego-button-text':'var(--cosmic-bg-primary,var(--cosmic-brand-primary,#243447))',
-            } : legoSurface === 'slate' ? {
-                '--cosmic-lego-section-bg':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 94%,var(--cosmic-bg-primary,#243447) 6%)',
-                '--cosmic-lego-heading':'var(--cosmic-color-on-dark,#f8fafc)',
-                '--cosmic-lego-body':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 78%,transparent)',
-                '--cosmic-lego-muted':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 62%,transparent)',
-                '--cosmic-lego-icon':'var(--cosmic-brand-accent,var(--cosmic-brand-primary,#30475E))',
-                '--cosmic-lego-card-bg':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 82%,white 18%)',
-                '--cosmic-lego-card-heading':'var(--cosmic-color-on-dark,#f8fafc)',
-                '--cosmic-lego-card-text':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 76%,transparent)',
-                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 20%,transparent)',
-                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
-                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
-            } : legoSurface === 'surface' ? {
-                '--cosmic-lego-section-bg':'var(--cosmic-bg-surface,var(--cosmic-color-surface,#f3f7f4))',
-                '--cosmic-lego-heading':'var(--cosmic-color-heading,var(--cosmic-color-on-surface,#27272a))',
-                '--cosmic-lego-body':'var(--cosmic-color-body,var(--cosmic-color-on-surface,#3f3f46))',
-                '--cosmic-lego-muted':'var(--cosmic-color-muted,#64748b)',
-                '--cosmic-lego-icon':'var(--cosmic-brand-primary,#30475E)',
-                '--cosmic-lego-card-bg':'var(--cosmic-bg-white,#ffffff)',
-                '--cosmic-lego-card-heading':'var(--cosmic-color-heading,#27272a)',
-                '--cosmic-lego-card-text':'var(--cosmic-color-body,#3f3f46)',
-                '--cosmic-lego-border':'var(--cosmic-color-border,color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 14%,transparent))',
-                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
-                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
-            } : {
-                '--cosmic-lego-section-bg':'var(--cosmic-bg-white,#ffffff)',
-                '--cosmic-lego-heading':'var(--cosmic-color-heading,var(--cosmic-color-on-surface,#27272a))',
-                '--cosmic-lego-body':'var(--cosmic-color-body,#3f3f46)',
-                '--cosmic-lego-muted':'var(--cosmic-color-muted,#64748b)',
-                '--cosmic-lego-icon':'var(--cosmic-brand-primary,#30475E)',
-                '--cosmic-lego-card-bg':'var(--cosmic-card-bg,var(--cosmic-bg-surface,#ffffff))',
-                '--cosmic-lego-card-heading':'var(--cosmic-color-heading,#27272a)',
-                '--cosmic-lego-card-text':'var(--cosmic-color-body,#3f3f46)',
-                '--cosmic-lego-border':'color-mix(in srgb,var(--cosmic-color-heading,#0f172a) 14%,transparent)',
-                '--cosmic-lego-button-bg':'var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#30475E))',
-                '--cosmic-lego-button-text':'var(--cosmic-button-primary-text,var(--cosmic-color-on-primary,#ffffff))',
-            }) : {};
+            const legoSurfaceMode = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'auto';
+            const legoSurface = resolveLegoSectionSurface(legoSurfaceMode, resolvedTheme);
+            // Resolve semantic section colors to the active Color Family here instead
+            // of chaining through legacy CSS variables. This prevents an old Spark,
+            // footer/header rule, or local theme variable from recoloring Build Your
+            // Own sections after the user changes Color Family.
+            const legoSurfaceVars = isLegoBuild ? resolveLegoSurfaceVars(legoSurface, semanticPalette) : {};
+
 
             const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
             const emberPaletteVars = isEmberMarketplace ? {
@@ -7387,7 +7353,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{background:universalOverlay}}/>
                     </> : null}
                     {isLegoBuild ? <button type="button" className="cosmic-lego-open-panel" onClick={() => { setLegoActiveBlockIndex(index); setLegoHybridTarget(null); setLegoPanelOpen(true); }}><span aria-hidden="true">▦</span> Elements</button> : null}
-                    {isLegoBuild ? <div className="cosmic-lego-surface-picker" role="group" aria-label="Section background"><span>Background</span>{['auto','white','slate','primary'].map(surface => <button key={surface} type="button" data-active={legoSurfaceMode===surface} data-surface={surface} title={surface==='auto'?`Follow Page Style · currently ${legoSurface}`:undefined} onClick={() => updateBlockContent(index,{section_surface:surface})}>{surface==='auto'?`Auto · ${legoSurface[0].toUpperCase()+legoSurface.slice(1)}`:(surface[0].toUpperCase()+surface.slice(1))}</button>)}</div> : null}
+                    {isLegoBuild ? <label className="cosmic-lego-surface-picker"><span>Surface</span><select aria-label="Section surface" value={legoSurfaceMode} onChange={(event) => updateBlockContent(index,{section_surface:event.target.value})}><option value="auto">{`Auto · ${legoSurface[0].toUpperCase()+legoSurface.slice(1)}`}</option><option value="white">White</option><option value="slate">Slate</option><option value="primary">Primary</option></select></label> : null}
                     <div className={`cosmic-render-content ${universalEnabled && universalType==='video' ? 'relative z-[1]' : ''}`}><Component {...blockProps} /></div>
                 </div>
             );
@@ -8854,6 +8820,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 open={legoPanelOpen}
                 onClose={() => setLegoPanelOpen(false)}
                 onInsert={insertLegoItem}
+                onAddSection={(activeIndex) => addBuildYourOwnSection({ afterIndex: Number.isInteger(activeIndex) ? activeIndex : null })}
+                onAddRow={addLegoRowFromPanel}
                 activeBlockIndex={legoActiveBlockIndex}
                 hybridMode={Number.isInteger(legoActiveBlockIndex) && data.blocks?.[legoActiveBlockIndex]?.ai_flex?.source !== 'build_your_own'}
             />

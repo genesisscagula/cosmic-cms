@@ -90,6 +90,14 @@ export function installCustomBrandTheme(customTheme) {
         root.style.setProperty('--cosmic-brand-accent', normalized.accent);
         root.style.setProperty('--cosmic-brand-primary', normalized.primary);
         root.style.setProperty('--cosmic-brand-secondary', normalized.secondary);
+        root.style.setProperty('--cosmic-brand-surface', normalized.brandSurface);
+        root.style.setProperty('--cosmic-bg-white', normalized.white);
+        root.style.setProperty('--cosmic-bg-surface', normalized.surface);
+        root.style.setProperty('--cosmic-bg-surface-alt', normalized.surfaceMuted);
+        root.style.setProperty('--cosmic-bg-primary', normalized.primary);
+        root.style.setProperty('--cosmic-bg-primary-surface', normalized.brandSurface);
+        root.style.setProperty('--cosmic-bg-accent', normalized.accent);
+        root.style.setProperty('--cosmic-color-dark', normalized.dark);
         root.style.setProperty('--cosmic-color-heading', normalized.heading);
         root.style.setProperty('--cosmic-color-body', normalized.surfaceText);
         root.style.setProperty('--cosmic-color-muted', normalized.muted);

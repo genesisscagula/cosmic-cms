@@ -48,6 +48,20 @@ const withStableIds = (nodes, role = 'extra', used = new Set()) => (Array.isArra
     return node;
 });
 
+
+const LEGO_PLACEHOLDER_IMAGES = [
+    '/storage/cms-images/background/background-1.avif',
+    '/storage/cms-images/background/background-2.avif',
+    '/storage/cms-images/background/background-3.avif',
+    '/storage/cms-images/background/background-4.avif',
+    '/storage/cms-images/background/background-5.avif',
+    '/storage/cms-images/background/background-6.avif',
+];
+const LEGO_PLACEHOLDER_VIDEO = '/storage/cms-videos/hero-placeholder.mp4';
+const LEGO_PLACEHOLDER_LOGO = '/storage/branding/your-logo.png';
+const legoPlaceholderImage = (index = 0) => LEGO_PLACEHOLDER_IMAGES[Math.abs(Number(index) || 0) % LEGO_PLACEHOLDER_IMAGES.length];
+const withTypographyRole = (node, role = 'h2') => ({ ...node, _cosmic_typography_role: role });
+
 const makeColumn = (children = [], width = null) => ({
     type: 'column',
     [COSMIC_ITEM_ID_KEY]: freshId('column'),
@@ -99,24 +113,26 @@ const legoGrid = (children = [], columns = 3, style = {}) => ({
 
 const createLegoPreset = (type) => {
     const makeButton = (label = 'Learn more') => ({ ...createAiFlexExtra('button'), label });
+    const makeHeading = (title, role = 'h4') => withTypographyRole({ ...createAiFlexExtra('heading'), text: title }, role);
+    const makeImage = (alt = 'Featured image', index = 0) => ({ ...createAiFlexExtra('image'), src: legoPlaceholderImage(index), alt });
     const makeCard = (title, text, icon = null) => legoCard([
         ...(icon ? [{ ...createAiFlexExtra('icon'), icon }] : []),
-        { ...createAiFlexExtra('heading'), text: title },
+        makeHeading(title, 'h4'),
         { ...createAiFlexExtra('text'), text },
         makeButton(),
     ]);
 
     if (type === 'content_stack') return legoStack([
         { ...createAiFlexExtra('badge'), label: 'Eyebrow' },
-        { ...createAiFlexExtra('heading'), text: 'Add a compelling heading' },
+        makeHeading('Add a compelling heading', 'h2'),
         { ...createAiFlexExtra('text'), text: 'Add supporting copy that explains the value clearly and concisely.' },
         { ...createAiFlexExtra('button_group'), children: [makeButton('Get started'), { ...makeButton('Learn more'), _cosmic_variant: 'secondary' }] },
     ]);
     if (type === 'image_content') return legoGrid([
-        { ...createAiFlexExtra('image'), alt: 'Featured image' },
+        makeImage('Featured image', 0),
         legoStack([
             { ...createAiFlexExtra('badge'), label: 'Featured' },
-            { ...createAiFlexExtra('heading'), text: 'Image and content' },
+            makeHeading('Image and content', 'h3'),
             { ...createAiFlexExtra('text'), text: 'Use this balanced block for an about section, feature, service, or story.' },
             makeButton('Learn more'),
         ]),
@@ -124,8 +140,8 @@ const createLegoPreset = (type) => {
     if (type === 'basic_card') return makeCard('Card heading', 'Add a short description for this card.');
     if (type === 'icon_card') return makeCard('Feature heading', 'Highlight a feature or service with a simple icon card.', 'sparkles');
     if (type === 'image_card') return legoCard([
-        { ...createAiFlexExtra('image'), alt: 'Card image' },
-        { ...createAiFlexExtra('heading'), text: 'Image card' },
+        makeImage('Card image', 1),
+        makeHeading('Image card', 'h4'),
         { ...createAiFlexExtra('text'), text: 'Pair an image with concise supporting content.' },
         makeButton(),
     ], { overflow: 'hidden' });
@@ -146,8 +162,8 @@ const createLegoPreset = (type) => {
         { ...createAiFlexExtra('stat'), value: '24/7', label: 'Support' },
     ], 4);
     if (type === 'team_grid') return legoGrid(['Alex Morgan','Jamie Lee','Taylor Cruz'].map((name, index) => legoCard([
-        { ...createAiFlexExtra('image'), alt: `${name} portrait` },
-        { ...createAiFlexExtra('heading'), text: name },
+        { ...createAiFlexExtra('image'), src: `/storage/cms-images/avatars/avatar-${index + 1}.jpg`, alt: `${name} portrait` },
+        makeHeading(name, 'h4'),
         { ...createAiFlexExtra('text'), text: ['Founder & Director','Lead Specialist','Client Partner'][index] },
     ])), 3);
     if (type === 'testimonials_grid') return legoGrid([
@@ -156,7 +172,7 @@ const createLegoPreset = (type) => {
         { ...createAiFlexExtra('quote'), text: 'Professional from start to finish. We would happily recommend them.', cite: 'Client Name' },
     ].map((quote) => legoCard([quote])), 3);
     if (type === 'cta_block') return legoCard([
-        { ...createAiFlexExtra('heading'), text: 'Ready to get started?' },
+        makeHeading('Ready to get started?', 'h3'),
         { ...createAiFlexExtra('text'), text: 'Add one clear sentence that gives visitors a reason to take the next step.' },
         { ...createAiFlexExtra('button_group'), style: { justify: 'center' }, children: [makeButton('Get started'), { ...makeButton('Contact us'), _cosmic_variant: 'secondary' }] },
     ], { text_align: 'center', align: 'center' });
@@ -165,7 +181,7 @@ const createLegoPreset = (type) => {
         ['Growth','$99','For growing businesses that need more.'],
         ['Pro','$199','For advanced teams and larger requirements.'],
     ].map(([name, price, copy]) => legoCard([
-        { ...createAiFlexExtra('heading'), text: name },
+        makeHeading(name, 'h3'),
         { ...createAiFlexExtra('stat'), value: price, label: 'per month' },
         { ...createAiFlexExtra('text'), text: copy },
         { ...createAiFlexExtra('list'), items: ['Core feature', 'Priority support', 'Easy customization'] },
@@ -180,11 +196,11 @@ export const createAiFlexExtra = (type = 'text') => {
     if (preset) return preset;
     const safe = ['heading','text','button','image','icon','badge','list','quote','divider','stat','spacer','form','video','group','grid','stack','card','background_image','background_video','overlay','slider','slide','button_group','media_group','accordion','tabs','logo_carousel','gallery','lightbox_gallery','image_carousel'].includes(requested) ? requested : 'text';
     const base = { type: safe, [COSMIC_ITEM_ID_KEY]: freshId('extra'), _cosmic_style_mode: 'global', _cosmic_auto_align: true, _cosmic_smart_defaults: 2, _cosmic_responsive_mode: 'auto' };
-    if (safe === 'heading') return { ...base, text: 'New heading' };
+    if (safe === 'heading') return { ...base, text: 'New heading', _cosmic_typography_role: 'h2' };
     if (safe === 'text') return { ...base, text: 'Add your content here.' };
     if (safe === 'button') return { ...base, label: 'Learn more', url: '#' };
-    if (safe === 'image') return { ...base, src: '', alt: '' };
-    if (safe === 'video') return { ...base, src: '', poster: '', controls: true, autoplay: false, muted: true, loop: false, plays_inline: true };
+    if (safe === 'image') return { ...base, src: legoPlaceholderImage(0), alt: 'Placeholder image' };
+    if (safe === 'video') return { ...base, src: LEGO_PLACEHOLDER_VIDEO, poster: legoPlaceholderImage(0), controls: true, autoplay: false, muted: true, loop: false, plays_inline: true };
     if (safe === 'icon') return { ...base, icon: 'sparkles', label: 'Icon' };
     if (safe === 'badge') return { ...base, label: 'Badge' };
     if (safe === 'list') return { ...base, items: ['First item', 'Second item', 'Third item'] };
@@ -198,7 +214,7 @@ export const createAiFlexExtra = (type = 'text') => {
     if (safe === 'slider') return { ...base, autoplay: true, interval: 5000, loop: true, show_arrows: true, show_dots: true, show_counter: false, transition: 'fade', style: { min_height: 420, overflow: 'hidden' }, children: [{ type: 'slide', [COSMIC_ITEM_ID_KEY]: freshId('extra'), children: [] }, { type: 'slide', [COSMIC_ITEM_ID_KEY]: freshId('extra'), children: [] }] };
     if (safe === 'slide') return { ...base, style: { min_height: 420 }, children: [] };
     if (safe === 'button_group') return { ...base, style: { gap: 12, justify: 'start', align: 'center' }, children: [{ type: 'button', [COSMIC_ITEM_ID_KEY]: freshId('extra'), label: 'Learn more', url: '#' }] };
-    if (safe === 'media_group') return { ...base, style: { columns: 2, gap: 16, tablet_columns: 2, mobile_columns: 1 }, children: [{ type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: '', alt: '' }, { type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: '', alt: '' }] };
+    if (safe === 'media_group') return { ...base, style: { columns: 2, gap: 16, tablet_columns: 2, mobile_columns: 1 }, children: [{ type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: legoPlaceholderImage(0), alt: 'Placeholder image 1' }, { type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: legoPlaceholderImage(1), alt: 'Placeholder image 2' }] };
     if (safe === 'accordion') return { ...base, allow_multiple: false, items: [
         { title: 'Accordion item one', text: 'Add helpful supporting content for this item.' },
         { title: 'Accordion item two', text: 'Keep answers concise and easy to scan.' },
@@ -209,11 +225,11 @@ export const createAiFlexExtra = (type = 'text') => {
         { label: 'Details', title: 'Details', text: 'Use tabs for related content that should stay compact.' },
         { label: 'More', title: 'More', text: 'Add another useful content view here.' },
     ] };
-    if (safe === 'logo_carousel') return { ...base, autoplay: true, interval: 3200, pause_on_hover: true, items: Array.from({ length: 6 }, (_, i) => ({ src: '', alt: `Logo ${i + 1}` })), style: { gap: 28 } };
-    if (safe === 'gallery') return { ...base, items: Array.from({ length: 6 }, (_, i) => ({ src: '', alt: `Gallery image ${i + 1}` })), style: { columns: 3, tablet_columns: 2, mobile_columns: 1, gap: 16 } };
-    if (safe === 'lightbox_gallery') return { ...base, items: Array.from({ length: 6 }, (_, i) => ({ src: '', alt: `Gallery image ${i + 1}` })), style: { columns: 3, tablet_columns: 2, mobile_columns: 1, gap: 16 }, lightbox: true };
+    if (safe === 'logo_carousel') return { ...base, autoplay: true, interval: 3200, pause_on_hover: true, items: Array.from({ length: 6 }, (_, i) => ({ src: LEGO_PLACEHOLDER_LOGO, alt: `Logo ${i + 1}` })), style: { gap: 28 } };
+    if (safe === 'gallery') return { ...base, items: Array.from({ length: 6 }, (_, i) => ({ src: legoPlaceholderImage(i), alt: `Gallery image ${i + 1}` })), style: { columns: 3, tablet_columns: 2, mobile_columns: 1, gap: 16 } };
+    if (safe === 'lightbox_gallery') return { ...base, items: Array.from({ length: 6 }, (_, i) => ({ src: legoPlaceholderImage(i), alt: `Gallery image ${i + 1}` })), style: { columns: 3, tablet_columns: 2, mobile_columns: 1, gap: 16 }, lightbox: true };
     if (safe === 'image_carousel') return { ...base, autoplay: true, interval: 4500, loop: true, show_arrows: true, show_dots: true, items: [
-        { src: '', alt: 'Carousel image 1', caption: '' }, { src: '', alt: 'Carousel image 2', caption: '' }, { src: '', alt: 'Carousel image 3', caption: '' },
+        { src: legoPlaceholderImage(0), alt: 'Carousel image 1', caption: '' }, { src: legoPlaceholderImage(1), alt: 'Carousel image 2', caption: '' }, { src: legoPlaceholderImage(2), alt: 'Carousel image 3', caption: '' },
     ], style: { aspect_ratio: '16/9', overflow: 'hidden' } };
     if (['group','grid','stack','card'].includes(safe)) return { ...base, children: [] };
     return { ...base, text: 'Add your content here.' };
