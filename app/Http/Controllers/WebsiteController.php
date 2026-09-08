@@ -23,6 +23,7 @@ use App\Services\WebsiteDuplicationService;
 use App\Services\WebsiteOwnershipTransferService;
 use App\Services\WebsiteDashboardService;
 use App\Support\HeaderFooterVariantContract;
+use App\Support\WebsiteCreationMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -600,10 +601,13 @@ class WebsiteController extends Controller
 	        'template' => 'nullable|string',
         'website_type' => 'nullable|string|in:builder,custom',
         'design_system' => 'nullable|array',
+        'creation_mode' => 'nullable|string|in:'.implode(',', WebsiteCreationMode::DASHBOARD_MODES),
+        'luna_prompt' => 'nullable|string|max:6000',
 	    ]);
 
 	    $websiteType = $request->input('website_type', 'builder');
 	    $template = $websiteType === 'custom' ? null : $request->input('template');
+        $creationMode = WebsiteCreationMode::normalize($request->input('creation_mode'), filled($template));
 
 	    if ($template && ! $templates->supports($template)) {
 	        return back()->withErrors(['template' => 'The selected website template is not available.']);
@@ -627,6 +631,16 @@ class WebsiteController extends Controller
 	        'business_description' => $request->input('business_description'),
             'website_type' => $websiteType,
             'design_system' => $websiteType === 'custom' ? (array) $request->input('design_system', []) : null,
+            'settings' => [
+                'creation' => [
+                    'mode' => $creationMode,
+                    'source' => 'dashboard',
+                    'version' => 1,
+                    ...($creationMode === WebsiteCreationMode::LUNA_AI && filled($request->input('luna_prompt'))
+                        ? ['prompt' => trim((string) $request->input('luna_prompt'))]
+                        : []),
+                ],
+            ],
 	        // Until a dedicated website settings screen is added, new live-form
 	        // inquiries go to the account that created the website.
 	        'contact_email' => $request->user()->email,
@@ -684,7 +698,7 @@ class WebsiteController extends Controller
 	        ],
 	    ];
 
-	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults, $websiteLimits, $myBrandThemes) {
+	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults, $websiteLimits, $myBrandThemes, $creationMode) {
             $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->first();
 
             if ($message = $websiteLimits->validationMessage($request->user())) {
@@ -725,7 +739,7 @@ class WebsiteController extends Controller
 	            foreach ($templates->pages($template) as $page) {
 	                $website->pages()->create($page);
 	            }
-	        } elseif ($website->isCustom()) {
+	        } elseif (in_array($creationMode, [WebsiteCreationMode::SPARKS, WebsiteCreationMode::PAGE_BUILDER], true) || $website->isCustom()) {
                 $website->pages()->create([
                     'title' => 'Home', 'slug' => 'home', 'blocks' => [], 'status' => 'draft', 'sort_order' => 1,
                 ]);
@@ -734,7 +748,24 @@ class WebsiteController extends Controller
 	        return $website;
 	    });
 
-	    return redirect()->route('pages.index', $website);
+        if (in_array($creationMode, [WebsiteCreationMode::SPARKS, WebsiteCreationMode::PAGE_BUILDER], true)) {
+            $homePage = $website->pages()->orderBy('sort_order')->orderBy('id')->first();
+            if ($homePage) {
+                $handoff = $creationMode === WebsiteCreationMode::PAGE_BUILDER
+                    ? ['creation_mode' => WebsiteCreationMode::PAGE_BUILDER, 'open_page_builder' => 1]
+                    : ['creation_mode' => WebsiteCreationMode::SPARKS, 'open_sparks' => 1];
+
+                return redirect()->route('pages.builder', [
+                    'page' => $homePage,
+                    ...$handoff,
+                ]);
+            }
+        }
+
+	    return redirect()->route('pages.index', [
+            'website' => $website,
+            'creation_mode' => $creationMode,
+        ]);
 	}
 
     public function duplicate(

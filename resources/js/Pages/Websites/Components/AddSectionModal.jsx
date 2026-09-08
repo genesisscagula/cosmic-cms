@@ -589,6 +589,9 @@ export default function AddSectionModal({
     onAdd,
     onCustomize = null,
     onBuildOwn = null,
+    showLunaBlank = true,
+    showBuildOwn = true,
+    directInstall = false,
     onReplace = null,
     websiteContext = "",
     websiteId = null,
@@ -992,7 +995,7 @@ export default function AddSectionModal({
         if (!spark || !spark.owned || spark.trial_locked) return;
         const block = blockForSpark(spark);
         if (!block) return;
-        if (onCustomize) {
+        if (onCustomize && !directInstall) {
             onCustomize(block, { spark, insertionContext, creationSource: 'registered_spark' });
             onClose();
             return;
@@ -1017,7 +1020,7 @@ export default function AddSectionModal({
                     ...structuredClone(selected.registry.payload || {}),
                     type: selected.key,
                 };
-                if (onCustomize) onCustomize(block, { spark: selected, insertionContext });
+                if (onCustomize && !directInstall) onCustomize(block, { spark: selected, insertionContext });
                 else onAdd(block);
             } else {
                 if (trialMode) throw new Error("AI Spark personalization is available after sign up. Generic Content remains available in trial.");
@@ -1039,10 +1042,10 @@ export default function AddSectionModal({
                 setPersonalizeProgress(100);
                 await new Promise((resolve) => window.setTimeout(resolve, 400));
                 setBalance(data.credit_balance);
-                if (onCustomize) onCustomize(block, { spark: selected, insertionContext });
+                if (onCustomize && !directInstall) onCustomize(block, { spark: selected, insertionContext });
                 else onAdd(block);
             }
-            if (!onCustomize) showCosmicNotification({ title: isContextualInsert ? 'Section inserted' : 'Spark added', message: isContextualInsert && insertionAnchorLabel ? `${selected.name} was inserted ${insertionPosition === 'above' ? 'above' : 'below'} ${insertionAnchorLabel}.` : `${selected.name} was added to this page.`, tone: 'success' });
+            if (!onCustomize || directInstall) showCosmicNotification({ title: isContextualInsert ? 'Section inserted' : 'Spark added', message: isContextualInsert && insertionAnchorLabel ? `${selected.name} was inserted ${insertionPosition === 'above' ? 'above' : 'below'} ${insertionAnchorLabel}.` : `${selected.name} was added to this page.`, tone: 'success' });
             setSelected(null);
             setInstruction("");
             setMode("quick");
@@ -1128,7 +1131,7 @@ export default function AddSectionModal({
                                             {spark.trial_locked ? (
                                                 <Link href={trialSignupUrl} className="cosmic-spark-marketplace-action rounded-2xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500">Sign up</Link>
                                             ) : spark.owned ? (
-                                                <button type="button" onClick={() => { setSelected(spark); setMode('quick'); setInstruction(''); }} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm">Install</button>
+                                                <button type="button" onClick={() => { if (directInstall) addPickerSparkQuick(spark); else { setSelected(spark); setMode('quick'); setInstruction(''); } }} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm">Install</button>
                                             ) : sparkNeedsRestore(spark) ? (
                                                 <button type="button" disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50">{busyKey === spark.key ? 'Restoring…' : 'Restore'}</button>
                                             ) : spark.can_install === false && spark.usage_state?.key === 'plan_locked' && spark.usage_state?.upgrade_url ? (
@@ -1189,7 +1192,7 @@ export default function AddSectionModal({
                             </div>
                         ) : (
                             <div className="cosmic-section-type-grid mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                                <button
+                                {showLunaBlank ? <button
                                     type="button"
                                     onClick={startBlankWithLuna}
                                     className="group cosmic-section-type-card cosmic-section-type-card--luna min-h-40 text-left"
@@ -1204,8 +1207,8 @@ export default function AddSectionModal({
                                         </div>
                                         <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>
-                                </button>
-                                <button
+                                </button> : null}
+                                {showBuildOwn ? <button
                                     type="button"
                                     onClick={() => { if (onBuildOwn) { onBuildOwn({ insertionContext }); onClose(); } }}
                                     className="group cosmic-section-type-card cosmic-section-type-card--build-own min-h-40 text-left"
@@ -1220,7 +1223,7 @@ export default function AddSectionModal({
                                         </div>
                                         <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>
-                                </button>
+                                </button> : null}
                                 {categoryCards.map((item) => {
                                     const meta = SECTION_TYPE_META[item.name] || SECTION_TYPE_META.Other;
                                     return (
@@ -1369,7 +1372,7 @@ export default function AddSectionModal({
                             {pickerSpark?.trial_locked ? (
                                 <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link>
                             ) : pickerSpark?.owned ? (
-                                <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button>
+                                <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">{directInstall ? 'Install Section' : 'Customize Section'}</button>
                             ) : (!ownedOnly && pickerSpark?.can_install === false && pickerSpark?.usage_state?.key === 'plan_locked' && pickerSpark?.usage_state?.upgrade_url) ? (
                                 <Link href={pickerSpark.usage_state.upgrade_url} className={`cosmic-spark-marketplace-action ${sparkUpgradeActionClass(pickerSpark)} rounded-xl px-5 py-2 text-sm font-bold text-white`}>{pickerSpark.usage_state.actionLabel || pickerSpark.usage_state.action_label || 'Upgrade plan'}</Link>
                             ) : (!ownedOnly && pickerSpark) ? (
@@ -1425,7 +1428,7 @@ export default function AddSectionModal({
                         {previewSpark.trial_locked ? (
                             <Link href={trialSignupUrl} className="rounded-xl bg-violet-400 px-5 py-2.5 text-sm font-bold text-slate-950">Sign up to unlock</Link>
                         ) : previewSpark.owned ? (
-                            <button type="button" onClick={() => { const spark = previewSpark; setPreviewSpark(null); if (isMarketplaceContext) { setSelected(spark); setMode('quick'); setInstruction(''); } else { addPickerSparkQuick(spark); } }} className={`rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition ${isMarketplaceContext ? 'cosmic-spark-marketplace-action cosmic-spark-install-action' : 'bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600'}`}>{isMarketplaceContext ? 'Install Spark' : 'Customize Section'}</button>
+                            <button type="button" onClick={() => { const spark = previewSpark; setPreviewSpark(null); if (isMarketplaceContext && !directInstall) { setSelected(spark); setMode('quick'); setInstruction(''); } else { addPickerSparkQuick(spark); } }} className={`rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition ${isMarketplaceContext ? 'cosmic-spark-marketplace-action cosmic-spark-install-action' : 'bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600'}`}>{isMarketplaceContext || directInstall ? 'Install Spark' : 'Customize Section'}</button>
                         ) : sparkNeedsRestore(previewSpark) ? (
                             <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="cosmic-spark-marketplace-action cosmic-spark-install-action rounded-2xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition disabled:opacity-50">{busyKey === previewSpark.key ? 'Restoring…' : 'Restore Spark'}</button>
                         ) : previewSpark.can_install === false && previewSpark.usage_state?.key === 'plan_locked' && previewSpark.usage_state?.upgrade_url ? (
@@ -1514,7 +1517,7 @@ export default function AddSectionModal({
 
                 <div className="cosmic-add-owned-spark-actions mt-5 flex justify-end gap-2">
                     <button type="button" onClick={() => setSelected(null)} className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold ${appDark ? 'border-white/10 text-slate-300 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
-                    <button type="button" disabled={busyKey === selected.key} onClick={addSpark} className="rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:from-violet-600 hover:to-indigo-600 disabled:opacity-50">{busyKey === selected.key ? "Preparing..." : mode === "ai" ? "Personalize & Customize · ⚡20" : "Customize Section"}</button>
+                    <button type="button" disabled={busyKey === selected.key} onClick={addSpark} className="rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:from-violet-600 hover:to-indigo-600 disabled:opacity-50">{busyKey === selected.key ? "Preparing..." : mode === "ai" ? "Personalize & Customize · ⚡20" : directInstall ? "Install Section" : "Customize Section"}</button>
                 </div>
             </section>
         </div>}

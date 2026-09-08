@@ -3,6 +3,20 @@ const clamp = (value, min, max, fallback) => {
     return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
 };
 
+// Semantic tokens keep media overlays in sync with the theme in Builder and live HTML.
+export const cosmicSectionMediaOverlay = (state = 'white', opacity = 72) => {
+    const colors = {
+        primary: 'var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,#243447))',
+        white: 'var(--cosmic-local-bg-white,var(--cosmic-bg-white,#ffffff))',
+        surface: 'var(--cosmic-local-bg-surface,var(--cosmic-bg-surface,#f3f7f4))',
+        slate: 'var(--cosmic-color-dark,#0f172a)',
+    };
+    const amount = clamp(opacity ?? 72, 0, 100, 72);
+    const color = colors[state] || colors.white;
+    const tint = `color-mix(in srgb, ${color} ${amount}%, transparent)`;
+    return `linear-gradient(${tint}, ${tint})`;
+};
+
 export const cosmicBackgroundVars = (family = {}, settings = {}) => {
     const palette = family?.palette || {};
     const gradient = palette?.gradient || family?.gradient || {};

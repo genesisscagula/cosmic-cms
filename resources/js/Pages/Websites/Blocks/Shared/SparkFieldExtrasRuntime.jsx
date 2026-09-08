@@ -236,44 +236,10 @@ function SparkFieldExtraItem({ extra, targetPath = null, placement = null }) {
     return null;
 }
 
-function HybridSparkDropZone({ targetPath, placement }) {
-    const context = useContext(SparkFieldExtrasContext);
-    if (!context?.hybridBuilder || !targetPath) return null;
-
-    const handleDrop = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        let payload = null;
-        try { payload = JSON.parse(event.dataTransfer?.getData('application/x-cosmic-lego') || 'null'); } catch (_) {}
-        const type = String(payload?.type || event.dataTransfer?.getData('text/plain') || '').trim();
-        if (!canInsertLegoTypeIntoHybridSpark(type)) {
-            context.onUnsupportedHybridType?.(type);
-            return;
-        }
-        context.onInsertHybridExtra?.({ targetPath, placement, type, payload });
-    };
-
-    return <button
-        type="button"
-        className="cosmic-hybrid-spark-drop-zone"
-        data-cosmic-hybrid-drop-zone="1"
-        data-cosmic-hybrid-target={targetPath}
-        data-cosmic-hybrid-placement={placement}
-        onDragOver={(event) => {
-            const hasLego = Array.from(event.dataTransfer?.types || []).includes('application/x-cosmic-lego');
-            if (!hasLego) return;
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'copy';
-        }}
-        onDrop={handleDrop}
-        onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            context.onSelectHybridSlot?.({ targetPath, placement });
-        }}
-        title="Drop a Cosmic element here"
-        aria-label={`Add element ${placement} ${targetPath}`}
-    ><span aria-hidden="true">＋</span><small>Drop element</small></button>;
+function HybridSparkDropZone() {
+    // Existing authored Sparks stay clean and closed to Lego drop-zone chrome.
+    // Build Your Own sections own the draggable insertion experience.
+    return null;
 }
 
 function SparkFieldExtraPlacement({ targetPath, placement, items }) {

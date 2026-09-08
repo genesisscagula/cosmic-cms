@@ -125,21 +125,26 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
             const websiteId=Number(detail.websiteId||0);
             if(!websiteId)return;
             const websiteName=String(detail.websiteName||'this website');
+            const mode=String(detail.mode||'starter_pages');
+            const prompt=String(detail.prompt||'').trim();
             const starterSite=detail.starterSite&&typeof detail.starterSite==='object'
                 ? detail.starterSite
                 : {installed:false,status:'idle',pages:[]};
             const building=starterBuildingStatuses.has(starterSite.status);
             const installed=Boolean(starterSite.installed);
-            setStarterSiteContext({websiteId,websiteName,starterSite});
+            setStarterSiteContext({websiteId,websiteName,starterSite,mode,prompt});
             setOpen(true);
             setInput('');
             setStatus(starterBuildingStatuses.has(starterSite.status)?`Building… ${starterSite.progress||0}%`:'Ready');
             setMessages(current=>{
+                const lunaWebsiteMode=mode==='luna_ai';
                 const text=building
-                    ? `I’m building the ${starterSite.bundle_name||'starter site'} now. I’ll keep the page progress here and share the staging preview when it’s ready.`
+                    ? `I’m building the ${starterSite.bundle_name||'website'} now. I’ll keep the page progress here and share the staging preview when it’s ready.`
                     : installed
-                        ? `Your ${starterSite.bundle_name||'starter bundle'} is installed. You can open any page in Builder.`
-                        : `Starter Pages uses the industry and business details already saved for ${websiteName}. I’m selecting the best matching bundle now — no extra prompt needed.`;
+                        ? `Your ${starterSite.bundle_name||'website'} is ready. You can open any page in Builder.`
+                        : lunaWebsiteMode
+                            ? `I have the business brief for ${websiteName}. I’m selecting a cohesive complete website plan now${prompt ? ' and using your additional design direction' : ''}. Nothing is charged until you confirm the plan.`
+                            : `Starter Pages uses the industry and business details already saved for ${websiteName}. I’m selecting the best matching bundle now — no extra prompt needed.`;
                 const last=current[current.length-1];
                 if(last?.role==='assistant'&&last?.text===text)return current;
                 return [...current,{
@@ -150,7 +155,7 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
                 }];
             });
             if(!installed&&!building){
-                window.setTimeout(()=>planStarterSite('',websiteId),80);
+                window.setTimeout(()=>planStarterSite(prompt,websiteId,mode),80);
             }
         };
         window.addEventListener('cosmic:luna-open-starter-site',openStarterSite);
@@ -293,7 +298,7 @@ useEffect(()=>{
         }
     };
 
-    const planStarterSite=async(message='',websiteIdOverride=null)=>{
+    const planStarterSite=async(message='',websiteIdOverride=null,modeOverride=null)=>{
         try{
             const targetWebsiteId=Number(websiteIdOverride||starterWebsiteId||0);
             if(!targetWebsiteId)return;
@@ -303,15 +308,19 @@ useEffect(()=>{
             const plan=data.plan||{};
             const balanceNow=Number(data.credit_balance??balance??0);
             const cost=Number(plan.credit_cost||0);
+            const activeMode=String(modeOverride||starterSiteContext?.mode||'starter_pages');
+            const lunaWebsiteMode=activeMode==='luna_ai';
             setMessages(current=>[...current,{
                 role:'assistant',
-                text:`Starter Pages Ready — I selected ${plan.bundle_name||'the best matching registered bundle'} from this website’s industry and business details. ${plan.page_count||0} matching pages are prepared; ${plan.preserved_page_count||0} existing populated pages will stay untouched.`,
+                text:lunaWebsiteMode
+                    ? `Website Plan Ready — I selected ${plan.bundle_name||'the best matching website direction'} using your business profile${String(message||'').trim() ? ' and Luna brief' : ''}. ${plan.page_count||0} matching pages are prepared; ${plan.preserved_page_count||0} existing populated pages will stay untouched.`
+                    : `Starter Pages Ready — I selected ${plan.bundle_name||'the best matching registered bundle'} from this website’s industry and business details. ${plan.page_count||0} matching pages are prepared; ${plan.preserved_page_count||0} existing populated pages will stay untouched.`,
                 starterPlan:plan,
                 confirmation:{
                     kind:'starter_site_install',
                     originalMessage:'',
                     bundleKey:plan.bundle_key,
-                    confirmLabel:Number(plan.build_page_count||0)>0?'Install Starter Pages':'Keep Starter Pages',
+                    confirmLabel:Number(plan.build_page_count||0)>0?(lunaWebsiteMode?'Build Website':'Install Starter Pages'):(lunaWebsiteMode?'Keep Website':'Keep Starter Pages'),
                     cancelLabel:'Not now',
                     disabled:cost>balanceNow,
                 },
@@ -470,8 +479,8 @@ useEffect(()=>{
             setMessages(current=>[...current,{
                 role:'assistant',
                 text:site.status==='ready'
-                    ? 'Your matching starter pages are ready.'
-                    : 'I’ve started the build. Existing populated pages stay untouched; new pages are generated, verified, published, and added to the staging preview.',
+                    ? (starterSiteContext?.mode==='luna_ai' ? 'Your Luna-built website is ready to review.' : 'Your matching starter pages are ready.')
+                    : (starterSiteContext?.mode==='luna_ai' ? 'I’ve started the website build. Luna is generating, verifying, and publishing the planned pages while preserving any populated pages.' : 'I’ve started the build. Existing populated pages stay untouched; new pages are generated, verified, published, and added to the staging preview.'),
                 starterSiteStatus:true,
                 options:site.status==='ready'?starterOptions(site):[],
             }]);
@@ -498,8 +507,8 @@ useEffect(()=>{
     };
 
     const visibleMessages=messages.slice(-20);
-    const contextLabel=starterSiteContext?'Starter Site':welcomeMode?'Welcome':areaLabel;
-    const panelTitle=starterSiteContext?'Starter Pages':welcomeMode?'Website Assistant':effectiveAuthenticated?'Workspace Assistant':'Cosmic CMS Assistant';
+    const contextLabel=starterSiteContext?(starterSiteContext.mode==='luna_ai'?'Website Build':'Starter Site'):welcomeMode?'Welcome':areaLabel;
+    const panelTitle=starterSiteContext?(starterSiteContext.mode==='luna_ai'?'Build with Luna AI':'Starter Pages'):welcomeMode?'Website Assistant':effectiveAuthenticated?'Workspace Assistant':'Cosmic CMS Assistant';
     const panelMeta=starterSiteContext
         ? `Website context · ${Number(balance||0).toLocaleString()} credits`
         : effectiveAuthenticated

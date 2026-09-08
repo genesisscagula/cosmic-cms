@@ -446,6 +446,28 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const themeAccess = builderThemeAccess ?? props?.auth?.themeAccess ?? null;
     const marketplaceWebsite = Boolean(website?.settings?.marketplace?.source === 'marketplace' || website?.settings?.marketplace?.template_id);
     const marketplaceDesignKit = website?.settings?.marketplace?.design_kit || null;
+    const websiteCreationMode = String(website?.settings?.creation?.mode || '');
+    const marketplaceCreationMode = websiteCreationMode === 'marketplace' || marketplaceWebsite;
+    const marketplaceTemplateLabel = String(website?.settings?.luna_marketplace_onboarding?.template_name || website?.settings?.marketplace?.template_slug || 'Marketplace template').replace(/[-_]+/g, ' ');
+    const lunaCreationMode = websiteCreationMode === 'luna_ai';
+    const sparksCreationMode = websiteCreationMode === 'sparks';
+    const pageBuilderCreationMode = websiteCreationMode === 'page_builder';
+    const explicitCreationMode = ['luna_ai', 'sparks', 'page_builder', 'marketplace'].includes(websiteCreationMode);
+    const creationModeLabel = marketplaceCreationMode ? 'Marketplace' : lunaCreationMode ? 'Luna AI' : sparksCreationMode ? 'Sparks' : pageBuilderCreationMode ? 'Page Builder' : '';
+    const creationModeBadgeClass = marketplaceCreationMode
+        ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+        : lunaCreationMode
+            ? 'border-violet-400/20 bg-violet-400/10 text-violet-300'
+            : sparksCreationMode
+                ? 'border-sky-400/20 bg-sky-400/10 text-sky-300'
+                : 'border-amber-300/20 bg-amber-300/10 text-amber-200';
+    const modeAllowsPageTemplates = !explicitCreationMode || sparksCreationMode;
+    const modeAllowsGeneratePage = !sparksCreationMode && !pageBuilderCreationMode && !marketplaceCreationMode;
+    const modeAllowsSparkLibrary = !explicitCreationMode || sparksCreationMode;
+    const [showMarketplaceSetup, setShowMarketplaceSetup] = useState(() => {
+        if (!marketplaceCreationMode || typeof window === 'undefined') return false;
+        return new URLSearchParams(window.location.search).get('marketplace_setup') === '1';
+    });
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
     const capabilities = {
@@ -496,12 +518,37 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [legoPanelOpen, setLegoPanelOpen] = useState(false);
     const [legoActiveBlockIndex, setLegoActiveBlockIndex] = useState(null);
     const [legoHybridTarget, setLegoHybridTarget] = useState(null);
+    const [legoSectionDropTarget, setLegoSectionDropTarget] = useState(null);
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
+    const sparksFirstRunOpenedRef = useRef(false);
+    const pageBuilderFirstRunOpenedRef = useRef(false);
     const customWebsiteMode = false;
     const aiOnlyBuilder = true;
+
+    const consumeCreationHandoff = (...keys) => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        let changed = false;
+        keys.forEach((key) => { if (params.has(key)) { params.delete(key); changed = true; } });
+        if (!changed) return;
+        const query = params.toString();
+        const next = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+        window.history.replaceState(window.history.state, '', next);
+    };
+
+    useEffect(() => {
+        if (!sparksCreationMode || trialMode || sparksFirstRunOpenedRef.current || typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('open_sparks') !== '1' && params.get('creation_mode') !== 'sparks') return;
+        if ((data.blocks?.length || 0) > 0) return;
+        sparksFirstRunOpenedRef.current = true;
+        consumeCreationHandoff('open_sparks', 'creation_mode');
+        const timer = window.setTimeout(() => setIsModalOpen(true), 160);
+        return () => window.clearTimeout(timer);
+    }, [sparksCreationMode, trialMode, data.blocks?.length]);
 
     // Builder Luna quick actions intentionally use natural-language prompt variants.
     // The wording varies so Luna feels conversational, while every prompt keeps a
@@ -2601,11 +2648,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const block = buildYourOwnBlock();
         const blocks = [...(data.blocks || [])];
         const requestedAfter = Number.isInteger(options?.afterIndex) ? options.afterIndex : null;
+        const requestedBefore = Number.isInteger(options?.beforeIndex) ? options.beforeIndex : null;
         let insertionIndex = blocks.length;
         if (sparkInsertTarget) {
             const anchorByKey = sparkInsertTarget.anchorRenderKey ? blocks.findIndex((candidate) => candidate?._renderKey === sparkInsertTarget.anchorRenderKey) : -1;
             const anchorIndex = anchorByKey >= 0 ? anchorByKey : Math.min(Math.max(Number(sparkInsertTarget.index) || 0, 0), Math.max(blocks.length - 1, 0));
             insertionIndex = sparkInsertTarget.position === 'above' ? anchorIndex : Math.min(anchorIndex + 1, blocks.length);
+            blocks.splice(insertionIndex, 0, { ...block, _renderKey: createRenderKey() });
+        } else if (requestedBefore !== null && blocks[requestedBefore]) {
+            insertionIndex = Math.max(0, Math.min(requestedBefore, blocks.length));
             blocks.splice(insertionIndex, 0, { ...block, _renderKey: createRenderKey() });
         } else if (requestedAfter !== null && blocks[requestedAfter]) {
             insertionIndex = Math.min(requestedAfter + 1, blocks.length);
@@ -2619,6 +2670,52 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLegoActiveBlockIndex(insertionIndex);
         setLegoPanelOpen(true);
         window.setTimeout(() => document.querySelector(`[data-cosmic-block-index="${insertionIndex}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+    };
+
+    useEffect(() => {
+        if (!pageBuilderCreationMode || trialMode || pageBuilderFirstRunOpenedRef.current || typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('open_page_builder') !== '1' && params.get('creation_mode') !== 'page_builder') return;
+        if ((data.blocks?.length || 0) > 0) return;
+        pageBuilderFirstRunOpenedRef.current = true;
+        consumeCreationHandoff('open_page_builder', 'creation_mode');
+        const timer = window.setTimeout(() => addBuildYourOwnSection(), 160);
+        return () => window.clearTimeout(timer);
+    }, [pageBuilderCreationMode, trialMode, data.blocks?.length]);
+
+    const readLegoStructurePayload = (event) => {
+        try { return JSON.parse(event?.dataTransfer?.getData('application/x-cosmic-lego') || '{}'); }
+        catch { return {}; }
+    };
+
+    const handleLegoSectionDragOver = (event, index) => {
+        const payload = readLegoStructurePayload(event);
+        if (payload?.kind !== 'structure-section') return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+        const rect = event.currentTarget?.getBoundingClientRect?.();
+        const position = rect && event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        setLegoSectionDropTarget({ index, position });
+    };
+
+    const handleLegoSectionDrop = (event, index) => {
+        const payload = readLegoStructurePayload(event);
+        if (payload?.kind !== 'structure-section') return;
+        event.preventDefault();
+        event.stopPropagation();
+        const rect = event.currentTarget?.getBoundingClientRect?.();
+        const position = legoSectionDropTarget?.index === index
+            ? legoSectionDropTarget.position
+            : (rect && event.clientY < rect.top + rect.height / 2 ? 'before' : 'after');
+        setLegoSectionDropTarget(null);
+        addBuildYourOwnSection(position === 'before' ? { beforeIndex: index } : { afterIndex: index });
+    };
+
+    const addPageBuilderSection = (afterIndex = null) => {
+        setBuilderToolbarMenu(null);
+        setSparkInsertTarget(null);
+        addBuildYourOwnSection(Number.isInteger(afterIndex) ? { afterIndex } : null);
     };
 
     const addLegoRowFromPanel = (columnCount = 1, requestedBlockIndex = null) => {
@@ -3415,13 +3512,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const normalizedPosition = position === 'above' ? 'above' : 'below';
         setSectionActionMenu(null);
         setLayoutMenu(null);
-        setSparkInsertTarget({
+        openCreateSection({
             index: normalizedPosition === 'above' ? index : index + 1,
             position: normalizedPosition,
             anchorRenderKey: block?._renderKey || null,
             anchorLabel: BlockRegistry?.[block?.type]?.schema?.title || 'current section',
         });
-        setIsModalOpen(true);
     };
 
     const [globalTheme, setGlobalTheme] = useState(trialMode ? 'light' : 'dark');
@@ -4769,7 +4865,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         };
         const draft = cloneBuilderEditValue(original);
         const draftBlocks = [...(draft.blocks || [])];
-        const insertTarget = sparkInsertTarget ? cloneBuilderEditValue(sparkInsertTarget) : null;
+        const insertTarget = meta?.insertionContext ? cloneBuilderEditValue(meta.insertionContext) : (sparkInsertTarget ? cloneBuilderEditValue(sparkInsertTarget) : null);
         let insertionIndex = draftBlocks.length;
         if (insertTarget) {
             const anchorByKey = insertTarget.anchorRenderKey
@@ -4824,6 +4920,57 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setPageAiPrompt('');
         setSparkInsertTarget(null);
         setIsModalOpen(false);
+    };
+
+    // Creation-mode hotfix: Luna AI websites skip the section-type picker.
+    // Every Add Section entry point opens the isolated New Luna Section draft directly.
+    const createBlankLunaSectionBlock = () => ({
+        type: 'luna_custom_section',
+        custom_spark_key: `luna-blank-${Date.now()}`,
+        custom_spark_saved: false,
+        semantic_type: 'custom',
+        source_type: 'blank_luna',
+        category: 'content',
+        layout: 'editorial',
+        alignment: 'left',
+        media_position: 'none',
+        density: 'balanced',
+        accent_shape: 'none',
+        section_mood: 'auto',
+        eyebrow: '',
+        heading: 'New Luna Section',
+        heading_accent_text: '',
+        text: '',
+        primary_label: '',
+        primary_url: '#',
+        secondary_label: '',
+        secondary_url: '#',
+        image_url: '',
+        items: [],
+        elements: [],
+        theme: 'auto',
+        ai_flex: { source: 'blank', mode: 'ai_flex', skip_spark_match: true, generated: false },
+    });
+
+    const openDirectLunaSection = (insertionContext = null) => {
+        setBuilderToolbarMenu(null);
+        const block = createBlankLunaSectionBlock();
+        beginNewSectionEdit(block, {
+            spark: { name: 'New Luna Section', key: block.custom_spark_key, category: 'Luna' },
+            insertionContext,
+            category: 'Luna',
+            creationSource: 'blank_luna',
+            aiFlexMode: true,
+            skipSparkMatch: true,
+        });
+    };
+
+    const openCreateSection = (insertionContext = null) => {
+        if (pageBuilderCreationMode) { addPageBuilderSection(); return; }
+        if (lunaCreationMode) { openDirectLunaSection(insertionContext); return; }
+        setBuilderToolbarMenu(null);
+        setSparkInsertTarget(insertionContext);
+        setIsModalOpen(true);
     };
 
     const editSessionHasChanges = editSession?.open
@@ -7061,9 +7208,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
     const renderBlock = (block, index) => {
 
-        const resolvedTheme = resolveBlockTheme(block, index);
+        const pageStyleTheme = resolveBlockTheme(block, index);
         const configuredLegoSurface = ['auto','white','slate','primary'].includes(block?.section_surface) ? block.section_surface : 'auto';
-        const resolvedLegoSurface = resolveLegoSectionSurface(configuredLegoSurface, resolvedTheme);
+        const resolvedLegoSurface = resolveLegoSectionSurface(configuredLegoSurface, pageStyleTheme);
+        const resolvedTheme = block?.ai_flex?.source === 'build_your_own' ? resolvedLegoSurface : pageStyleTheme;
 
         const blockProps = {
 
@@ -7335,13 +7483,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-card-surface={localCardSurface || undefined}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
                     data-cosmic-background-type={universalEnabled ? universalType : undefined}
-                    data-cosmic-background-state={universalState}
+                    data-cosmic-background-state={isLegoBuild ? legoSurface : universalState}
                     data-cosmic-overlay-mode={universalEnabled ? (universalCinematic ? 'cinematic' : (universalState==='primary'?'primary':'light')) : undefined}
                     data-cosmic-layout-mode={/fullscreen|cinematic/.test(blockType) ? 'immersive' : (/hero|banner/.test(blockType) ? 'hero' : 'standard')}
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
                     data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
-                    className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
+                    className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}${pageBuilderCreationMode && legoSectionDropTarget?.index===index ? ` cosmic-lego-section-drop-${legoSectionDropTarget.position}` : ''}`}
                     style={{...designVars,...emberPaletteVars,...legoSurfaceVars}}
+                    onDragOver={pageBuilderCreationMode ? (event) => handleLegoSectionDragOver(event, index) : undefined}
+                    onDragLeave={pageBuilderCreationMode ? (event) => { const related=event.relatedTarget; if(related && event.currentTarget?.contains?.(related)) return; setLegoSectionDropTarget((current)=>current?.index===index?null:current); } : undefined}
+                    onDrop={pageBuilderCreationMode ? (event) => handleLegoSectionDrop(event, index) : undefined}
                 >
                     {universalEnabled && universalType==='video' ? <>
                         {universalVideoProvider.type==='file'
@@ -7486,7 +7637,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             <h3 className={`mt-1 truncate text-lg font-semibold ${appDark?'text-white':'text-slate-900'}`}>{editSession.label}</h3>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                            {editSession.commitMode === 'create_section' ? <button
+                            {editSession.commitMode === 'create_section' && !lunaCreationMode ? <button
                                 type="button"
                                 onClick={returnCreateSectionToAllTypes}
                                 className={`cosmic-edit-session-all-types inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'}`}
@@ -7498,14 +7649,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     type="button"
                                     disabled={editSessionHasChanges}
                                     title={editSessionHasChanges ? 'Apply or cancel the current section changes before inserting another section.' : `Add a new section above ${editSession.label}`}
-                                    onClick={()=>{setSparkInsertTarget({index:editSession.blockIndex,position:'above',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label});setIsModalOpen(true);}}
+                                    onClick={()=>openCreateSection({index:editSession.blockIndex,position:'above',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label})}
                                     className={`cosmic-section-insert-action hidden rounded-xl border px-3 py-2 text-xs font-semibold transition sm:inline-flex ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'} disabled:cursor-not-allowed disabled:opacity-40`}
                                 >+ Add Above</button>
                                 <button
                                     type="button"
                                     disabled={editSessionHasChanges}
                                     title={editSessionHasChanges ? 'Apply or cancel the current section changes before inserting another section.' : `Add a new section below ${editSession.label}`}
-                                    onClick={()=>{setSparkInsertTarget({index:editSession.blockIndex,position:'below',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label});setIsModalOpen(true);}}
+                                    onClick={()=>openCreateSection({index:editSession.blockIndex,position:'below',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label})}
                                     className={`cosmic-section-insert-action hidden rounded-xl border px-3 py-2 text-xs font-semibold transition sm:inline-flex ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'} disabled:cursor-not-allowed disabled:opacity-40`}
                                 >+ Add Below</button>
                             </> : null}
@@ -8010,6 +8161,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 <div className="flex min-w-0 items-center gap-2 leading-tight">
                                     <span className={`truncate text-sm font-semibold ${trialMode ? 'text-slate-900' : 'text-white'}`}>{page.title || 'Untitled page'}</span>
                                     <span className="hidden text-[11px] text-slate-600 sm:inline">/{page.slug}</span>
+                                    {creationModeLabel && <span data-cosmic-creation-origin={websiteCreationMode || (marketplaceCreationMode ? 'marketplace' : '')} className={`hidden rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.12em] lg:inline ${creationModeBadgeClass}`}>{creationModeLabel}</span>}
                                 </div>
                             </div>
 
@@ -8017,7 +8169,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 <>
                                     <BuilderToolbarDropdown menuKey="design" label="Design" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
                                         <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Appearance</div>
-                                        {capabilities.canChangeTheme && (
+                                        {capabilities.canChangeTheme && !marketplaceWebsite && (
                                             <button type="button" role="menuitem" onClick={() => { setBuilderToolbarMenu(null); document.querySelector('[data-cosmic-theme-selector-host] button')?.click(); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                 <span className="inline-flex items-center gap-2"><span aria-hidden="true">🎨</span> Theme</span><span aria-hidden="true" className="opacity-50">→</span>
                                             </button>
@@ -8061,16 +8213,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
                                         <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Create</div>
                                         {!marketplaceWebsite && (capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
-                                            <button type="button" role="menuitem" data-cosmic-build-action="add-section" onClick={() => { setBuilderToolbarMenu(null); setSparkInsertTarget(null); setIsModalOpen(true); }} className={`cosmic-add-spark-button flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
-                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true">＋</span> Add Section</span><span aria-hidden="true" className="text-emerald-400">✦</span>
+                                            <button type="button" role="menuitem" data-cosmic-build-action="add-section" onClick={() => openCreateSection(null)} className={`cosmic-add-spark-button flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true">＋</span> {pageBuilderCreationMode ? 'Add Builder Section' : 'Add Section'}</span><span aria-hidden="true" className="text-emerald-400">{pageBuilderCreationMode ? '⊞' : '✦'}</span>
                                             </button>
                                         )}
-                                        {!marketplaceWebsite && (capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
+                                        {modeAllowsPageTemplates && !marketplaceWebsite && (capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
                                             <button type="button" role="menuitem" data-cosmic-build-action="templates" onClick={() => { setBuilderToolbarMenu(null); setIsTemplatesOpen(true); }} className={`cosmic-templates-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                 <span className="inline-flex items-center gap-2"><span aria-hidden="true">▣</span> Choose Template</span><span className="rounded-full bg-fuchsia-300 px-1.5 py-0.5 text-[8px] font-bold tracking-wide text-fuchsia-950">NEW</span>
                                             </button>
                                         )}
-                                        {!trialMode && capabilities.canGenerateAi && (
+                                        {modeAllowsGeneratePage && !trialMode && capabilities.canGenerateAi && (
                                             <button type="button" role="menuitem" data-cosmic-build-action="generate-page" onClick={() => { setBuilderToolbarMenu(null); setIsGeneratePageOpen(true); }} className={`cosmic-generate-page-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
                                                 <span className="inline-flex items-center gap-2"><span className="cosmic-generate-page-icon" aria-hidden="true">✦</span> Generate Page</span><span aria-hidden="true" className="opacity-50">→</span>
                                             </button>
@@ -8084,7 +8236,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                                 </button>
                                             </>
                                         )}
-                                        {!marketplaceWebsite && !trialMode && capabilities.canManageBlocks && (
+                                        {modeAllowsSparkLibrary && !marketplaceWebsite && !trialMode && capabilities.canManageBlocks && (
                                             <>
                                                 <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
                                                 <div className={`px-3 pb-1 pt-1.5 text-[9px] font-bold uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Sparks</div>
@@ -8136,7 +8288,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             </span>
                             <span className={`h-4 w-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} aria-hidden="true" />
                             <span className={`inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium ${trialMode ? 'text-slate-600' : 'text-slate-400'}`}>
-                                {data.blocks.length} Sparks
+                                {data.blocks.length} {sparksCreationMode ? 'Sparks' : 'Sections'}
                             </span>
 
                         </div>
@@ -8275,7 +8427,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 {publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
                             <span className="text-slate-600">•</span>
-                            <span className="text-slate-500">{data.blocks.length} Sparks</span>
+                            <span className="text-slate-500">{data.blocks.length} {pageBuilderCreationMode ? 'Sections' : 'Sparks'}</span>
                             {hasUnsavedChanges && <span className="hidden text-amber-200 sm:inline">• Unsaved changes</span>}
                         </div>
                         <CreditBalanceBadge
@@ -8290,6 +8442,24 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         </div>
                     )}
                 </header>
+
+                {showMarketplaceSetup && marketplaceCreationMode && (
+                    <div data-cosmic-marketplace-onboarding className="border-b border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3 sm:px-6">
+                        <div className="mx-auto flex max-w-[1760px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-md bg-emerald-400/[0.12] px-2 py-1 text-[10px] font-black uppercase tracking-[.15em] text-emerald-300">Marketplace website installed</span>
+                                    <span className="truncate text-xs font-semibold text-slate-300">{marketplaceTemplateLabel}</span>
+                                </div>
+                                <p className="mt-1 text-[11px] leading-5 text-slate-400">Your complete pages and Marketplace design kit are attached to this Website. Luna can personalize the content and create future pages while preserving this design language by default.</p>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                                <button type="button" onClick={() => { setLunaScope({type:'page',blockIndex:null,label:'Whole Page'}); setPageAiPrompt('Personalize this Marketplace website for my business. Preserve the installed design kit and visual language by default.'); setLunaChatOpen(true); }} className="rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-bold text-emerald-950 transition hover:bg-emerald-400">Personalize with Luna</button>
+                                <button type="button" onClick={() => { setShowMarketplaceSetup(false); if (typeof window !== 'undefined') { const params = new URLSearchParams(window.location.search); params.delete('marketplace_setup'); params.delete('creation_mode'); const next = `${window.location.pathname}${params.toString()?`?${params.toString()}`:''}${window.location.hash||''}`; window.history.replaceState(window.history.state, '', next); } }} className="rounded-lg border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-300 transition hover:bg-white/5 hover:text-white">Got it</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
                     <style>{`
@@ -8470,10 +8640,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 onMouseMove={(event)=>{
                                     const root=event.currentTarget;
                                     const target=event.target instanceof Element ? event.target : null;
-                                    if(!target || target.closest('input,textarea,select,[contenteditable="true"]')) return;
-                                    // Slider/carousel navigation is navigation only; do not place a Luna
-                                    // hover target on prev/next/dots or other explicitly marked controls.
-                                    if(target.closest('[data-cosmic-slider-nav],[data-cosmic-no-luna-hover]')){
+                                    if(!target) return;
+                                    // Editor controls are not page content. Clear the previous pen as well
+                                    // so it cannot linger over Edit, Delete, close, or navigation controls.
+                                    if(target.closest('input,textarea,select,[contenteditable="true"],[data-cosmic-slider-nav],[data-cosmic-no-luna-hover],[data-cosmic-edit-control],[data-cosmic-repeatable-controls],[data-cosmic-bounded-controls],.cosmic-section-action,.cosmic-flex-slider-arrows,.cosmic-flex-slider-controls')){
                                         setLunaHoverTarget((current)=>current?.blockIndex===index?null:current);
                                         return;
                                     }
@@ -8544,9 +8714,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     onMouseDown={(event)=>event.stopPropagation()}
                                     onClick={(event)=>event.stopPropagation()}
                                 >
-                                    <button type="button" title="Edit Section" aria-label="Edit Section" className="cosmic-section-action cosmic-section-action--primary inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950" onClick={(event)=>{event.preventDefault();setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});}}>
+                                    {!pageBuilderCreationMode && block?.ai_flex?.source!=='build_your_own' ? <button type="button" title="Edit Section" aria-label="Edit Section" className="cosmic-section-action cosmic-section-action--primary inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950" onClick={(event)=>{event.preventDefault();setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});}}>
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                    </button>
+                                    </button> : null}
 
                                     <div className="relative">
                                         <button type="button" title="Reorder Section" aria-label="Reorder Section" aria-expanded={sectionActionMenu?.index===index && sectionActionMenu?.type==='reorder'} className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>{setLayoutMenu(null);setSectionActionMenu((current)=>current?.index===index&&current?.type==='reorder'?null:{index,type:'reorder'});}}>
@@ -8562,22 +8732,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                                     </button>
 
-                                    <button type="button" title="Change Layout" aria-label="Change Layout" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>{setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});setSectionSparkLayoutsExpanded(true);}}>
+                                    {!pageBuilderCreationMode && (<button type="button" title="Change Layout" aria-label="Change Layout" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>{setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});setSectionSparkLayoutsExpanded(true);}}>
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                                    </button>
+                                    </button>)}
 
-                                    <button type="button" title="Change State" aria-label="Change State" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>{setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});setSectionSparkLayoutsExpanded(false);}}>
+                                    {!pageBuilderCreationMode && (<button type="button" title="Change State" aria-label="Change State" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>{setSectionActionMenu(null);setLayoutMenu(null);setLunaHoverTarget(null);openLunaHoverTarget({blockIndex:index,type:'section',currentValue:'',url:'',itemIndex:null,itemCount:null,collectionKey:'',collectionPath:'',fieldPath:''});setSectionSparkLayoutsExpanded(false);}}>
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z"/></svg>
-                                    </button>
+                                    </button>)}
 
                                     <div className="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"/>
 
-                                    <button type="button" title="Add Spark Before" aria-label="Add Spark Before" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>openSectionInsert(index,'above',block)}>
+                                    {!pageBuilderCreationMode && (<button type="button" title="Add Spark Before" aria-label="Add Spark Before" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>openSectionInsert(index,'above',block)}>
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 19V5"/><path d="m7 10 5-5 5 5"/><path d="M5 21h14"/></svg>
-                                    </button>
-                                    <button type="button" title="Add Spark After" aria-label="Add Spark After" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>openSectionInsert(index,'below',block)}>
+                                    </button>)}
+                                    {!pageBuilderCreationMode && (<button type="button" title="Add Spark After" aria-label="Add Spark After" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950" onClick={()=>openSectionInsert(index,'below',block)}>
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14"/><path d="m7 14 5 5 5-5"/><path d="M5 3h14"/></svg>
-                                    </button>
+                                    </button>)}
 
                                     <button type="button" onClick={()=>{setSectionActionMenu(null);setLayoutMenu(null);saveBlockToSavedSparks(block,index);}} disabled={savedSparksBusy} title="Save Spark" aria-label="Save Spark" className="cosmic-section-action inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-slate-200 hover:bg-slate-100 hover:text-violet-700 disabled:opacity-40">
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
@@ -8586,7 +8756,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
                                     </button>
                                 </div>
-                                {lunaHoverTarget?.blockIndex===index && lunaHoverTarget?.type!=='section' && (
+                                {!pageBuilderCreationMode && lunaHoverTarget?.blockIndex===index && lunaHoverTarget?.type!=='section' && (
                                     <button
                                         type="button"
                                         className="cosmic-luna-hover-trigger"
@@ -8602,7 +8772,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             {(capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
                                 <button
                                     type="button"
-                                    onClick={(event)=>{event.preventDefault();event.stopPropagation();setSparkInsertTarget({index:index+1,position:'below',anchorRenderKey:block._renderKey||null,anchorLabel:BlockRegistry?.[block.type]?.schema?.title||'current section'});setIsModalOpen(true);}}
+                                    onClick={(event)=>{event.preventDefault();event.stopPropagation();openCreateSection({index:index+1,position:'below',anchorRenderKey:block._renderKey||null,anchorLabel:BlockRegistry?.[block.type]?.schema?.title||'current section'});}}
                                     className="absolute bottom-0 left-1/2 z-[76] grid h-8 w-8 -translate-x-1/2 translate-y-1/2 place-items-center rounded-full border border-slate-200 bg-white text-base font-semibold leading-none text-slate-500 opacity-0 shadow-lg shadow-slate-950/10 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 group-hover:opacity-100 focus:opacity-100"
                                     aria-label="Add a section below this section"
                                     title="Add section below"
@@ -8617,11 +8787,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         <section id="cosmic-unbuilt-page" className="flex min-h-[340px] items-center justify-center border-y border-slate-200 bg-slate-100 px-6 py-12 text-center">
                             <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white/90 px-6 py-8 shadow-sm">
                                 <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">✦</span>
-                                <h2 className="mt-4 text-lg font-semibold text-slate-900">This page is ready to build</h2>
-                                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">Your page, navigation, global header and footer are connected. Generate the page with Luna, start from a template, or build section by section.</p>
+                                <h2 className="mt-4 text-lg font-semibold text-slate-900">{pageBuilderCreationMode ? 'Your Page Builder canvas is ready' : sparksCreationMode ? 'Your Sparks canvas is ready' : lunaCreationMode ? 'This page is ready for Luna' : 'This page is ready to build'}</h2>
+                                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{pageBuilderCreationMode ? 'Add a smart section, then build with draggable rows, columns and globally styled elements.' : sparksCreationMode ? 'Choose a professionally designed Spark section and install it directly. Customize it after insertion.' : lunaCreationMode ? 'Use Luna to generate the page from your website brief, then refine the result in Builder.' : 'Your page, navigation, global header and footer are connected. Generate the page with Luna, start from a template, or build section by section.'}</p>
 
                                 <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5" data-cosmic-fresh-start-actions="true">
-                                    {(capabilities.canGenerateAi || trialMode) && (
+                                    {modeAllowsGeneratePage && (capabilities.canGenerateAi || trialMode) && (
                                         <button
                                             type="button"
                                             data-cosmic-fresh-start-action="generate-page"
@@ -8631,7 +8801,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             <span aria-hidden="true">✦</span> Generate Page
                                         </button>
                                     )}
-                                    {(capabilities.canGenerateAi || trialMode) && (
+                                    {modeAllowsPageTemplates && (capabilities.canGenerateAi || trialMode) && (
                                         <button
                                             type="button"
                                             data-cosmic-fresh-start-action="choose-template"
@@ -8645,10 +8815,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         <button
                                             type="button"
                                             data-cosmic-fresh-start-action="add-section"
-                                            onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
+                                            onClick={() => openCreateSection(null)}
                                             className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
                                         >
-                                            <span aria-hidden="true">＋</span> Add Section
+                                            <span aria-hidden="true">＋</span> {pageBuilderCreationMode ? 'Start Page Builder' : 'Add Section'}
                                         </button>
                                     )}
                                 </div>
@@ -8677,7 +8847,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             </span>
                                         </div>
                                         <div className="h-5 w-px bg-slate-700" />
-                                        <button type="button" title="Add Spark above footer" aria-label="Add Spark above footer" onClick={() => { setSparkInsertTarget({ index: data.blocks.length, position: 'above' }); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg text-emerald-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400">↑</button>
+                                        <button type="button" title={pageBuilderCreationMode ? 'Add Builder section above footer' : 'Add Spark above footer'} aria-label={pageBuilderCreationMode ? 'Add Builder section above footer' : 'Add Spark above footer'} onClick={() => openCreateSection({ index: data.blocks.length, position: 'above', anchorLabel: 'footer' })} className="h-8 w-8 rounded-lg text-emerald-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400">↑</button>
                                         <div className="relative">
                                             <button type="button" title="Footer theme" aria-label="Footer theme" onClick={() => setFooterThemeMenu((value) => !value)} className="h-8 w-8 rounded-lg text-slate-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400">🎨</button>
                                             {footerThemeMenu && (
@@ -8777,7 +8947,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             {/* AI */}
                             {!customWebsiteMode && <button
                                 type="button"
-                                onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
+                                onClick={() => openCreateSection(null)}
                                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] hover:shadow-xl transition text-white font-bold"
                             >
                                 ✨ Add Section
@@ -8866,7 +9036,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 />
             )}
 
-            {!trialMode && capabilities.canManageBlocks && (
+            {!pageBuilderCreationMode && !trialMode && capabilities.canManageBlocks && (
                 <AddSectionModal
                     open={sparksMarketplaceOpen}
                     onClose={() => { setSparksMarketplaceOpen(false); setSparksMarketplaceCategory(null); }}
@@ -8889,13 +9059,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     preparedVisibleCount={preparedSparkCount}
                     ownedOnly={false}
                     contextLabel="Sparks Marketplace"
+                    showLunaBlank={!sparksCreationMode}
+                    showBuildOwn={!sparksCreationMode}
+                    directInstall={sparksCreationMode}
                     initialCategory={sparksMarketplaceCategory}
                     overlayClassName="z-[10400]"
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
 
-            {(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
+            {!pageBuilderCreationMode && (capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
@@ -8918,7 +9091,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     preloadedCatalogLoaded={sparkCatalogLoaded}
                     preparedVisibleCount={preparedSparkCount}
                     ownedOnly={true}
-                    contextLabel={sparkInsertTarget ? `Insert Section ${sparkInsertTarget.position}` : 'Add Section'}
+                    contextLabel={sparksCreationMode ? 'Build with Sparks' : (sparkInsertTarget ? `Insert Section ${sparkInsertTarget.position}` : 'Add Section')}
+                    showLunaBlank={!sparksCreationMode}
+                    showBuildOwn={!sparksCreationMode}
+                    directInstall={sparksCreationMode}
                     insertionContext={sparkInsertTarget ? { position: sparkInsertTarget.position, anchorLabel: sparkInsertTarget.anchorLabel || editSession?.label || 'current section' } : null}
                     overlayClassName={sparkInsertTarget?.source === 'edit-section' ? 'z-[10240]' : 'z-[900]'}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}

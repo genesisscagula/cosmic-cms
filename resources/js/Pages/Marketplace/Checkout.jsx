@@ -231,7 +231,7 @@ export default function MarketplaceCheckout({
                             )}
 
                             <ul className="mt-5 space-y-3 text-sm font-semibold text-slate-600">
-                                {['One template installation', 'No repeat template charge for normal editing', 'Uses the same shared Agency website allowance as Cosmic Studio', 'Luna/AI usage follows existing AI credit rules'].map((item) => (
+                                {['One template installation', 'No repeat template charge for normal editing', 'Uses the same shared Agency website allowance as Cosmic Studio', 'Installed design kit stays attached for future pages', 'Luna/AI usage follows existing AI credit rules'].map((item) => (
                                     <li key={item} className="flex gap-3"><span className="text-emerald-600">✓</span><span>{item}</span></li>
                                 ))}
                             </ul>
@@ -312,7 +312,7 @@ export default function MarketplaceCheckout({
                                         <div className="space-y-3">
                                             <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-xs font-semibold leading-5 text-violet-800">By confirming, {formatCredits(requiredCredits)} Cosmic Credits will be deducted once and one normal Agency website slot will be used unless this checkout already has a reserved website.</div>
                                             <button type="button" onClick={beginCheckout} disabled={processing || !eligibleToInstall || !checkoutIntent?.uuid} className="flex min-h-13 w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-200 transition hover:from-violet-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                                {processing ? 'Confirming installation…' : `Use ${formatCredits(requiredCredits)} Cosmic Credits`}
+                                                {processing ? 'Installing website…' : `Install Website — ${formatCredits(requiredCredits)} Credits`}
                                             </button>
                                             <Link href={template.detailPath} className="flex min-h-11 w-full items-center justify-center rounded-xl px-5 py-2.5 text-sm font-black text-slate-500 hover:bg-slate-50">Cancel</Link>
                                         </div>

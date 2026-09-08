@@ -77,6 +77,14 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
 
 export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock, commerce = {}, contentWorkspace = { types: [] }, starterSite = { installed: false, status: 'idle', pages: [] } }) {
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
+    const websiteSettings = (() => {
+        if (website?.settings && typeof website.settings === 'object' && !Array.isArray(website.settings)) return website.settings;
+        if (typeof website?.settings === 'string') { try { return JSON.parse(website.settings) || {}; } catch { return {}; } }
+        return {};
+    })();
+    const savedCreationMode = String(websiteSettings?.creation?.mode || '');
+    const lunaCreationPrompt = String(websiteSettings?.creation?.prompt || '');
+    const lunaFirstRun = savedCreationMode === 'luna_ai' && (pages || []).length === 0;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
@@ -133,6 +141,34 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         setIsLiveConnected(Boolean(website?.deployment_verified_at));
         setConnectorError(website?.deployment_error || "");
     }, [website?.deployment_verified_at, website?.deployment_error]);
+
+    useEffect(() => {
+        if (!lunaFirstRun || typeof window === 'undefined') return;
+        const requestedMode = new URLSearchParams(window.location.search).get('creation_mode');
+        if (requestedMode !== 'luna_ai') return;
+        const sessionKey = `cosmic-luna-first-run:${website.id}`;
+        try {
+            if (sessionStorage.getItem(sessionKey) === 'opened') return;
+            sessionStorage.setItem(sessionKey, 'opened');
+        } catch {}
+        const timer = window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('cosmic:luna-open-starter-site', {
+                detail: {
+                    websiteId: website.id,
+                    websiteName: website.name,
+                    starterSite,
+                    mode: 'luna_ai',
+                    prompt: lunaCreationPrompt,
+                },
+            }));
+            const params = new URLSearchParams(window.location.search);
+            params.delete('creation_mode');
+            const query = params.toString();
+            const next = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+            window.history.replaceState(window.history.state, '', next);
+        }, 180);
+        return () => window.clearTimeout(timer);
+    }, [lunaFirstRun, website.id, website.name, starterSite?.status, starterSite?.installed, lunaCreationPrompt]);
 
     useEffect(() => {
         if (!isConnectorSetupOpen) return undefined;
@@ -476,7 +512,18 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                         {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /></div> : null}</div> : (() => {
                             const visiblePages = (pages || []).filter((page) => page.page_type === 'standard');
-                            return <div><div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="cosmic-pages-section-title text-sm font-semibold">Standard Pages</p><p className="cosmic-pages-section-copy mt-1 text-sm">Open a page in Builder to edit its sections, global header, and global footers and layout.</p></div><div className="flex flex-wrap items-center gap-2"><span className="text-xs text-slate-500">{visiblePages.length} total</span>{(pages || []).length === 0 ? <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('cosmic:luna-open-starter-site',{detail:{websiteId:website.id,websiteName:website.name,starterSite}}))} className="inline-flex h-9 items-center rounded-xl border border-violet-400/25 bg-violet-400/[0.08] px-3.5 text-xs font-semibold text-violet-200 transition hover:border-violet-300/50 hover:bg-violet-400/[0.14]">{['queued', 'building'].includes(starterSite?.status) ? `✦ Building ${starterSite.progress || 0}%` : starterSite?.installed ? 'View Starter Pages' : 'Install Starter Pages'}</button> : null}</div></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
+                            return <div>
+                                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div><p className="cosmic-pages-section-title text-sm font-semibold">Standard Pages</p><p className="cosmic-pages-section-copy mt-1 text-sm">Open a page in Builder to edit its sections, global header, footer, and layout.</p></div>
+                                    <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-slate-500">{visiblePages.length} total</span>{(pages || []).length === 0 && !lunaFirstRun ? <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('cosmic:luna-open-starter-site',{detail:{websiteId:website.id,websiteName:website.name,starterSite}}))} className="inline-flex h-9 items-center rounded-xl border border-violet-400/25 bg-violet-400/[0.08] px-3.5 text-xs font-semibold text-violet-200 transition hover:border-violet-300/50 hover:bg-violet-400/[0.14]">{['queued', 'building'].includes(starterSite?.status) ? `✦ Building ${starterSite.progress || 0}%` : starterSite?.installed ? 'View Starter Pages' : 'Install Starter Pages'}</button> : null}</div>
+                                </div>
+                                {visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /> : lunaFirstRun ? <div className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.09] to-white/[0.025] p-6 sm:p-8">
+                                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300">✦ Build with Luna AI</p><h2 className="mt-2 text-xl font-semibold text-white">Let Luna compose the first complete website draft</h2><p className="mt-2 text-sm leading-6 text-slate-400">Luna uses the business brief you just saved to recommend a coherent page bundle. Review the plan and credit cost before the build starts. The finished pages stay fully editable in Cosmic CMS.</p>{lunaCreationPrompt ? <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">Direction: “{lunaCreationPrompt}”</p> : null}</div>
+                                        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('cosmic:luna-open-starter-site',{detail:{websiteId:website.id,websiteName:website.name,starterSite,mode:'luna_ai',prompt:lunaCreationPrompt}}))} className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-violet-400 px-5 text-sm font-semibold text-violet-950 transition hover:bg-violet-300">{['queued','building'].includes(starterSite?.status) ? `Building ${starterSite.progress || 0}%` : 'Open Luna Build'}</button>
+                                    </div>
+                                </div> : <PageEmptyState onNewPage={() => openNewPage()} />}
+                            </div>;
                         })()}
                     </section>
 

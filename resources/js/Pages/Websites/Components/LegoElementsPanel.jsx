@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
 
+
+const setStructureDragPayload = (event, payload) => {
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('application/x-cosmic-lego', JSON.stringify(payload));
+    event.dataTransfer.setData('text/plain', payload?.type || payload?.kind || 'cosmic-structure');
+};
+
 const GROUPS = [
     { label: 'Layout', items: [
         { type: 'row_1', label: '1 Column', icon: '▭' },
@@ -69,10 +76,10 @@ export default function LegoElementsPanel({ open, onClose, onInsert, onAddSectio
             <button type="button" onClick={onClose} aria-label="Close elements panel">×</button>
         </div>
         {!hybridMode ? <div className="cosmic-lego-panel__structure">
-            <button type="button" className="is-primary" onClick={() => onAddSection?.(activeBlockIndex)}><span aria-hidden="true">＋</span><strong>Add Section</strong><small>New Build Your Own section</small></button>
-            <button type="button" onClick={() => onAddRow?.(1, activeBlockIndex)}><span aria-hidden="true">▭</span><strong>Add Row</strong><small>Start with 1 column</small></button>
+            <button type="button" draggable className="is-primary" onDragStart={(event) => setStructureDragPayload(event, { kind: 'structure-section', type: 'section', source: 'panel' })} onClick={() => onAddSection?.(activeBlockIndex)}><span aria-hidden="true">＋</span><strong>Add Section</strong><small>New Build Your Own section</small></button>
+            <button type="button" draggable onDragStart={(event) => setStructureDragPayload(event, { kind: 'structure-row', type: 'row_1', columns: 1, source: 'panel' })} onClick={() => onAddRow?.(1, activeBlockIndex)}><span aria-hidden="true">▭</span><strong>Add Row</strong><small>Start with 1 column</small></button>
         </div> : null}
-        {!hybridMode ? <div className="cosmic-lego-panel__layouts"><div className="cosmic-lego-panel__layouts-label">Row layout</div><div className="cosmic-lego-panel__layouts-grid">{[1,2,3,4,5,6].map((count)=><button key={count} type="button" onClick={() => onAddRow?.(count, activeBlockIndex)} title={`Add ${count}-column row`}><span aria-hidden="true">{count}</span><small>{count} Column{count>1?'s':''}</small></button>)}</div></div> : null}
+        {!hybridMode ? <div className="cosmic-lego-panel__layouts"><div className="cosmic-lego-panel__layouts-label">Row layout</div><div className="cosmic-lego-panel__layouts-grid">{[1,2,3,4,5,6].map((count)=><button key={count} type="button" draggable onDragStart={(event) => setStructureDragPayload(event, { kind: 'structure-row', type: `row_${count}`, columns: count, source: 'panel' })} onClick={() => onAddRow?.(count, activeBlockIndex)} title={`Drag or add ${count}-column row`}><span aria-hidden="true">{count}</span><small>{count} Column{count>1?'s':''}</small></button>)}</div></div> : null}
         <div className="cosmic-lego-panel__search"><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search elements…" aria-label="Search elements" /></div>
         <div className="cosmic-lego-panel__hint">{hybridMode ? 'Drag core elements into the dotted Spark insertion zones. Click adds to the selected/best safe slot.' : 'Drag elements into the selected section. Layout and section controls stay above the library.'}</div>
         <div className="cosmic-lego-panel__body">

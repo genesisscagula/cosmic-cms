@@ -78,8 +78,9 @@ export const createAiFlexRow = () => ({
 
 export const createAiFlexColumn = (width = 100) => makeColumn([], width);
 
-const legoCard = (children = [], style = {}) => ({
+const legoCard = (children = [], style = {}, preset = 'card') => ({
     type: 'card',
+    _cosmic_preset: preset,
     [COSMIC_ITEM_ID_KEY]: freshId('extra'),
     _cosmic_style_mode: 'global',
     _cosmic_auto_align: true,
@@ -89,8 +90,9 @@ const legoCard = (children = [], style = {}) => ({
     children,
 });
 
-const legoStack = (children = [], style = {}) => ({
+const legoStack = (children = [], style = {}, preset = 'stack') => ({
     type: 'stack',
+    _cosmic_preset: preset,
     [COSMIC_ITEM_ID_KEY]: freshId('extra'),
     _cosmic_style_mode: 'global',
     _cosmic_auto_align: true,
@@ -100,8 +102,9 @@ const legoStack = (children = [], style = {}) => ({
     children,
 });
 
-const legoGrid = (children = [], columns = 3, style = {}) => ({
+const legoGrid = (children = [], columns = 3, style = {}, preset = 'grid') => ({
     type: 'grid',
+    _cosmic_preset: preset,
     [COSMIC_ITEM_ID_KEY]: freshId('extra'),
     _cosmic_style_mode: 'global',
     _cosmic_auto_align: true,
@@ -112,81 +115,97 @@ const legoGrid = (children = [], columns = 3, style = {}) => ({
 });
 
 const createLegoPreset = (type) => {
-    const makeButton = (label = 'Learn more') => ({ ...createAiFlexExtra('button'), label });
+    const makeButton = (label = 'Learn more', variant = 'primary') => ({ ...createAiFlexExtra('button'), label, ...(variant === 'secondary' ? { _cosmic_variant: 'secondary' } : {}) });
     const makeHeading = (title, role = 'h4') => withTypographyRole({ ...createAiFlexExtra('heading'), text: title }, role);
+    const makeText = (text) => ({ ...createAiFlexExtra('text'), text });
     const makeImage = (alt = 'Featured image', index = 0) => ({ ...createAiFlexExtra('image'), src: legoPlaceholderImage(index), alt });
-    const makeCard = (title, text, icon = null) => legoCard([
-        ...(icon ? [{ ...createAiFlexExtra('icon'), icon }] : []),
+    const makeIcon = (icon = 'sparkles') => ({ ...createAiFlexExtra('icon'), icon });
+    const makeCard = (title, text, icon = null, preset = 'feature-card') => legoCard([
+        ...(icon ? [makeIcon(icon)] : []),
         makeHeading(title, 'h4'),
-        { ...createAiFlexExtra('text'), text },
-        makeButton(),
-    ]);
+        makeText(text),
+        makeButton('Learn more'),
+    ], {}, preset);
 
     if (type === 'content_stack') return legoStack([
-        { ...createAiFlexExtra('badge'), label: 'Eyebrow' },
+        { ...createAiFlexExtra('badge'), label: 'Featured' },
         makeHeading('Add a compelling heading', 'h2'),
-        { ...createAiFlexExtra('text'), text: 'Add supporting copy that explains the value clearly and concisely.' },
-        { ...createAiFlexExtra('button_group'), children: [makeButton('Get started'), { ...makeButton('Learn more'), _cosmic_variant: 'secondary' }] },
-    ]);
+        makeText('Add supporting copy that explains the value clearly, creates confidence, and gives visitors a natural next step.'),
+        { ...createAiFlexExtra('button_group'), children: [makeButton('Get started'), makeButton('Learn more', 'secondary')] },
+    ], { max_width: 820 }, 'content-stack');
     if (type === 'image_content') return legoGrid([
         makeImage('Featured image', 0),
         legoStack([
-            { ...createAiFlexExtra('badge'), label: 'Featured' },
+            { ...createAiFlexExtra('badge'), label: 'Featured story' },
             makeHeading('Image and content', 'h3'),
-            { ...createAiFlexExtra('text'), text: 'Use this balanced block for an about section, feature, service, or story.' },
+            makeText('Use this balanced editorial block for an about section, signature service, case study, or story.'),
             makeButton('Learn more'),
-        ]),
-    ], 2, { tablet_columns: 1, mobile_columns: 1, align: 'center' });
-    if (type === 'basic_card') return makeCard('Card heading', 'Add a short description for this card.');
-    if (type === 'icon_card') return makeCard('Feature heading', 'Highlight a feature or service with a simple icon card.', 'sparkles');
+        ], {}, 'image-content-copy'),
+    ], 2, { tablet_columns: 1, mobile_columns: 1, align: 'center' }, 'image-content');
+    if (type === 'basic_card') return legoCard([
+        { ...createAiFlexExtra('badge'), label: 'Featured' },
+        makeHeading('Card heading', 'h4'),
+        makeText('Use a concise supporting description that explains the value of this item.'),
+        makeButton('Learn more'),
+    ], {}, 'basic-card');
+    if (type === 'icon_card') return legoCard([
+        makeIcon('sparkles'),
+        makeHeading('Feature heading', 'h4'),
+        makeText('Highlight an important feature or service with a clear visual cue and concise supporting copy.'),
+        makeButton('Explore feature'),
+    ], {}, 'icon-card');
     if (type === 'image_card') return legoCard([
         makeImage('Card image', 1),
-        makeHeading('Image card', 'h4'),
-        { ...createAiFlexExtra('text'), text: 'Pair an image with concise supporting content.' },
-        makeButton(),
-    ], { overflow: 'hidden' });
+        legoStack([
+            { ...createAiFlexExtra('badge'), label: 'Featured' },
+            makeHeading('Image card', 'h4'),
+            makeText('Pair a strong image with a short, focused story and a clear action.'),
+            makeButton('View details'),
+        ], {}, 'image-card-copy'),
+    ], { overflow: 'hidden', padding: 0 }, 'image-card');
     if (type === 'cards_grid') return legoGrid([
-        makeCard('Card one', 'Add a short description for this item.'),
-        makeCard('Card two', 'Add a short description for this item.'),
-        makeCard('Card three', 'Add a short description for this item.'),
-    ], 3);
+        makeCard('Strategy-led', 'A thoughtful foundation built around your goals and audience.', 'layers', 'grid-card'),
+        makeCard('Built to convert', 'Clear hierarchy and purposeful content guide visitors to act.', 'sparkles', 'grid-card'),
+        makeCard('Ready to scale', 'Flexible patterns stay consistent as your website grows.', 'settings', 'grid-card'),
+    ], 3, {}, 'cards-grid');
     if (type === 'services_grid') return legoGrid([
-        makeCard('Service one', 'Explain this service in one or two sentences.', 'settings'),
-        makeCard('Service two', 'Explain this service in one or two sentences.', 'layers'),
-        makeCard('Service three', 'Explain this service in one or two sentences.', 'sparkles'),
-    ], 3);
+        makeCard('Signature service', 'Describe your primary offer and the result it creates for customers.', 'sparkles', 'service-card'),
+        makeCard('Specialist support', 'Highlight another capability with a clear benefit and next step.', 'layers', 'service-card'),
+        makeCard('Ongoing care', 'Show how you continue supporting customers after the initial engagement.', 'settings', 'service-card'),
+    ], 3, {}, 'services-grid');
     if (type === 'stats_grid') return legoGrid([
-        { ...createAiFlexExtra('stat'), value: '10+', label: 'Years experience' },
-        { ...createAiFlexExtra('stat'), value: '250+', label: 'Projects delivered' },
-        { ...createAiFlexExtra('stat'), value: '98%', label: 'Client satisfaction' },
-        { ...createAiFlexExtra('stat'), value: '24/7', label: 'Support' },
-    ], 4);
+        ['10+','Years experience'],['250+','Projects delivered'],['98%','Client satisfaction'],['24/7','Responsive support'],
+    ].map(([value,label]) => legoCard([{ ...createAiFlexExtra('stat'), value, label }], {}, 'stat-card')), 4, {}, 'stats-grid');
     if (type === 'team_grid') return legoGrid(['Alex Morgan','Jamie Lee','Taylor Cruz'].map((name, index) => legoCard([
         { ...createAiFlexExtra('image'), src: `/storage/cms-images/avatars/avatar-${index + 1}.jpg`, alt: `${name} portrait` },
-        makeHeading(name, 'h4'),
-        { ...createAiFlexExtra('text'), text: ['Founder & Director','Lead Specialist','Client Partner'][index] },
-    ])), 3);
+        legoStack([
+            makeHeading(name, 'h4'),
+            makeText(['Founder & Director','Lead Specialist','Client Partner'][index]),
+        ], {}, 'team-card-copy'),
+    ], { overflow: 'hidden', padding: 0 }, 'team-card')), 3, {}, 'team-grid');
     if (type === 'testimonials_grid') return legoGrid([
-        { ...createAiFlexExtra('quote'), text: 'Working with this team was simple, clear, and genuinely excellent.', cite: 'Client Name' },
-        { ...createAiFlexExtra('quote'), text: 'The process felt effortless and the result exceeded our expectations.', cite: 'Client Name' },
-        { ...createAiFlexExtra('quote'), text: 'Professional from start to finish. We would happily recommend them.', cite: 'Client Name' },
-    ].map((quote) => legoCard([quote])), 3);
+        ['Working with this team was simple, clear, and genuinely excellent.','Jordan Ellis'],
+        ['The process felt effortless and the result exceeded our expectations.','Morgan Reed'],
+        ['Professional from start to finish. We would happily recommend them.','Taylor James'],
+    ].map(([text,cite]) => legoCard([{ ...createAiFlexExtra('quote'), text, cite }], {}, 'testimonial-card')), 3, {}, 'testimonials-grid');
     if (type === 'cta_block') return legoCard([
+        { ...createAiFlexExtra('badge'), label: 'Ready when you are' },
         makeHeading('Ready to get started?', 'h3'),
-        { ...createAiFlexExtra('text'), text: 'Add one clear sentence that gives visitors a reason to take the next step.' },
-        { ...createAiFlexExtra('button_group'), style: { justify: 'center' }, children: [makeButton('Get started'), { ...makeButton('Contact us'), _cosmic_variant: 'secondary' }] },
-    ], { text_align: 'center', align: 'center' });
+        makeText('Give visitors one clear reason to take the next step and make the action effortless.'),
+        { ...createAiFlexExtra('button_group'), style: { justify: 'center' }, children: [makeButton('Get started'), makeButton('Contact us', 'secondary')] },
+    ], { text_align: 'center', align: 'center' }, 'cta-card');
     if (type === 'pricing_grid') return legoGrid([
-        ['Starter','$49','For simple projects and smaller teams.'],
-        ['Growth','$99','For growing businesses that need more.'],
-        ['Pro','$199','For advanced teams and larger requirements.'],
-    ].map(([name, price, copy]) => legoCard([
+        ['Starter','$49','For focused projects and smaller teams.',false],
+        ['Growth','$99','For growing businesses that need more flexibility.',true],
+        ['Pro','$199','For advanced teams and larger requirements.',false],
+    ].map(([name, price, copy, featured]) => legoCard([
+        ...(featured ? [{ ...createAiFlexExtra('badge'), label: 'Most popular' }] : []),
         makeHeading(name, 'h3'),
         { ...createAiFlexExtra('stat'), value: price, label: 'per month' },
-        { ...createAiFlexExtra('text'), text: copy },
-        { ...createAiFlexExtra('list'), items: ['Core feature', 'Priority support', 'Easy customization'] },
+        makeText(copy),
+        { ...createAiFlexExtra('list'), items: ['Core features included', 'Priority support', 'Easy customization'] },
         makeButton('Choose plan'),
-    ])), 3);
+    ], {}, featured ? 'pricing-card-featured' : 'pricing-card')), 3, {}, 'pricing-grid');
     return null;
 };
 

@@ -7,6 +7,7 @@ use App\Models\Page;
 use App\Models\Website;
 use App\Support\PageStyleRegistry;
 use App\Support\HeaderFooterVariantContract;
+use App\Support\AiFlexStructureContract;
 
 class PagePublisher
 {
@@ -34,7 +35,7 @@ class PagePublisher
         $brandPalette = is_array($theme['brand_palette'] ?? null)
             ? $theme['brand_palette']
             : (is_array(data_get($theme, 'custom_brand_theme.palette')) ? data_get($theme, 'custom_brand_theme.palette') : []);
-        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, [
+        return $this->compileBlocks($page->blocks ?? [], $primaryColor, [
             'page_style' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style),
             'typography' => is_array($theme['typography'] ?? null) ? $theme['typography'] : [],
             'section_layout' => is_array($theme['section_layout'] ?? null) ? $theme['section_layout'] : [],
@@ -42,6 +43,35 @@ class PagePublisher
             'components' => is_array($theme['components'] ?? null) ? $theme['components'] : [],
             'brand_palette' => $brandPalette,
         ]);
+    }
+
+    /**
+     * Normalize Builder-owned AI Flex/Lego structures before static compilation.
+     *
+     * The Builder can mutate rows/columns independently while the user is editing.
+     * Publishing must always feed the compiler the canonical persisted contract so a
+     * transient/mixed tree cannot turn a valid Page Builder page into a 502.
+     */
+    private function compileBlocks(array $blocks, string $primaryColor, array $context = []): string
+    {
+        $normalized = [];
+        foreach ($blocks as $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            if (($block['type'] ?? '') === 'luna_custom_section') {
+                if (($block['ai_flex']['source'] ?? '') === 'build_your_own') {
+                    $block = AiFlexStructureContract::canonicalizeBlock($block);
+                } else {
+                    $block = AiFlexStructureContract::normalizePersistedBlock($block);
+                }
+            }
+
+            $normalized[] = $block;
+        }
+
+        return CmsHtmlCompiler::compile(array_values($normalized), $primaryColor, $context);
     }
 
     /**
@@ -164,7 +194,7 @@ class PagePublisher
                         // Recompile the approved snapshot for every live push. Reusing
                         // published_html would preserve stale localhost asset URLs that
                         // were generated before the export normalizer was introduced.
-                        'html' => CmsHtmlCompiler::compile(
+                        'html' => $this->compileBlocks(
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
@@ -192,7 +222,7 @@ class PagePublisher
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
                             // Newsletter, and Latest Resources seen in Builder.
-                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, array_merge($commerceContext, $contentContext, [
+                            'html' => $this->compileBlocks($blocks, $primaryColor, array_merge($commerceContext, $contentContext, [
                                 'blog_posts' => $posts,
                                 'single_blog_post' => $post->toArray(),
                                 'blog_index_url' => $postDirectory . '/',

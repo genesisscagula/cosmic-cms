@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Website;
 use App\Models\Workspace;
 use App\Support\HeaderFooterVariantContract;
+use App\Support\WebsiteCreationMode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -69,13 +70,21 @@ final class MarketplaceWebsiteProvisioningService
 
     public function builderUrl(Website $website): string
     {
-        $prompt = 'Help me personalize this Marketplace website for my business. Ask me for my business name, location, services, target customers, brand preferences, and any details you need before rewriting the website content and images.';
-
-        return route('pages.index', $website).'?'.http_build_query([
+        $prompt = 'Help me personalize this Marketplace website for my business. Ask me for my business name, location, services, target customers, brand preferences, and any details you need before rewriting the website content and images. Preserve the installed Marketplace design kit and visual language by default.';
+        $homePage = $website->pages()->where('slug', 'home')->oldest('id')->first()
+            ?: $website->pages()->orderBy('sort_order')->oldest('id')->first();
+        $query = http_build_query([
+            'creation_mode' => WebsiteCreationMode::MARKETPLACE,
             'luna_open' => 1,
             'luna_prompt' => $prompt,
             'marketplace_setup' => 1,
         ]);
+
+        if ($homePage) {
+            return route('pages.builder', ['page' => $homePage]).'?'.$query;
+        }
+
+        return route('pages.index', $website).'?'.$query;
     }
 
     /**
@@ -191,6 +200,11 @@ final class MarketplaceWebsiteProvisioningService
             'global_header' => HeaderFooterVariantContract::normalizeHeader((array) ($template->global_header ?? [])),
             'global_footer' => HeaderFooterVariantContract::normalizeFooter((array) ($template->global_footer ?? [])),
             'settings' => [
+                'creation' => [
+                    'mode' => WebsiteCreationMode::MARKETPLACE,
+                    'source' => 'marketplace',
+                    'version' => 1,
+                ],
                 'marketplace' => [
                     'checkout_id' => $checkout->id,
                     'template_id' => $template->id,
