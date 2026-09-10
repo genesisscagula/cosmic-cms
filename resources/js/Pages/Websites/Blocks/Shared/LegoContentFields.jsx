@@ -1,3 +1,4 @@
+import LegoIconPicker from './LegoIconPicker';
 import { createAiFlexExtra } from './aiFlexStructureContract';
 
 const fieldsByType = {
@@ -29,7 +30,7 @@ export default function LegoContentFields({ node, onChange }) {
     const keys = [...new Set([...(fieldsByType[node.type] || []), ...Object.keys(labels).filter(key => typeof node[key] === 'string' || typeof node[key] === 'number')])];
     const collections = ['children', 'items', 'fields'].filter(key => Array.isArray(node[key]) || (key === 'items' && itemTypes.includes(node.type)));
     return <div className="cosmic-lego-inspector__fields">
-        {keys.map(key => <label key={key}><span>{key === 'text' && node.type === 'heading' ? 'Heading' : labels[key]}</span>
+        {keys.map(key => key === 'icon' ? <LegoIconPicker key={key} value={node[key] || ''} onChange={value => onChange({ ...node, [key]: value })} /> : <label key={key}><span>{key === 'text' && node.type === 'heading' ? 'Heading' : labels[key]}</span>
             {['text', 'note'].includes(key) && node.type !== 'heading'
                 ? <textarea rows={3} value={node[key] ?? ''} onChange={event => onChange({ ...node, [key]: event.target.value })} />
                 : <input value={node[key] ?? (key === 'label' ? node.text : '') ?? ''} onChange={event => onChange({ ...node, [key]: event.target.value })} />}

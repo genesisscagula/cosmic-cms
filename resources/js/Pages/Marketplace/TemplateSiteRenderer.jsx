@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { BlockRegistry } from '../Websites/BlockRegistry';
+import { AuthoredTypographyContext } from '../Websites/Blocks/Shared/EditableText';
 import { createSparkTailwindRuntime, hasSparkTailwindSchema } from '../Websites/Blocks/Shared/sparkTailwindRuntime';
 import { colorFamilies } from '../../theme/colorFamilies';
 import { resolveSemanticPalette } from '../../theme/semanticPalette';
@@ -287,6 +288,7 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
     const legoVars = isLegoBuild ? resolveLegoSurfaceVars(resolvedLegoSurface, legoPalette) : {};
     const blockType = String(block?.type || '').toLowerCase();
     const isEmberMarketplace = blockType.startsWith('marketplace_ember_');
+    const isHarborMarketplace = blockType.startsWith('marketplace_harbor_');
     const isLedgerMarketplace = blockType.startsWith('marketplace_ledger_');
     const marketplaceFamily = isEmberMarketplace ? 'ember' : (isLedgerMarketplace ? 'ledger' : undefined);
     const emberPaletteVars = isEmberMarketplace ? {
@@ -330,6 +332,19 @@ const MarketplaceTemplatePreviewBlock = memo(function MarketplaceTemplatePreview
         '--cosmic-button-primary-text': '#ffffff',
     } : {};
     const hasLunaDesign = Object.keys(previewBlock?.luna_design_overrides || {}).length > 0 || heroNeedsDefaultPadding;
+
+    // Harbor owns its section surfaces, type scale and card composition. Generic
+    // Spark contracts would override these with the rotating preview theme.
+    if (isHarborMarketplace) {
+        return (
+            <div data-cosmic-marketplace-family="harbor" data-cosmic-block-type={previewBlock.type} style={vars}>
+                <AuthoredTypographyContext.Provider value={true}>
+                    <Component block={previewBlock} blockIndex={index} globalTheme={websiteTheme}
+                        tailwind={createSparkTailwindRuntime(previewBlock)} onUpdate={() => {}} blogPosts={[]} />
+                </AuthoredTypographyContext.Provider>
+            </div>
+        );
+    }
 
     return (
         <div

@@ -1,4 +1,8 @@
+import { createContext, useContext } from 'react';
 import { SparkFieldExtraSlots, useSparkFieldExtrasAnchor } from './SparkFieldExtrasRuntime';
+
+// Authored marketplace previews supply their own typography through utility classes.
+export const AuthoredTypographyContext = createContext(false);
 
 function lunaTextKind(className = '') {
     const classes = String(className || '');
@@ -13,15 +17,16 @@ function selectLunaTarget(event, detail) {
     event.currentTarget.dispatchEvent(new CustomEvent('cosmic:luna-target', { detail, bubbles:true }));
 }
 export function EditableText({ value, className, style = undefined, cosmicType = null, fieldPath = null, onSave: _onSave, isTextArea: _isTextArea, placeholder: _placeholder, ...rest }) {
+    const authoredTypography = useContext(AuthoredTypographyContext);
     const kind = lunaTextKind(className);
     const anchor = useSparkFieldExtrasAnchor({ value, mode: 'text', kind, fieldPath });
     const node = <span
         data-cosmic-luna-display="text"
         data-luna-target={kind}
-        data-cosmic-type={cosmicType || rest["data-cosmic-type"] || undefined}
         data-cosmic-field-path={anchor?.target || undefined}
         data-cosmic-field-anchor-mode={anchor?.target ? 'editable' : undefined}
         {...rest}
+        data-cosmic-type={authoredTypography ? undefined : (cosmicType || rest["data-cosmic-type"] || undefined)}
         className={`${className || ''}`}
         style={style}
     >{value || 'Click to add text'}</span>;

@@ -15583,53 +15583,15 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
 }
 
 /* v1.0.61 — Page Builder row-level element drop affordance */
-.cosmic-lego-row__drop-hint{
-  position:absolute;
-  left:50%;
-  top:50%;
-  z-index:18;
-  transform:translate(-50%,-50%);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:28px;
-  padding:5px 12px;
-  border:1px dashed color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 48%,transparent);
-  border-radius:999px;
-  background:color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 8%,var(--cosmic-lego-surface-bg,transparent));
-  color:var(--cosmic-brand-primary,#7c3aed);
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.02em;
-  opacity:0;
-  pointer-events:none;
-  white-space:nowrap;
-  transition:opacity .14s ease,transform .14s ease,background .14s ease;
-}
 .cosmic-lego-row.is-element-drop-target{
   outline:2px solid color-mix(in srgb,var(--cosmic-brand-primary,#7c3aed) 58%,transparent);
   outline-offset:5px;
   border-radius:16px;
 }
-.cosmic-lego-row.is-element-drop-target>.cosmic-lego-row__drop-hint{
-  opacity:1;
-  transform:translate(-50%,-50%) scale(1.02);
-}
-.cosmic-lego-row.is-empty-row>.cosmic-lego-row__drop-hint{
-  opacity:.58;
-}
-.cosmic-lego-row.is-empty-row:has(.cosmic-lego-column:hover)>.cosmic-lego-row__drop-hint,
-.cosmic-lego-row.is-empty-row:has(.cosmic-lego-column.is-drop-target)>.cosmic-lego-row__drop-hint{
-  opacity:0;
-}
-@media(max-width:900px){
-  .cosmic-lego-row__drop-hint{font-size:9px;min-height:26px;padding:4px 10px}
-}
-
 /* Editor controls must not contribute to published content spacing. */
 .cosmic-lego-canvas>.cosmic-lego-row-insert{height:0;min-height:0;margin:0;border:0;flex:0 0 0;position:relative;transform:translateY(-16px);margin-bottom:calc(-1 * clamp(28px,2.6vw,40px))}
 .cosmic-lego-canvas>.cosmic-lego-row-insert::before{content:"";position:absolute;inset:-12px 0}
-.cosmic-lego-canvas .cosmic-lego-column{padding:0!important;border:0;outline:1px dashed transparent;outline-offset:6px}
+.cosmic-lego-canvas .cosmic-lego-column{padding:var(--cosmic-lego-column-padding,0)!important;border:0;outline:1px dashed transparent;outline-offset:6px}
 .cosmic-lego-canvas .cosmic-lego-column:hover{outline-color:rgba(148,163,184,.4)}
 .cosmic-lego-column>.cosmic-lego-insert-line{height:0;min-height:0;margin:0;border:0;flex:0 0 0;position:relative;margin-bottom:calc(-1 * var(--cosmic-local-stack-gap,var(--cosmic-stack-gap,20px)))}
 .cosmic-lego-column>.cosmic-lego-insert-line::before{content:"";position:absolute;inset:-10px 0}
@@ -15675,3 +15637,22 @@ html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"
     border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card,18px))!important;
     overflow:hidden;
 }
+
+/* Keep grid cards faithful to the live card typography and expose structure editors. */
+.cosmic-lego-canvas :is([data-cosmic-preset="grid-card"],[data-cosmic-preset="service-card"]) {text-align:center}
+/* One dedicated, wrapping control row keeps all structure actions out of the cards. */
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;position:relative;z-index:25;min-width:0;padding:4px 0;margin-bottom:-16px}
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar>button{position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;margin:0!important;padding:4px 9px!important;border:1px solid #ddd6fe!important;border-radius:6px!important;background:#fff!important;color:#6d28d9!important;-webkit-text-fill-color:#6d28d9!important;font:600 11px/18px system-ui,sans-serif!important;letter-spacing:normal!important;text-transform:none!important;box-shadow:none!important;transform:none!important;opacity:1!important;cursor:pointer}
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar>button:hover{background:#f5f3ff!important;border-color:#a78bfa!important}
+.cosmic-lego-structure-toolbar>button:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
+.cosmic-lego-structure-toolbar__divider{height:16px;width:1px;background:#ddd6fe;margin:0 2px}
+.cosmic-lego-canvas .cosmic-lego-item>.cosmic-lego-item__actions{left:auto;right:6px;top:6px;bottom:auto}
+.cosmic-builder-shell .cosmic-lego-canvas .cosmic-lego-item__actions>button{width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;border-radius:5px!important;font:600 11px/18px system-ui,sans-serif!important;box-shadow:none!important}
+@media(max-width:640px){.cosmic-lego-row{align-items:start!important}.cosmic-lego-canvas .cosmic-lego-structure-toolbar{margin-bottom:-10px}}
+.cosmic-icon-picker{display:grid;gap:7px}.cosmic-icon-picker>span{font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b}.cosmic-icon-picker .cosmic-icon-picker__trigger{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;color:#334155;text-align:left}.cosmic-icon-picker__trigger>span:nth-child(2){flex:1}.cosmic-icon-picker__trigger svg{flex:none}
+.cosmic-icon-library{box-sizing:border-box;width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 40px);margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;color:#172033;font:14px/1.5 system-ui,sans-serif;box-shadow:0 24px 90px #0f172a40;overflow:auto}.cosmic-icon-library::backdrop{background:#0f172a80;backdrop-filter:blur(3px)}.cosmic-icon-library header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.cosmic-icon-library h2{font-size:21px;font-weight:750;margin:0}.cosmic-icon-library header p{margin:5px 0 20px;color:#64748b}.cosmic-icon-library button{cursor:pointer;font:inherit;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#334155;padding:8px 12px}.cosmic-icon-library header>button{font-size:22px;line-height:24px}.cosmic-icon-library button:focus-visible,.cosmic-icon-library input:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}.cosmic-icon-library__search{display:grid;gap:6px;font-weight:600}.cosmic-icon-library__search input{box-sizing:border-box;width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;color:#172033;background:#f8fafc;font:14px/1.5 system-ui,sans-serif}.cosmic-icon-library__count{font-size:12px;color:#64748b;margin:14px 0 8px}.cosmic-icon-library__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.cosmic-icon-library__grid>button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:91px;padding:12px 6px;font-size:12px}.cosmic-icon-library__grid>button:hover{border-color:#a78bfa;background:#faf5ff}.cosmic-icon-library__grid>button[aria-pressed="true"]{border-color:#7c3aed;background:#f5f3ff;color:#6d28d9;box-shadow:inset 0 0 0 1px #7c3aed}.cosmic-icon-library footer{display:flex;justify-content:space-between;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0}.cosmic-icon-library__empty{text-align:center;padding:24px 0}@media(max-width:480px){.cosmic-icon-library{padding:18px}.cosmic-icon-library__grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.cosmic-lego-structure-toolbar__label{font:500 11px/18px system-ui,sans-serif;color:#64748b;letter-spacing:normal}
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar>button{gap:6px!important}
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar>button.cosmic-lego-column-number{width:28px!important;min-width:28px!important;max-width:28px!important;padding:0!important;border-radius:50%!important}
+.cosmic-lego-canvas .cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar.cosmic-lego-structure-toolbar>button[aria-pressed="true"]{background:#ede9fe!important;border-color:#8b5cf6!important}

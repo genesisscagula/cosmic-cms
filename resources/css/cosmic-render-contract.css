@@ -370,3 +370,19 @@
   .cosmic-lego-canvas .cosmic-flex-el{font-size:var(--af-mobile-font-size,var(--af-tablet-font-size,inherit))!important;text-align:var(--af-mobile-text-align,var(--af-tablet-text-align,inherit))!important;align-self:var(--af-mobile-self-align,var(--af-tablet-self-align,auto))!important}
   .cosmic-lego-canvas .cosmic-flex-el[style*="--af-mobile-display:none"]{display:none!important}
 }
+/* Content Stack is one centered composition, including its badge and actions. */
+[data-cosmic-preset="content-stack"]:not([data-cosmic-style-mode="custom"]){
+    width:100%;
+    margin-inline:auto!important;
+    align-items:center;
+    text-align:center;
+}
+[data-cosmic-preset="content-stack"]:not([data-cosmic-style-mode="custom"])>:is(.cosmic-flex-heading,.cosmic-flex-text):not([data-cosmic-style-mode="custom"]){
+    text-align:center!important;
+}
+[data-cosmic-preset="content-stack"]:not([data-cosmic-style-mode="custom"])>:is(.cosmic-flex-badge,.cosmic-flex-button,.cosmic-flex-button-group):not([data-cosmic-style-mode="custom"]){
+    align-self:center!important;
+}
+[data-cosmic-preset="content-stack"]:not([data-cosmic-style-mode="custom"])>.cosmic-flex-button-group:not([data-cosmic-style-mode="custom"]){
+    justify-content:center;
+}

@@ -4,7 +4,7 @@ import { EditableText } from "../Shared/EditableText";
 const F=(key,type='text',label=null)=>({key,type,label:label||key.replaceAll('_',' ')});
 const T=({value,className='',fieldPath,cosmicType,area=false,style})=><EditableText value={value} className={className} fieldPath={fieldPath} cosmicType={cosmicType} isTextArea={area} style={style}/>;
 const B=({label,url='#',className='',fieldPath,style})=><EditableButton label={label} url={url} className={className} fieldPath={fieldPath} style={style}/>;
-const I=({src,className='',fieldPath,style})=><EditableImage src={src} className={className} fieldPath={fieldPath} style={style}/>;
+const I=({src,className='',fieldPath,style})=><EditableImage src={src} className={className} fieldPath={fieldPath} style={{...(className.split(/\s+/).includes('absolute')?{position:'absolute'}:{}),...style}}/>;
 const P={navy:'#123047',ocean:'#2e6f78',sage:'#a9b9a8',sand:'#eee7dc',paper:'#fbfaf7',white:'#fff',ink:'#18252d',muted:'#68777f',line:'#d7ddd9',gold:'#b58a4b'};
 const listings=[
  {title:'Harbour House',meta:'3 Bed · 2 Bath · 2 Car',price:'Guide $2.4M',location:'Balmoral',image_url:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=88'},
@@ -51,7 +51,7 @@ export function MarketplaceHarborHeroBlock({block}){
   <div className="relative min-h-[420px] overflow-hidden lg:min-h-[420px]">
    <I src={d.image_url} fieldPath="image_url" className="absolute inset-0 h-full w-full" style={{borderRadius:0,position:'absolute',inset:0}}/>
    <div className="absolute inset-0" style={{background:'linear-gradient(90deg,rgba(3,22,43,.96) 0%,rgba(4,24,45,.86) 29%,rgba(4,24,45,.52) 48%,rgba(4,24,45,.16) 72%,rgba(4,24,45,.03) 100%)'}}/>
-   <div className="relative mx-auto flex min-h-[420px] max-w-[1536px] items-center px-6 py-10 sm:px-10 lg:min-h-[420px] lg:px-[92px] lg:py-10">
+   <div className="relative mx-auto flex min-h-[420px] max-w-[1536px] items-center px-6 pt-10 pb-[86px] sm:px-10 lg:min-h-[420px] lg:px-[92px]">
     <div className="max-w-[650px]">
      <T value={d.eyebrow} fieldPath="eyebrow" className="block text-[11px] font-bold uppercase tracking-[.13em]" style={{color:'#d1aa59'}}/>
      <T value={d.heading} fieldPath="heading" cosmicType="h1" className="mt-4 block font-serif text-[clamp(3.4rem,5.2vw,5.1rem)] leading-[1.01] tracking-[-.035em] text-white"/>
