@@ -251,7 +251,11 @@ class RegisteredUserController extends Controller
             ->exists();
     }
 
-    public function pending(Request $request, MarketplaceCheckoutService $marketplaceCheckouts): Response|RedirectResponse
+    public function pending(
+        Request $request,
+        MarketplaceCheckoutService $marketplaceCheckouts,
+        \App\Services\MarketplaceCreditTopUpService $marketplaceCreditTopUps,
+    ): Response|RedirectResponse
     {
         $user = $request->user();
 
@@ -325,11 +329,22 @@ class RegisteredUserController extends Controller
             : null;
         $marketplaceCheckout?->loadMissing('template');
 
+        $marketplaceCreditTopUp = null;
+        if ($marketplaceCheckout?->template) {
+            $marketplaceCreditTopUp = $marketplaceCreditTopUps->quote(
+                (string) $onboarding->selected_plan,
+                $marketplaceCheckout->template,
+                (string) data_get($pendingOrder?->metadata, 'marketplace_credit_option_key', ''),
+            );
+        }
+
         return Inertia::render('Onboarding/Pending', [
             'onboarding' => [
                 'plan_key' => $onboarding->selected_plan,
                 'plan_name' => $plan['label'] ?? Str::headline($onboarding->selected_plan),
                 'price' => '$'.number_format((float) ($plan['price_usd'] ?? 0), 0),
+                'price_usd' => (float) ($plan['price_usd'] ?? 0),
+                'included_credits' => (int) ($plan['credits'] ?? 0),
                 'website_name' => $onboarding->website_name,
                 'website_slug' => $onboarding->website_slug,
                 'industry' => $onboarding->industry,
@@ -338,6 +353,7 @@ class RegisteredUserController extends Controller
                 'is_expired' => (bool) ($onboarding->expires_at?->isPast()),
                 'status' => $onboarding->status,
                 'has_pending_checkout' => (bool) ($pendingOrder && data_get($pendingOrder->metadata, 'checkout_url')),
+                'pending_credit_option_key' => (string) data_get($pendingOrder?->metadata, 'marketplace_credit_option_key', ''),
                 'workspace_ready' => $workspaceReady,
                 'redirect_url' => route('dashboard'),
                 'provisioning_status' => $provisioning?->status,
@@ -348,11 +364,14 @@ class RegisteredUserController extends Controller
             'marketplaceTemplate' => $marketplaceCheckout?->template ? [
                 'slug' => $marketplaceCheckout->template->slug,
                 'name' => $marketplaceCheckout->template->name,
+                'image' => $marketplaceCheckout->template->thumbnail_url,
                 'industry' => $marketplaceCheckout->template->industry_label,
                 'pages' => (int) $marketplaceCheckout->template->page_count,
                 'plan' => (string) $marketplaceCheckout->selected_plan,
                 'status' => $marketplaceCheckout->status,
+                'credit_price' => (int) $marketplaceCheckout->template->credit_price,
             ] : null,
+            'marketplaceCreditTopUp' => $marketplaceCreditTopUp,
             'status' => session('status'),
             'paymentError' => session('payment_error'),
             'autoCheckout' => $request->string('checkout')->toString() === 'auto',

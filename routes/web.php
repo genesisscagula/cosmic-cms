@@ -53,6 +53,7 @@ use App\Http\Controllers\StarterSiteController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\MarketplaceCheckoutController;
 use App\Models\Page;
+use App\Services\MarketplaceCheckoutService;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -484,7 +485,33 @@ Route::get('/examples', [MarketplaceController::class, 'publicExamples'])->name(
 Route::get('/help', fn () => Inertia::render('Public/Help'))->name('public.help');
 Route::get('/updates', fn () => Inertia::render('Public/Updates'))->name('public.updates');
 
-Route::get('/pricing', fn (\Illuminate\Http\Request $request) => Inertia::render('Pricing', ['trialToken' => $request->query('token')]))->name('pricing');
+Route::get('/pricing', function (Request $request, MarketplaceCheckoutService $marketplaceCheckouts) {
+    $marketplaceTemplate = null;
+    $marketplaceSlug = trim($request->string('marketplace_template')->toString());
+    $marketplaceRequested = $request->string('source')->toString() === 'marketplace'
+        && preg_match('/^[a-z0-9-]+$/', $marketplaceSlug);
+
+    if ($marketplaceRequested) {
+        try {
+            $template = $marketplaceCheckouts->publishedTemplate($marketplaceSlug);
+            $marketplaceTemplate = [
+                'slug' => (string) $template->slug,
+                'name' => (string) $template->name,
+                'industry' => (string) $template->industry_label,
+                'creditPrice' => (int) $template->credit_price,
+            ];
+        } catch (\Throwable) {
+            // Invalid/stale Marketplace selections must not lock the public
+            // pricing page into Agency mode. Registration validates again.
+            $marketplaceTemplate = null;
+        }
+    }
+
+    return Inertia::render('Pricing', [
+        'trialToken' => $request->query('token'),
+        'marketplaceTemplate' => $marketplaceTemplate,
+    ]);
+})->name('pricing');
 
 
 // SEO A2: focused, useful search landing pages. One intent per URL prevents keyword cannibalization.

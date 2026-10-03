@@ -79,6 +79,25 @@ class PaymentFulfillmentService
                             array_merge($creditMetadata, ['allocation' => 'one_time_signup']),
                         );
                     }
+
+                    $marketplaceTopUpCredits = max(0, (int) data_get($order->metadata, 'marketplace_topup_credits', 0));
+                    if ($marketplaceTopUpCredits > 0) {
+                        $topUpReference = $creditReference.':marketplace_topup';
+                        if (! CreditTransaction::query()->where('reference', $topUpReference)->exists()) {
+                            app(CreditService::class)->grant(
+                                $order->user,
+                                $marketplaceTopUpCredits,
+                                'Marketplace checkout Cosmic Credit top-up',
+                                $topUpReference,
+                                array_merge($creditMetadata, [
+                                    'category' => 'purchase',
+                                    'allocation' => 'marketplace_checkout_topup',
+                                    'price_minor' => max(0, (int) data_get($order->metadata, 'marketplace_topup_amount_minor', 0)),
+                                    'credit_option_key' => data_get($order->metadata, 'marketplace_credit_option_key'),
+                                ]),
+                            );
+                        }
+                    }
                 } else {
                     app(CreditService::class)->grant(
                         $order->user,
@@ -129,7 +148,7 @@ class PaymentFulfillmentService
                     // provisioned by WorkspaceProvisioningService so the same paid website
                     // is reused instead of creating a duplicate.
                     $legacyDirectMarketplaceSubscription = (int) data_get($order->metadata, 'onboarding_id', 0) <= 0
-                        && (string) data_get($order->metadata, 'payment_purpose', '') !== 'agency_subscription'
+                        && ! in_array((string) data_get($order->metadata, 'payment_purpose', ''), ['agency_subscription', 'agency_subscription_with_marketplace_credits'], true)
                         // Batch 1+ Marketplace orders explicitly carry cosmic_credits. Do not let a
                         // payment/webhook retry on a modern checkout accidentally invoke the retired
                         // direct-subscription template provisioning path. Historical orders without
@@ -179,9 +198,37 @@ class PaymentFulfillmentService
             return false;
         }
 
+        $setupFeeMinor = max(0, (int) data_get($order->metadata, 'paypal_setup_fee_minor', data_get($order->metadata, 'marketplace_topup_amount_minor', 0)));
+        $saleAmountMinor = max(0, (int) ($metadata['amount_minor'] ?? 0));
+        $setupFeePaymentId = (string) data_get($order->metadata, 'paypal_setup_fee_payment_id', '');
+
+        // PayPal can emit the subscription setup-fee sale separately from the
+        // recurring monthly sale. Consume that webhook once without treating the
+        // one-time Marketplace credit charge as a monthly renewal.
+        if ($setupFeeMinor > 0 && $setupFeePaymentId === '' && $saleAmountMinor === $setupFeeMinor) {
+            $order->update([
+                'metadata' => array_merge($order->metadata ?? [], $metadata, [
+                    'paypal_setup_fee_payment_id' => $paymentId,
+                    'paypal_setup_fee_paid_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            $this->recordBillingTransaction(
+                $order->fresh(),
+                'credit_topup',
+                'completed',
+                $paymentId,
+                $subscriptionId,
+                max(0, (int) data_get($order->metadata, 'marketplace_topup_credits', 0)),
+                $metadata,
+            );
+
+            return true;
+        }
+
         $this->assertRenewalMatches($order, $metadata);
 
-        // PayPal may deliver the first SALE before ACTIVATED. Fulfill the initial
+        // PayPal may deliver the first recurring SALE before ACTIVATED. Fulfill the initial
         // purchase once, record it as the initial charge, and stop here so the
         // the same sale cannot be mistaken for a renewal. Included credits are signup-only.
         if (! $order->fulfilled_at) {
@@ -365,8 +412,8 @@ class PaymentFulfillmentService
 
         return max(0, (int) CreditTransaction::query()
             ->where('user_id', $order->user_id)
-            ->where('reference', $reference)
-            ->value('amount'));
+            ->whereIn('reference', [$reference, $reference.':marketplace_topup'])
+            ->sum('amount'));
     }
 
     private function assertRenewalMatches(PaymentOrder $order, array $metadata): void

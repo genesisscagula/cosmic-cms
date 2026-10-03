@@ -1,0 +1,95 @@
+.pending-checkout { min-height:100vh; padding:20px 24px 14px; color:#0c1531; font-family:Inter,ui-sans-serif,system-ui,sans-serif; background:radial-gradient(ellipse at 0 25%,#dffbf0 0,transparent 35%),radial-gradient(ellipse at 100% 85%,#e1fbef 0,transparent 35%),radial-gradient(#bcebd944 .9px,transparent .9px),#f7fffb; background-size:auto,auto,26px 26px,auto; }
+.pending-shell { max-width:1100px; margin:auto; position:relative; }
+.pending-brand { display:flex; align-items:center; justify-content:space-between; padding:0 0 20px; }
+.pending-logo { display:flex; align-items:center; gap:14px; color:#0c1531; }
+.pending-logo>span { display:grid; place-items:center; width:44px; height:44px; background:linear-gradient(145deg,#04ad87,#07813e); border-radius:13px; color:white; font-size:24px; }
+.pending-logo strong { font-size:17px; }
+.pending-logo small { display:block; margin-top:3px; font-size:10px; letter-spacing:2px; color:#6b789b; font-weight:600; }
+.pending-help { font-size:13px; color:#42777a; padding-right:24px; }
+.pending-surface { background:#ffffffd9; border-radius:26px; padding:24px 26px 18px 32px; box-shadow:0 16px 70px #05966908; }
+.pending-checkout .cosmic-pending-grid { grid-template-columns:minmax(0,1.36fr) minmax(0,1fr); gap:30px; align-items:stretch; }
+.pending-checkout .cosmic-pending-main { border:0; border-radius:0; background:transparent; box-shadow:none; overflow:visible; }
+.pending-checkout .cosmic-pending-main>div.p-6 { padding:0; }
+.pending-back { display:inline-block; font-size:13px; color:#536486; margin-bottom:16px; }
+.pending-title { font-size:34px; letter-spacing:-1.1px; font-weight:800; line-height:1.2; }
+.pending-intro { font-size:14px; line-height:1.45; color:#697797; margin:10px 0 16px; }
+.pending-status { display:flex; align-items:center; gap:18px; padding:13px 20px; background:#ecfbf5b3; border:1px solid #d1f5e8; border-radius:12px; margin-bottom:16px; font-size:13px; }
+.pending-status p { color:#426879; margin-top:2px; font-size:12px; }
+.pending-status-icon { display:grid; place-items:center; width:36px; height:36px; border-radius:50%; color:white; background:linear-gradient(140deg,#25bc93,#00563d); font-size:21px; flex-shrink:0; }
+.pending-status-warning { background:#fff1f2; border-color:#fecdd3; }
+.pending-template { border:1px solid #d9c9ff; background:linear-gradient(120deg,#faf7ff,#f7f3ff); border-radius:12px; padding:13px 16px 17px; margin-bottom:18px; }
+.pending-section-label { display:flex; align-items:center; gap:12px; color:#7c32ff; font-size:14px; }
+.pending-number { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:linear-gradient(140deg,#a983ff,#7424fa); color:white; flex-shrink:0; }
+.pending-saved { margin-left:auto; border:1px solid #ddcaff; background:#ffffff80; padding:5px 11px; border-radius:20px; font-size:9px; font-weight:700; text-transform:uppercase; white-space:nowrap; }
+.pending-template-detail { display:flex; gap:16px; align-items:center; margin:13px 4px 0; }
+.pending-template-detail img { width:39%; height:86px; object-fit:cover; object-position:top; border-radius:9px; border:1px solid #e2daef; }
+.pending-template-detail h2 { font-weight:800; font-size:16px; }
+.pending-template-detail p { font-size:12px; color:#68759a; margin-top:6px; line-height:1.6; }
+.pending-steps { border:1px solid #d2f5e8; background:#f2fcf8b3; border-radius:12px; padding:12px 8px; gap:3px; }
+.pending-step { border:0; background:transparent; box-shadow:none; padding:5px 9px; gap:11px; }
+.pending-step>span:last-child { font-size:11px; white-space:nowrap; }
+.pending-step small { display:block; font-size:9px; font-weight:400; margin-top:4px; color:#5c8190; }
+.pending-step>span:first-child { height:37px; width:37px; font-size:14px; }
+.pending-details { margin-top:16px; gap:22px; }
+.pending-details>div { padding:16px 18px; border-radius:12px; background:#f9fbfe9c; }
+.pending-details>div>p:first-child { font-size:12px; text-transform:none; letter-spacing:0; color:#56668b; }
+.pending-details p.mt-2 { margin-top:5px; font-size:15px; }
+.pending-details p.mt-1 { font-size:12px; margin-top:3px; }
+.pending-details p.mt-3 { margin-top:4px; font-size:11px; }
+.pending-checkout .pending-credits { margin-top:16px; padding:14px 13px 12px; border-radius:12px; box-shadow:none; background:linear-gradient(130deg,#fcf9ff,#f7f3ff); }
+.pending-credits>div:first-child { gap:12px; }
+.pending-credits>div:first-child>div:first-child { padding-left:40px; position:relative; }
+.pending-credits>div:first-child>div:first-child:before { content:'4'; position:absolute; left:0; top:0; width:32px; height:32px; display:grid; place-items:center; background:linear-gradient(140deg,#b093ff,#8741ff); border-radius:50%; color:white; }
+.pending-credits p.text-xs { text-transform:none; letter-spacing:0; font-size:14px; }
+.pending-credits h3 { font-size:14px; line-height:1.5; }
+.pending-credits p.mt-2 { font-size:11px; line-height:1.5; margin-top:4px; }
+.pending-credits>div:first-child>div:last-child { padding:9px 12px; background:#eee6ff; flex-shrink:0; text-align:center; }
+.pending-credits>div:first-child>div:last-child p:first-child { font-size:9px; letter-spacing:.3px; }
+.pending-credits>div:first-child>div:last-child p:last-child { font-size:24px; color:#7c32ff; }
+.pending-credits .mt-5 { margin-top:18px; gap:8px; }
+.pending-credits label { padding:11px 14px; gap:10px; border-color:#e0d6fb; }
+.pending-credits label:has(input:checked) { background:#f9f6ff; border-color:#a47aff; box-shadow:inset 0 0 0 2px white; }
+.pending-credits label .font-extrabold { font-size:14px; }
+.pending-credits label .text-xs { font-size:10px; line-height:1.5; }
+.pending-credits label .text-base { font-size:16px; }
+.pending-credits label .text-\[10px\] { font-size:9px; }
+.pending-credits input { width:18px; height:18px; }
+.pending-checkout .pending-payment { margin-top:16px; padding:0; border:0; background:none; }
+.pending-payment>div:first-child { flex-direction:column; gap:10px; }
+.pending-checkout .cosmic-paypal-cta { width:100%; min-height:55px; border-radius:11px; padding:12px 20px; font-size:15px; background:linear-gradient(135deg,#008f79,#00713d); box-shadow:0 10px 24px #05966915; }
+.pending-payment p { max-width:none; text-align:center; font-size:11px; color:#376e70; }
+.pending-checkout .cosmic-plan-summary { position:relative; top:auto; border:0; border-radius:16px; overflow:visible; box-shadow:0 5px 30px #04785709; margin-top:28px; background:white; }
+.pending-powered { position:absolute; top:-39px; right:12px; font-size:13px; color:#447c7d; white-space:nowrap; }
+.pending-powered strong { color:#003087; font-size:21px; font-style:italic; margin-left:5px; letter-spacing:-1px; }
+.pending-powered strong span { color:#009cde; }
+.pending-checkout .cosmic-selected-plan-header { border-radius:16px 16px 0 0; padding:30px; min-height:174px; background:radial-gradient(ellipse at 110% -20%,#118f70,transparent 65%),linear-gradient(140deg,#074b3a,#002d22); }
+.pending-checkout .cosmic-selected-plan-header:after { content:''; position:absolute; width:110px; height:210px; right:-8px; top:-25px; border:23px solid #22b98e25; border-radius:70%; transform:rotate(40deg); pointer-events:none; }
+.pending-checkout .cosmic-selected-plan-header>p:first-of-type { font-size:10px; letter-spacing:1px; }
+.pending-checkout .cosmic-selected-plan-name { font-size:29px; letter-spacing:-.8px; }
+.pending-checkout .cosmic-selected-plan-header .mt-3 { display:block; margin-top:10px; }
+.pending-checkout .cosmic-selected-plan-price { float:right; margin-top:2px; }
+.pending-plan-description { max-width:240px; font-size:14px; margin-top:13px; line-height:1.55; }
+.pending-summary-body { padding:28px; }
+.pending-summary-body ul { font-size:13px; line-height:1.6; }
+.pending-summary-body ul li>span:first-child { font-size:22px; font-weight:600; line-height:1; }
+.pending-summary-body>div.mt-6 { margin-top:32px; padding:16px; font-size:12px; line-height:1.8; }
+.pending-benefits { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center; margin:30px -6px; }
+.pending-benefits span { display:grid; place-items:center; width:40px; height:40px; margin:0 auto 9px; border-radius:50%; background:#e5fbf2; color:#006349; font-size:27px; }
+.pending-benefits strong { display:block; font-size:11px; }
+.pending-benefits small { display:block; font-size:10px; color:#7883a3; margin-top:4px; }
+.pending-total { border-top:1px solid #e4e8f0; padding-top:18px; }
+.pending-total>div { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:14px; }
+.pending-total b { font-size:22px; }
+.pending-total p { font-size:11px; color:#7883a3; margin-top:5px; }
+.pending-renewal { display:flex; gap:22px; margin-top:28px; padding:24px; background:#f7f5fd; border-radius:14px; }
+.pending-renewal>span { color:#8b48ff; font-size:29px; }
+.pending-renewal strong { font-size:14px; }
+.pending-renewal p { color:#7883a3; font-size:12px; line-height:1.8; margin-top:5px; }
+.pending-summary-body>button { font-size:11px; border:0; padding:6px; color:#7a87a0; }
+.pending-shell footer { display:flex; justify-content:center; gap:24px; font-size:10px; color:#7d88a5; padding-top:18px; }
+@media(min-width:1400px) { .pending-shell:before,.pending-shell:after { position:absolute; white-space:pre-line; font-family:cursive; font-style:italic; color:#83bfb0; font-size:23px; line-height:1.6; transform:rotate(-13deg); pointer-events:none; } .pending-shell:before { content:'Beautiful\a websites for\a a brighter\a business'; left:-205px; top:48%; } .pending-shell:after { content:'Launch\a faster. Grow\a further.'; right:-180px; top:73%; } }
+@media(max-width:1023px) { .pending-shell { max-width:720px; } .pending-checkout .cosmic-pending-grid { grid-template-columns:1fr; } .pending-checkout .cosmic-plan-summary { margin-top:22px; } .pending-checkout .cosmic-selected-plan-header { min-height:160px; } }
+@media(max-width:600px) { .pending-checkout { padding:16px 12px; } .pending-surface { padding:20px 16px; } .pending-title { font-size:28px; } .pending-help { padding:0; font-size:11px; } .pending-section-label { flex-wrap:wrap; font-size:12px; gap:8px; } .pending-saved { margin-left:38px; } .pending-template-detail { flex-direction:column; align-items:stretch; } .pending-template-detail img { width:100%; height:140px; } .pending-steps { grid-template-columns:1fr; } .pending-details { gap:10px; margin-top:12px; } .pending-credits>div:first-child { flex-direction:row; } .pending-credits>div:first-child>div:first-child { padding-left:0; } .pending-credits>div:first-child>div:first-child:before { display:none; } .pending-credits label { padding:12px 10px; } .pending-credits label .font-extrabold { font-size:12px; } .pending-checkout .cosmic-paypal-cta { font-size:13px; } .pending-summary-body { padding:22px; } .pending-powered { font-size:11px; right:0; } }
+.pending-powered { display:flex; align-items:center; gap:6px; }
+.pending-checkout a:focus-visible,.pending-checkout button:focus-visible { outline:3px solid #8b5cf6; outline-offset:4px; }
+.pending-checkout .pending-credits label:focus-within { outline:2px solid #8b5cf6; outline-offset:2px; }

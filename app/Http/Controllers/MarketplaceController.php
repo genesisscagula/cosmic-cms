@@ -110,7 +110,7 @@ final class MarketplaceController extends Controller
         $preview['detail_path'] = $detailPath;
         $preview['demo_path'] = $demoPath;
         $preview['demo_embed_path'] = $demoPath.'?embed=1';
-        $preview['checkout_path'] = $this->marketplacePath($request, '/checkout/'.rawurlencode($template));
+        $preview['checkout_path'] = $this->marketplacePricingPath($request, $template);
 
         // Detail needs the complete page map and shell, but not the large block payload.
         unset($preview['current_page']['blocks']);
@@ -167,7 +167,7 @@ final class MarketplaceController extends Controller
         $preview['demo_path'] = $baseDemoPath;
         $preview['current_demo_path'] = $currentPath;
         $preview['embed_path'] = $currentPath.'?embed=1';
-        $preview['checkout_path'] = $this->marketplacePath($request, '/checkout/'.rawurlencode($template));
+        $preview['checkout_path'] = $this->marketplacePricingPath($request, $template);
         $preview['pages'] = collect($preview['pages'])->map(function (array $item) use ($baseDemoPath, $embed) {
             $path = ($item['slug'] ?? 'home') === 'home' ? $baseDemoPath : $baseDemoPath.'/'.rawurlencode((string) $item['slug']);
             return [
@@ -244,7 +244,7 @@ final class MarketplaceController extends Controller
         $headline = (string) ($content['heading'] ?? $content['title'] ?? $template->name);
         $detailPath = $this->marketplacePath($request, "/templates/{$template->slug}");
         $demoPath = $this->marketplacePath($request, "/templates/{$template->slug}/demo");
-        $checkoutPath = $this->marketplacePath($request, "/checkout/{$template->slug}");
+        $checkoutPath = $this->marketplacePricingPath($request, (string) $template->slug);
         return [
             'id' => $template->id,
             'slug' => $template->slug,
@@ -284,6 +284,28 @@ final class MarketplaceController extends Controller
                 'pageCount' => (int) ($plan['page_count'] ?? 0),
                 'priceUnit' => 'cosmic_credits',
             ])->values()->all();
+    }
+
+    private function marketplacePricingPath(Request $request, string $template): string
+    {
+        $query = http_build_query([
+            'source' => 'marketplace',
+            'marketplace_template' => $template,
+            'family' => 'agency',
+        ]);
+
+        // Local development keeps Marketplace and Pricing on the same origin.
+        // Production Marketplace runs on its own subdomain, so hand pricing off
+        // to the configured core application instead of /pricing on the
+        // marketplace host.
+        if (! app()->environment('production')
+            && strtolower((string) $request->getHost()) !== strtolower((string) config('cosmic_marketplace.domain', 'marketplace.cosmiccms.com'))) {
+            return '/pricing?'.$query;
+        }
+
+        $coreBase = rtrim((string) config('cosmic_marketplace.core_url', config('app.url')), '/');
+
+        return $coreBase.'/pricing?'.$query;
     }
 
     private function marketplacePath(Request $request, string $path): string

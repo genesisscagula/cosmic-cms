@@ -283,9 +283,9 @@ class MarketplaceCheckoutService
     }
 
     /**
-     * Link the separate Agency subscription payment to a saved Marketplace
-     * selection. This PaymentOrder pays for Agency access only; template credits
-     * are never deducted or represented by this order.
+     * Link the Agency subscription payment to a saved Marketplace selection.
+     * The template itself is still deducted from the Cosmic Credit wallet later;
+     * this order may also carry a one-time credit top-up as a PayPal setup fee.
      */
     public function linkPaymentOrder(MarketplaceCheckout $checkout, PaymentOrder $order): void
     {
@@ -293,7 +293,9 @@ class MarketplaceCheckoutService
             'metadata' => array_merge(
                 $order->metadata ?? [],
                 $this->paymentMetadata($checkout),
-                ['payment_purpose' => 'agency_subscription'],
+                ['payment_purpose' => (int) data_get($order->metadata, 'marketplace_topup_credits', 0) > 0
+                    ? 'agency_subscription_with_marketplace_credits'
+                    : 'agency_subscription'],
             ),
         ])->save();
 
@@ -303,6 +305,9 @@ class MarketplaceCheckoutService
             'metadata' => array_merge($checkout->metadata ?? [], [
                 'payment_order_reference' => $order->reference,
                 'agency_subscription_payment_started_at' => now()->toIso8601String(),
+                'marketplace_credit_option_key' => data_get($order->metadata, 'marketplace_credit_option_key'),
+                'marketplace_topup_credits' => (int) data_get($order->metadata, 'marketplace_topup_credits', 0),
+                'marketplace_topup_amount_minor' => (int) data_get($order->metadata, 'marketplace_topup_amount_minor', 0),
             ]),
         ])->save();
     }

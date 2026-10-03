@@ -12,6 +12,21 @@ use RuntimeException;
 
 class PayPalService
 {
+    private function http(): PendingRequest
+    {
+        $options = ['verify' => true];
+
+        // XAMPP's file-based CA bundle may differ from Windows' trusted store.
+        // Let cURL use the native roots without disabling peer/hostname checks.
+        if (PHP_OS_FAMILY === 'Windows'
+            && defined('CURLSSLOPT_NATIVE_CA')
+            && defined('CURLOPT_SSL_OPTIONS')) {
+            $options['curl'] = [CURLOPT_SSL_OPTIONS => CURLSSLOPT_NATIVE_CA];
+        }
+
+        return Http::withOptions($options);
+    }
+
     public function client(?string $requestId = null): PendingRequest
     {
         $clientId = (string) config('payments.paypal.client_id');
@@ -26,7 +41,7 @@ class PayPalService
         $accessToken = Cache::get($cacheKey);
 
         if (! is_string($accessToken) || $accessToken === '') {
-            $tokenResponse = Http::asForm()
+            $tokenResponse = $this->http()->asForm()
                 ->connectTimeout(5)
                 ->timeout(15)
                 ->retry(2, 300, throw: false)
@@ -57,7 +72,7 @@ class PayPalService
         // stable request ID; unrelated calls still receive a fresh UUID.
         $requestId = substr($requestId, 0, 108);
 
-        return Http::baseUrl($baseUrl)
+        return $this->http()->baseUrl($baseUrl)
             ->acceptJson()
             ->asJson()
             ->connectTimeout(5)

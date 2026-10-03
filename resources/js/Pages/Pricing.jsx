@@ -322,12 +322,17 @@ function PlanCard({ plan, family, registrationUrl }) {
     );
 }
 
-export default function Pricing({ trialToken = null }) {
-    const [family, setFamily] = useState('personal');
-    const plans = useMemo(() => planFamilies[family], [family]);
-    const comparisonRows = comparisonByFamily[family];
-    const registrationUrl = (planKey) => `/register?plan=${encodeURIComponent(planKey)}${trialToken ? `&trial=${encodeURIComponent(trialToken)}` : ''}`;
-    const headerPlan = family === 'agency' ? 'agency_growth' : 'growth';
+export default function Pricing({ trialToken = null, marketplaceTemplate = null }) {
+    const fromMarketplace = Boolean(marketplaceTemplate?.slug);
+    const [family, setFamily] = useState(fromMarketplace ? 'agency' : 'personal');
+    const activeFamily = fromMarketplace ? 'agency' : family;
+    const plans = useMemo(() => planFamilies[activeFamily], [activeFamily]);
+    const comparisonRows = comparisonByFamily[activeFamily];
+    const marketplaceQuery = fromMarketplace
+        ? `&marketplace_template=${encodeURIComponent(marketplaceTemplate.slug)}&source=marketplace`
+        : '';
+    const registrationUrl = (planKey) => `/register?plan=${encodeURIComponent(planKey)}${trialToken ? `&trial=${encodeURIComponent(trialToken)}` : ''}${marketplaceQuery}`;
+    const headerPlan = activeFamily === 'agency' ? 'agency_growth' : 'growth';
 
     return (
         <>
@@ -341,6 +346,11 @@ export default function Pricing({ trialToken = null }) {
                 {trialToken && (
                     <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-bold text-emerald-900">
                         Your generated website is reserved. Choose a plan to move it into your Cosmic CMS workspace after checkout.
+                    </div>
+                )}
+                {fromMarketplace && (
+                    <div className="border-b border-violet-200 bg-violet-50 px-5 py-3 text-center text-sm font-bold text-violet-950">
+                        Marketplace website selected: <span className="font-black">{marketplaceTemplate.name}</span>. Choose an Agency plan to continue; Business plans are unavailable for Marketplace installations.
                     </div>
                 )}
 
@@ -370,33 +380,41 @@ export default function Pricing({ trialToken = null }) {
                             </div>
                         </div>
 
-                        <PricingPreview family={family} />
+                        <PricingPreview family={activeFamily} />
                     </div>
                 </section>
 
                 <section className="border-b border-slate-200 bg-[linear-gradient(180deg,#f8fbfa_0%,#ffffff_100%)] px-5 py-12 sm:px-6 lg:px-8">
                     <div className="mx-auto max-w-[1240px]">
                         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-                            <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-emerald-700">Choose your workspace</p>
-                            <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em] text-[#07132c] sm:text-4xl">One website or a whole client portfolio.</h2>
-                            <p className="mt-4 text-base leading-7 text-slate-600">The plans below follow the actual feature tiers already used by Cosmic CMS.</p>
+                            <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-emerald-700">{fromMarketplace ? 'Marketplace requires Agency' : 'Choose your workspace'}</p>
+                            <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em] text-[#07132c] sm:text-4xl">{fromMarketplace ? 'Choose the Agency plan for your selected website.' : 'One website or a whole client portfolio.'}</h2>
+                            <p className="mt-4 text-base leading-7 text-slate-600">{fromMarketplace ? 'Your selected Marketplace design stays attached while you choose an Agency tier. Template credits are confirmed separately after Agency activation.' : 'The plans below follow the actual feature tiers already used by Cosmic CMS.'}</p>
 
                             <div className="mt-7 grid w-full max-w-xl grid-cols-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm" role="tablist" aria-label="Pricing family">
-                                {Object.entries(familyMeta).map(([key, meta]) => (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={family === key}
-                                        onClick={() => setFamily(key)}
-                                        className={`rounded-xl px-4 py-3 text-left transition sm:px-5 ${family === key ? 'bg-[#07132c] text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-[#07132c]'}`}
-                                    >
-                                        <span className="block text-sm font-extrabold">{meta.label}</span>
-                                        <span className={`mt-0.5 block text-[10px] font-bold ${family === key ? 'text-emerald-300' : 'text-slate-400'}`}>{meta.short}</span>
-                                    </button>
-                                ))}
+                                {Object.entries(familyMeta).map(([key, meta]) => {
+                                    const disabled = fromMarketplace && key === 'personal';
+                                    const selected = activeFamily === key;
+
+                                    return (
+                                        <button
+                                            key={key}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={selected}
+                                            aria-disabled={disabled}
+                                            disabled={disabled}
+                                            onClick={() => !disabled && setFamily(key)}
+                                            title={disabled ? 'Marketplace websites require an Agency plan.' : undefined}
+                                            className={`rounded-xl px-4 py-3 text-left transition sm:px-5 ${selected ? 'bg-[#07132c] text-white shadow-md' : disabled ? 'cursor-not-allowed bg-slate-100 text-slate-400 opacity-65' : 'text-slate-600 hover:bg-slate-50 hover:text-[#07132c]'}`}
+                                        >
+                                            <span className="flex items-center gap-2 text-sm font-extrabold">{meta.label}{disabled && <span aria-hidden="true">🔒</span>}</span>
+                                            <span className={`mt-0.5 block text-[10px] font-bold ${selected ? 'text-emerald-300' : disabled ? 'text-slate-400' : 'text-slate-400'}`}>{disabled ? 'Unavailable from Marketplace' : meta.short}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500">{familyMeta[family].description}</p>
+                            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500">{familyMeta[activeFamily].description}</p>
                         </div>
                     </div>
                 </section>
@@ -404,7 +422,7 @@ export default function Pricing({ trialToken = null }) {
                 <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8">
                     <div className="mx-auto grid max-w-[1240px] gap-6 lg:grid-cols-3">
                         {plans.map((plan) => (
-                            <PlanCard key={plan.key} plan={plan} family={family} registrationUrl={registrationUrl} />
+                            <PlanCard key={plan.key} plan={plan} family={activeFamily} registrationUrl={registrationUrl} />
                         ))}
                     </div>
 
@@ -508,7 +526,7 @@ export default function Pricing({ trialToken = null }) {
                         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                             <div className="max-w-3xl">
                                 <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-emerald-700">Full comparison</p>
-                                <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em] text-[#07132c] sm:text-4xl">Compare {familyMeta[family].label.toLowerCase()} plans at a glance.</h2>
+                                <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em] text-[#07132c] sm:text-4xl">Compare {familyMeta[activeFamily].label.toLowerCase()} plans at a glance.</h2>
                                 <p className="mt-4 text-base leading-7 text-slate-600">Switch between Business and Agency above to compare the feature set that matches how you operate.</p>
                             </div>
                             <span className="inline-flex w-fit rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-extrabold text-slate-500">Monthly USD pricing</span>

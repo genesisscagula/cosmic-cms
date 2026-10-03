@@ -12,10 +12,17 @@ final class PayPalPlanBindingService
     {
     }
 
+    public function configuredPlanId(?string $planKey): string
+    {
+        $definition = $this->plans->definition($planKey);
+
+        return trim((string) $definition->billingValue('paypal_plan_id', ''));
+    }
+
     public function planId(?string $planKey): string
     {
         $definition = $this->plans->definition($planKey);
-        $planId = trim((string) $definition->billingValue('paypal_plan_id', ''));
+        $planId = $this->configuredPlanId($planKey);
 
         if ($planId === '') {
             throw new RuntimeException('The PayPal subscription plan ID for '.$definition->key().' is not configured.');

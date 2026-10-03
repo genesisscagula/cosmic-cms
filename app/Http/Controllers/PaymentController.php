@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PaymentOrder;
 use App\Models\PendingOnboarding;
 use App\Services\MarketplaceCheckoutService;
+use App\Services\MarketplaceCreditTopUpService;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentCountryResolver;
 use App\Services\PaymentFulfillmentService;
@@ -53,6 +54,7 @@ class PaymentController extends Controller
         Request $request,
         PaymentCheckoutService $checkout,
         MarketplaceCheckoutService $marketplaceCheckouts,
+        MarketplaceCreditTopUpService $marketplaceCreditTopUps,
     ): JsonResponse {
         $user = $request->user();
 
@@ -62,6 +64,10 @@ class PaymentController extends Controller
             ->firstOrFail();
 
         try {
+            $validated = $request->validate([
+                'marketplace_credit_option' => ['nullable', 'string', 'max:80'],
+            ]);
+
             $marketplaceCheckout = $marketplaceCheckouts->forOnboarding($onboarding);
             $paymentContext = [
                 'onboarding_id' => $onboarding->id,
@@ -69,15 +75,32 @@ class PaymentController extends Controller
             ];
 
             if ($marketplaceCheckout) {
-                // Marketplace template installation is paid with Cosmic Credits,
-                // but a brand-new Marketplace customer may still need to activate
-                // the separate Agency subscription first. This PayPal order is only
-                // for that Agency plan and never represents the template price.
+                // Marketplace template installation still spends Cosmic Credits,
+                // while the Agency subscription remains recurring. If the plan's
+                // one-time included credits do not cover the selected template, the
+                // missing credits are sold as a one-time PayPal subscription setup fee.
                 $marketplaceCheckouts->assertAgencyPlan((string) $onboarding->selected_plan);
+                $marketplaceCheckout->loadMissing('template');
+
+                $topUp = $marketplaceCheckout->template
+                    ? $marketplaceCreditTopUps->selected(
+                        (string) $onboarding->selected_plan,
+                        $marketplaceCheckout->template,
+                        $validated['marketplace_credit_option'] ?? null,
+                    )
+                    : null;
+
                 $paymentContext = array_merge(
                     $paymentContext,
                     $marketplaceCheckouts->paymentMetadata($marketplaceCheckout),
-                    ['payment_purpose' => 'agency_subscription'],
+                    [
+                        'payment_purpose' => 'agency_subscription_with_marketplace_credits',
+                        'marketplace_credit_option_key' => $topUp['key'] ?? null,
+                        'marketplace_topup_credits' => (int) ($topUp['credits'] ?? 0),
+                        'marketplace_topup_amount_minor' => (int) ($topUp['price_minor'] ?? 0),
+                        'marketplace_topup_price_usd' => (float) ($topUp['price_usd'] ?? 0),
+                        'marketplace_topup_bundle' => $topUp['bundle'] ?? null,
+                    ],
                 );
             }
 
@@ -215,7 +238,7 @@ class PaymentController extends Controller
                                                     $marketplaceCheckout->template->slug,
                                                     ['agency_subscription' => 'active'],
                                                 ))
-                                                ->with('status', 'Agency subscription active. Confirm the Marketplace template Cosmic Credit spend to finish installation.');
+                                                ->with('status', 'Agency subscription active and your selected credit top-up is applied. Confirm the Marketplace template Cosmic Credit spend to finish installation.');
                                         }
                                     }
 
@@ -228,7 +251,7 @@ class PaymentController extends Controller
                                 // template PaymentOrders. Any payment explicitly marked as an Agency
                                 // subscription must return to Cosmic Credit confirmation instead.
                                 $legacyDirectMarketplacePayment = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0
-                                    && (string) data_get($paymentOrder->metadata, 'payment_purpose', '') !== 'agency_subscription'
+                                    && ! in_array((string) data_get($paymentOrder->metadata, 'payment_purpose', ''), ['agency_subscription', 'agency_subscription_with_marketplace_credits'], true)
                                     // New Marketplace acquisitions always declare the Cosmic Credit mode.
                                     // Only historical Marketplace payment orders that predate that marker may
                                     // use the direct subscription recovery path below.
@@ -245,7 +268,7 @@ class PaymentController extends Controller
                                 }
 
                                 $agencyMarketplacePayment = (int) data_get($paymentOrder->metadata, 'marketplace_checkout_id', 0) > 0
-                                    && (string) data_get($paymentOrder->metadata, 'payment_purpose', '') === 'agency_subscription';
+                                    && in_array((string) data_get($paymentOrder->metadata, 'payment_purpose', ''), ['agency_subscription', 'agency_subscription_with_marketplace_credits'], true);
                                 if ($agencyMarketplacePayment) {
                                     $checkout = \App\Models\MarketplaceCheckout::query()
                                         ->with('template')
@@ -256,7 +279,7 @@ class PaymentController extends Controller
                                     if ($checkout?->template?->slug) {
                                         return redirect()
                                             ->to($this->marketplaceCheckoutUrl($checkout->template->slug, ['agency_subscription' => 'active']))
-                                            ->with('status', 'Agency subscription active. Confirm the Marketplace template Cosmic Credit spend to continue.');
+                                            ->with('status', 'Agency subscription active and your selected credit top-up is applied. Confirm the Marketplace template Cosmic Credit spend to continue.');
                                     }
                                 }
                             }

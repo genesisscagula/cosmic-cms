@@ -31,6 +31,21 @@ return [
         'client_secret' => env('PAYPAL_CLIENT_SECRET'),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
         'currency' => env('PAYPAL_CURRENCY', 'USD'),
+        // Keep TLS verification enabled even on Windows/XAMPP where PHP's
+        // curl.cainfo/openssl.cafile are often unset. A project-level Mozilla
+        // CA bundle is shipped as the safe default; PAYPAL_CA_BUNDLE can point
+        // to a machine-managed bundle instead.
+        'ssl_verify' => env('PAYPAL_SSL_VERIFY', true),
+        'ca_bundle' => env('PAYPAL_CA_BUNDLE', base_path('resources/certs/cacert.pem')),
+        // Local development only: on localhost PayPal Sandbox, bypass TLS
+        // certificate verification from the first request. This avoids Windows/
+        // XAMPP cURL error 60 caused by a missing/intercepted local CA chain.
+        // Live mode and production can never use this bypass.
+        'allow_insecure_local_fallback' => env('PAYPAL_ALLOW_INSECURE_LOCAL_FALLBACK', true),
+        // Local/sandbox resilience: when a new Cosmic plan does not yet have a
+        // PayPal sandbox billing-plan ID, create a matching sandbox product/plan
+        // automatically. Live mode still requires explicit configured plan IDs.
+        'auto_provision_sandbox_plans' => env('PAYPAL_AUTO_PROVISION_SANDBOX_PLANS', true),
         // Deprecated compatibility mirror. New code must resolve plan IDs through
         // PayPalPlanBindingService, backed by config/cosmic-plans.php.
         'plan_ids' => collect(require __DIR__.'/cosmic-plans.php')
